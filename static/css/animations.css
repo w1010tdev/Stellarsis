@@ -1,0 +1,71 @@
+/* 全局过渡与动画（约 0.45s），无开屏动画，支持 prefers-reduced-motion */
+:root{
+  --transition-default: 0.45s cubic-bezier(0.2,0.8,0.2,1);
+  --transition-fast: 0.28s cubic-bezier(0.2,0.8,0.2,1);
+  --elevation-color: rgba(0,0,0,0.06);
+}
+
+/* 无障碍：用户偏好减少动画时关闭所有过渡 */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* 页面入场：轻微的淡入和位移 */
+body.page-enter {
+  opacity: 0;
+  transform: translateY(6px);
+  will-change: opacity, transform;
+}
+body.page-enter.page-ready {
+  opacity: 1;
+  transform: none;
+  transition: opacity var(--transition-default), transform var(--transition-default);
+}
+
+/* 常用元素的平滑过渡（可覆盖） */
+.header-transition, header, footer, .container, .card, .alert, nav, main, section {
+  transition: background-color var(--transition-default), color var(--transition-default), box-shadow var(--transition-default), border-color var(--transition-default);
+}
+
+/* 链接、按钮、表单控件的交互过渡 */
+a, a:link, a:visited, a:active {
+  transition: color var(--transition-fast), text-decoration-color var(--transition-fast);
+}
+button, .btn, input[type="button"], input[type="submit"], .menu-toggle {
+  transition: background-color var(--transition-default), color var(--transition-default), transform var(--transition-fast), box-shadow var(--transition-fast);
+  will-change: transform, box-shadow;
+}
+button:active, .btn:active { transform: translateY(1px) scale(0.998); }
+button:hover, .btn:hover { transform: translateY(-1px); }
+
+/* 按钮阴影微提升效果 */
+.btn-elevate { box-shadow: 0 1px 3px var(--elevation-color); }
+.btn-elevate:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+
+/* 输入控件 */
+input, textarea, select {
+  transition: box-shadow var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast);
+}
+input:focus, textarea:focus, select:focus { box-shadow: 0 6px 18px rgba(0,0,0,0.04); outline: none; }
+
+/* 小组件淡入/上滑实用类 */
+.fade-in { opacity: 0; transform: translateY(6px); }
+.fade-in.visible { opacity: 1; transform: none; transition: opacity var(--transition-default), transform var(--transition-default); }
+.slide-up { opacity: 0; transform: translateY(10px); }
+.slide-up.visible { opacity: 1; transform: none; transition: opacity var(--transition-default), transform var(--transition-default); }
+
+/* 卡片和弹窗微交互 */
+.card { transition: transform var(--transition-fast), box-shadow var(--transition-fast); }
+.card:hover { transform: translateY(-4px); }
+
+/* 工具类：快速禁用动画（用于动态场景） */
+.no-anim { transition: none !important; animation: none !important; }
+
+/* 小比例动画示例（可在具体组件中使用） */
+@keyframes pop-in {
+  from { transform: scale(0.98); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.pop-in { animation: pop-in var(--transition-fast) both; }
+
+/* 保持样式简洁：不添加开屏/遮罩类，尊重用户需求 */

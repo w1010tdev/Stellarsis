@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block additional_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/forum.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+{% endblock %}
+{% block content %}
+    <div class="new-post-container">
+        <h2>在 "{{ section.name }}" 发新帖</h2>
+        {% if not can_post %}
+        <div class="permission-hint">当前权限不允许发帖，您可以联系管理员获取更高权限。</div>
+        {% endif %}
+        <form method="POST" action="{{ url_for('new_post', section_id=section.id) }}">
+            <div class="form-group">
+                <label for="title">标题</label>
+                <input type="text" id="title" name="title" class="form-control" required maxlength="128" 
+                       {% if not can_post %}disabled{% endif %}
+                       placeholder="请输入帖子标题">
+                <div class="help-text">标题不能超过128个字符</div>
+            </div>
+            <div class="form-group">
+                <label for="content">内容</label>
+                <textarea id="content" name="content" class="form-control" required 
+                          {% if not can_post %}disabled{% endif %}
+                          placeholder="支持Markdown和LaTeX公式（使用\( ... \)和\[ ... \]）"></textarea>
+                <div class="help-text">
+                    支持Markdown格式和LaTeX公式。行内公式使用 \( ... \)，块级公式使用 \[ ... \]
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary" {% if not can_post %}disabled{% endif %}>发布帖子</button>
+        </form>
+        <div class="preview-container">
+            <div class="preview-title">预览:</div>
+            <div class="preview-content" id="content-preview">
+                输入内容后将显示预览
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const contentInput = document.getElementById('content');
+            const previewElement = document.getElementById('content-preview');
+            if (contentInput && previewElement) {
+                // 实时预览
+                contentInput.addEventListener('input', function() {
+                    const content = contentInput.value;
+                    // 等待渲染系统就绪
+                    function renderPreview() {
+                        if (typeof window.renderContent === 'function') {
+                            try {
+                                previewElement.innerHTML = window.renderContent(content);
+                            } catch (e) {
+                                console.error('预览渲染失败:', e);
+                                previewElement.textContent = content;
+                            }
+                        } else {
+                            // 渲染系统未就绪，稍后重试
+                            setTimeout(renderPreview, 100);
+                        }
+                    }
+                    renderPreview();
+                });
+                // 初始预览
+                if (contentInput.value) {
+                    contentInput.dispatchEvent(new Event('input'));
+                }
+            }
+        });
+    </script>
+{% endblock %}

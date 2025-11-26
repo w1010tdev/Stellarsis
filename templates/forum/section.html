@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block additional_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/forum.css') }}">
+{% endblock %}
+{% block content %}
+    <div class="section-container">
+        <div class="section-header">
+            <h1 class="section-title">{{ section.name }}</h1>
+            <p class="section-description">{{ section.description }}</p>
+        </div>
+        <div class="permission-banner perm-{{ section_permission|lower() }}">
+            {% if section_permission == 'su' %}
+            您拥有 su 权限，可在该分区内管理所有帖子与回复。
+            {% elif section_permission == '777' %}
+            您拥有 777 权限，可在该分区发帖和回复。
+            {% elif section_permission == '444' %}
+            当前为 444 权限，仅可查看帖子内容。
+            {% endif %}
+        </div>
+        {% if can_post %}
+        <a href="{{ url_for('new_post', section_id=section.id) }}" class="new-thread-btn">发新帖</a>
+        {% else %}
+        <div class="permission-hint">当前权限不允许发帖。</div>
+        {% endif %}
+        <ul class="threads-list">
+            {% for thread in threads %}
+            <li class="thread-item">
+                <h3 class="thread-title"><a href="{{ url_for('forum_thread', thread_id=thread.id) }}">{{ thread.title }}</a></h3>
+                <div class="thread-meta">
+                    <span>作者: {{ thread.user.nickname or thread.user.username }}</span>
+                    <span>时间: {{ thread.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+                    <span>回复: {{ thread.replies.count() }}</span>
+                </div>
+                <div class="thread-content-preview">
+                    {{ thread.content|striptags|truncate(200) }}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block additional_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+{% block head %}
+    <title>文件管理 - 管理面板</title>
+{% endblock %}
+{% block content %}
+    <div class="admin-container">
+        <h1>文件管理</h1>
+        <p class="warning-text">警告：此功能仅用于开发环境。生产环境请使用正规部署方式。</p>
+        <div class="file-manager">
+            <div class="directory-tree">
+                <div class="breadcrumb">
+                    {% set normalized_current = current_path.replace('\\','/') %}
+                    {% set path_parts = normalized_current.split('/') %}
+                    {% for i in range(path_parts|length) %}
+                        {% if i == 0 and path_parts[0] == '' %}
+                            <a href="{{ url_for('file_manager_view') }}">/</a>
+                        {% else %}
+                            {% set part_path = path_parts[0:i+1]|join('/') %}
+                            {% if i < path_parts|length-1 %}
+                                <a href="{{ url_for('file_manager_view', path=part_path) }}">{{ path_parts[i] }}/</a>
+                            {% else %}
+                                {{ path_parts[i] }}
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <ul class="file-list">
+                    {% if current_path != '' %}
+                        <li>
+                            {% set normalized_current = current_path.replace('\\','/') %}
+                            {% set parent_path = (normalized_current.rsplit('/', 1)[0]) %}
+                            {% if parent_path == '' %}
+                                <a href="{{ url_for('file_manager_view') }}">
+                                    <span class="file-icon">📁</span> ..
+                                </a>
+                            {% else %}
+                                <a href="{{ url_for('file_manager_view', path=parent_path) }}">
+                                    <span class="file-icon">📁</span> ..
+                                </a>
+                            {% endif %}
+                        </li>
+                    {% endif %}
+                    {% for item in items %}
+                    <li>
+                        {% set item_path_normalized = item.path.replace('\\','/') %}
+                        {% if item.is_dir %}
+                            <a href="{{ url_for('file_manager_view', path=item_path_normalized) }}">
+                                <span class="file-icon directory">📁</span> {{ item.name }}/
+                            </a>
+                        {% else %}
+                            <a href="#" onclick='loadFile({{ item_path_normalized|tojson }})'>
+                                <span class="file-icon">📄</span> {{ item.name }}
+                            </a>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="file-content">
+                <h2 id="current-file-path">请选择文件</h2>
+                <div class="file-actions">
+                    <button id="save-file" class="btn btn-primary" disabled>保存文件</button>
+                    <button id="reload-file" class="btn" disabled>重新加载</button>
+                </div>
+                <div class="status-message" id="status-message"></div>
+                <div class="file-editor">
+                    <textarea id="file-content" class="file-content-editor" disabled>请选择一个文件进行编辑</textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block scripts %}
+    {{ super() }}
+    <script>
+        let currentFilePath = '';
+        function showStatus(message, isSuccess = true) {
+            const statusElement = document.getElementById('status-message');
+            statusElement.textContent = message;
+            statusElement.className = 'status-message ' + (isSuccess ? 'status-success' : 'status-error');
+            statusElement.style.display = 'block';
+            // 3秒后隐藏
+            setTimeout(() => {
+                statusElement.style.display = 'none';
+            }, 3000);
+        }
+        function loadFile(path) {
+            currentFilePath = path;
+            document.getElementById('current-file-path').textContent = path;
+            const textarea = document.getElementById('file-content');
+            textarea.value = '加载中...';
+            textarea.disabled = true;
+            document.getElementById('save-file').disabled = true;
+            document.getElementById('reload-file').disabled = false;
+            fetch("{{ url_for('read_file_view') }}?path=" + encodeURIComponent(path))
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP错误! 状态: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        textarea.value = data.content;
+                        textarea.disabled = false;
+                        document.getElementById('save-file').disabled = false;
+                        showStatus('文件加载成功');
+                    } else {
+                        throw new Error(data.message || '未知错误');
+                    }
+                })
+                .catch(error => {
+                    console.error('加载文件失败:', error);
+                    textarea.value = '加载文件失败: ' + error.message;
+                    textarea.disabled = true;
+                    document.getElementById('save-file').disabled = true;
+                    showStatus('加载失败: ' + error.message, false);
+                });
+        }
+        document.getElementById('save-file').addEventListener('click', function() {
+            const content = document.getElementById('file-content').value;
+            fetch("{{ url_for('write_file_view') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'path=' + encodeURIComponent(currentFilePath) + 
+                      '&content=' + encodeURIComponent(content)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showStatus('文件已保存');
+                } else {
+                    throw new Error(data.message || '保存失败');
+                }
+            })
+            .catch(error => {
+                console.error('保存文件失败:', error);
+                showStatus('保存失败: ' + error.message, false);
+            });
+        });
+        document.getElementById('reload-file').addEventListener('click', function() {
+            if (currentFilePath) {
+                loadFile(currentFilePath);
+            }
+        });
+    </script>
+{% endblock %}

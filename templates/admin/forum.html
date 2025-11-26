@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+{% block additional_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+{% block head %}
+    <title>帖子管理 - 社交平台</title>
+{% endblock %}
+{% block content %}
+    <div class="admin-container">
+        <h1>帖子管理</h1>
+        <div class="post-actions">
+            <button class="btn btn-add" onclick="createSection()">创建新分区</button>
+            <button class="btn delete-btn" onclick="deleteAllPosts()">删除所有帖子</button>
+            <button class="btn delete-btn" onclick="deletePost()">删除特定帖子</button>
+        </div>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="搜索分区名称...">
+            <button class="btn" onclick="searchSections()">搜索</button>
+            <button class="btn btn-secondary" onclick="clearSearch()">清除</button>
+        </div>
+        <table class="admin-table forum-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>名称</th>
+                    <th>描述</th>
+                    <th>帖子数量</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="forumTableBody">
+                {% for sd in sections %}
+                {% set section = sd.section %}
+                <tr id="section-row-{{ section.id }}">
+                    <td>{{ section.id }}</td>
+                    <td>{{ section.name }}</td>
+                    <td>{{ section.description or '无描述' }}</td>
+                    <td>
+                        主题: {{ sd.thread_count }}, 回复: {{ sd.reply_count }}
+                    </td>
+                    <td class="action-buttons">
+                        {% if section.id != 1 %}
+                            <button class="btn btn-edit" onclick="editSection({{ section.id }}, {{ section.name|tojson }}, {{ (section.description or '')|tojson }})">编辑</button>
+                            <button class="btn delete-btn" onclick="deleteSection({{ section.id }}, {{ section.name|tojson }})">删除</button>
+                        {% else %}
+                            <span class="default-info">默认分区</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <!-- 编辑分区模态框 -->
+    <div class="modal-backdrop" id="editSectionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">编辑贴吧分区</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editSectionForm">
+                    <input type="hidden" id="editSectionId" value="">
+                    <div class="form-group">
+                        <label for="editSectionName">名称:</label>
+                        <input type="text" id="editSectionName" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editSectionDescription">描述:</label>
+                        <textarea id="editSectionDescription" class="form-control" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" onclick="submitEditSectionForm()">保存</button>
+            </div>
+        </div>
+    </div>
+    <!-- 创建分区模态框 -->
+    <div class="modal-backdrop" id="createSectionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">创建贴吧分区</h3>
+                <button class="modal-close" onclick="closeCreateModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createSectionForm">
+                    <div class="form-group">
+                        <label for="createSectionName">名称:</label>
+                        <input type="text" id="createSectionName" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="createSectionDescription">描述:</label>
+                        <textarea id="createSectionDescription" class="form-control" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeCreateModal()">取消</button>
+                <button class="btn btn-primary" onclick="submitCreateSectionForm()">创建</button>
+            </div>
+        </div>
+    </div>
+    <!-- 删除帖子模态框 -->
+    <div class="modal-backdrop" id="deletePostModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">删除帖子</h3>
+                <button class="modal-close" onclick="closeDeletePostModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="postIdToDelete">帖子ID:</label>
+                    <input type="number" id="postIdToDelete" class="form-control" placeholder="输入帖子或回复的ID">
+                    <small class="help-text">输入主题帖ID可删除整个主题帖及其所有回复</small>
+                </div>
+            </div>
+                <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeDeletePostModal()">取消</button>
+                <button class="btn delete-btn" onclick="confirmDeletePost()">删除帖子</button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block scripts %}
+    {{ super() }}
+    <script>
+        // 模态框显示/隐藏
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('show');
+        }
+        
+        function hideModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+        }
+        
+        // 搜索功能
+        function searchSections() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('#forumTableBody tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+        
+        // 清除搜索
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            const rows = document.querySelectorAll('#forumTableBody tr');
+            rows.forEach(row => {
+                row.style.display = '';
+            });
+        }
+        
+        // 监听回车键搜索
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchSections();
+            }
+        });
+        
+        // 编辑分区
+        function editSection(sectionId, name, description) {
+            document.getElementById('editSectionId').value = sectionId;
+            document.getElementById('editSectionName').value = name;
+            document.getElementById('editSectionDescription').value = description || '';
+            showModal('editSectionModal');
+        }
+        
+        // 创建分区
+        function createSection() {
+            document.getElementById('createSectionName').value = '';
+            document.getElementById('createSectionDescription').value = '';
+            showModal('createSectionModal');
+        }
+        
+        // 删除分区
+        async function deleteSection(sectionId, sectionName) {
+            if (!(await showConfirm(`确定要删除贴吧分区 "${sectionName}" 吗？此操作将删除该分区下的所有帖子和回复，不可撤销！`))) {
+                return;
+            }
+            fetch(`/api/admin/forum/sections/${sectionId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById(`section-row-${sectionId}`).remove();
+                    showToast('success', data.message);
+                } else {
+                    showToast('error', '删除失败: ' + (data.message || '未知错误'));
+                }
+            })
+            .catch(error => {
+                showToast('error', '删除失败: ' + error.message);
+            });
+        }
+        
+        // 关闭模态框
+        function closeModal() {
+            hideModal('editSectionModal');
+        }
+        
+        function closeCreateModal() {
+            hideModal('createSectionModal');
+        }
+        
+        function closeDeletePostModal() {
+            hideModal('deletePostModal');
+        }
+        
+        // 保存分区修改
+        function submitEditSectionForm() {
+            const sectionId = document.getElementById('editSectionId').value;
+            const name = document.getElementById('editSectionName').value;
+            const description = document.getElementById('editSectionDescription').value;
+            
+            fetch(`/api/admin/forum/sections/${sectionId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: name,
+                    description: description
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 更新页面上的分区信息
+                    const row = document.getElementById(`section-row-${sectionId}`);
+                    row.cells[1].textContent = name;
+                    row.cells[2].textContent = description || '无描述';
+                    closeModal();
+                    showToast('success', data.message);
+                } else {
+                    showToast('error', '操作失败: ' + (data.message || '未知错误'));
+                }
+            })
+            .catch(error => {
+                showToast('error', '操作失败: ' + error.message);
+            });
+        }
+        
+        // 创建分区表单提交
+        function submitCreateSectionForm() {
+            const name = document.getElementById('createSectionName').value;
+            const description = document.getElementById('createSectionDescription').value;
+            
+            fetch('/api/admin/forum/sections', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: name,
+                    description: description
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 添加新分区到表格
+                    const newRow = document.createElement('tr');
+                    newRow.id = `section-row-${data.section.id}`;
+                    newRow.innerHTML = `
+                        <td>${data.section.id}</td>
+                        <td>${data.section.name}</td>
+                        <td>${data.section.description || '无描述'}</td>
+                        <td>主题: 0, 回复: 0</td>
+                        <td class="action-buttons">
+                            <button class="btn btn-edit" onclick="editSection(${data.section.id}, '${data.section.name.replace(/'/g, "\\'")}', '${(data.section.description || '').replace(/'/g, "\\'")}')">编辑</button>
+                            <button class="btn delete-btn" onclick="deleteSection(${data.section.id}, '${data.section.name.replace(/'/g, "\\'")}')">删除</button>
+                        </td>
+                    `;
+                    document.getElementById('forumTableBody').appendChild(newRow);
+                    closeCreateModal();
+                    showToast('success', data.message);
+                } else {
+                    showToast('error', '操作失败: ' + (data.message || '未知错误'));
+                }
+            })
+            .catch(error => {
+                showToast('error', '操作失败: ' + error.message);
+            });
+        }
+        
+        // 删除所有帖子
+        async function deleteAllPosts() {
+            if (!(await showConfirm('警告：此操作将删除所有贴吧分区下的所有帖子和回复，此操作不可撤销！确定要继续吗？'))) {
+                return;
+            }
+            // 首先删除所有分区（除了默认分区）
+            const sections = document.querySelectorAll('#forumTableBody tr');
+            const promises = [];
+            sections.forEach(row => {
+                const sectionId = parseInt(row.id.replace('section-row-', ''));
+                if (sectionId !== 1) { // 不删除默认分区
+                    promises.push(
+                        fetch(`/api/admin/forum/sections/${sectionId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            }
+                        })
+                    );
+                }
+            });
+            Promise.all(promises)
+            .then(responses => {
+                return Promise.all(responses.map(r => r.json()));
+            })
+            .then(results => {
+                results.forEach((result, index) => {
+                    if (result.success) {
+                        const sectionId = parseInt(sections[index].id.replace('section-row-', ''));
+                        if (sectionId !== 1) {
+                            sections[index].remove();
+                        }
+                    }
+                });
+                showToast('success', '所有非默认分区及其帖子已删除');
+            })
+            .catch(error => {
+                showToast('error', '删除失败: ' + error.message);
+            });
+        }
+        
+        // 删除特定帖子
+        function deletePost() {
+            showModal('deletePostModal');
+        }
+        
+        // 确认删除特定帖子
+        async function confirmDeletePost() {
+            const postId = document.getElementById('postIdToDelete').value;
+            if (!postId || isNaN(postId)) {
+                showToast('warning', '请输入有效的帖子ID');
+                return;
+            }
+            if (!(await showConfirm(`确定要删除ID为 ${postId} 的帖子吗？此操作不可撤销！`))) {
+                return;
+            }
+            fetch(`/api/admin/forum/posts/${postId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeDeletePostModal();
+                    document.getElementById('postIdToDelete').value = '';
+                    showToast('success', data.message);
+                } else {
+                    showToast('error', '删除失败: ' + (data.message || '未知错误'));
+                }
+            })
+            .catch(error => {
+                showToast('error', '删除失败: ' + error.message);
+            });
+        }
+        
+        // 点击模态框外部关闭
+        window.addEventListener('click', function(event) {
+            const editModal = document.getElementById('editSectionModal');
+            const createModal = document.getElementById('createSectionModal');
+            const deleteModal = document.getElementById('deletePostModal');
+            
+            if (event.target === editModal) {
+                closeModal();
+            }
+            if (event.target === createModal) {
+                closeCreateModal();
+            }
+            if (event.target === deleteModal) {
+                closeDeletePostModal();
+            }
+        });
+    </script>
+{% endblock %}

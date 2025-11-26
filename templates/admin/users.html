@@ -1,0 +1,487 @@
+{% extends "base.html" %}
+{% block additional_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+{% block head %}
+    <title>用户管理 - 社交平台</title>
+{% endblock %}
+{% block content %}
+    <div class="admin-container">
+        <h1>用户管理</h1>
+        <div class="user-actions">
+            <button class="btn btn-add" onclick="showCreateUserModal()">创建用户</button>
+        </div>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="搜索用户名、昵称...">
+            <button class="btn" onclick="searchUsers()">搜索</button>
+            <button class="btn btn-secondary" onclick="clearSearch()">清除</button>
+        </div>
+        <table class="admin-table user-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>用户名</th>
+                    <th>昵称</th>
+                    <th>角色</th>
+                    <th>最后活动</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="userTableBody">
+                {% for user in users %}
+                <tr id="user-row-{{ user.id }}">
+                    <td>{{ user.id }}</td>
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.nickname or user.username }}</td>
+                    <td>
+                        <span class="role-badge role-{{ user.role }}">{{ user.role }}</span>
+                    </td>
+                    <td>{{ user.last_seen.strftime('%Y-%m-%d %H:%M:%S') if user.last_seen else '从未' }}</td>
+                    <td class="action-buttons">
+                        <button class="btn btn-sm btn-permission" onclick="openPermissionModal({{ user.id }}, {{ user.username|tojson }}, {{ user.role|tojson }})">分区权限</button>
+                        {% if user.id != 1 %}
+                            {% if user.role == 'user' %}
+                                <button class="btn btn-make-admin" onclick="changeUserRole({{ user.id }}, 'admin')">设为管理员</button>
+                            {% else %}
+                                <button class="btn btn-make-user" onclick="changeUserRole({{ user.id }}, 'user')">设为用户</button>
+                            {% endif %}
+                            <button class="btn delete-btn" onclick="deleteUser({{ user.id }}, '{{ user.username }}')">删除</button>
+                        {% else %}
+                            <span class="default-info">系统管理员</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <!-- 权限管理模态框 -->
+    <div class="modal-backdrop" id="permissionModal">
+        <div class="modal-content modal-wide">
+            <div class="modal-header">
+                <h3 class="modal-title" id="permissionModalTitle">分区权限</h3>
+                <button class="modal-close" onclick="closePermissionModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="permissionRoleTip" class="permission-tip"></p>
+                <div class="permission-section">
+                    <h4>聊天室权限</h4>
+                    <table class="permission-table">
+                        <thead>
+                            <tr>
+                                <th>名称</th>
+                                <th>简介</th>
+                                <th>权限</th>
+                            </tr>
+                        </thead>
+                        <tbody id="chatPermissionBody">
+                            <tr><td colspan="3" class="loading">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="permission-section">
+                    <h4>贴吧分区权限</h4>
+                    <table class="permission-table">
+                        <thead>
+                            <tr>
+                                <th>名称</th>
+                                <th>简介</th>
+                                <th>权限</th>
+                            </tr>
+                        </thead>
+                        <tbody id="forumPermissionBody">
+                            <tr><td colspan="3" class="loading">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closePermissionModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+    <!-- 创建用户模态框 -->
+    <div class="modal-backdrop" id="createUserModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">创建新用户</h3>
+                <button class="modal-close" onclick="closeCreateUserModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createUserForm">
+                    <div class="form-group">
+                        <label for="newUsername">用户名:</label>
+                        <input type="text" id="newUsername" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">密码:</label>
+                        <input type="password" id="newPassword" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newNickname">昵称:</label>
+                        <input type="text" id="newNickname" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="newColor">名字颜色:</label>
+                        <input type="text" id="newColor" class="form-control" value="#000000" placeholder="#RRGGBB">
+                        <div class="color-preview" id="new-color-preview"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="newBadge">徽章:</label>
+                        <input type="text" id="newBadge" class="form-control" placeholder="如: VIP, MOD">
+                    </div>
+                    <div class="form-group">
+                        <label for="newRole">角色:</label>
+                        <select id="newRole" class="form-control">
+                            <option value="user">用户</option>
+                            <option value="admin">管理员</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeCreateUserModal()">取消</button>
+                <button class="btn btn-primary" onclick="submitCreateUserForm()">创建用户</button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block scripts %}
+    {{ super() }}
+    <script>
+        // 模态框显示/隐藏
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('show');
+        }
+        
+        function hideModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+        }
+        
+        function escapeHtml(str) {
+            if (str === undefined || str === null) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+        
+        const PERMISSION_OPTIONS = [
+            { value: 'su', label: 'su - 完全控制' },
+            { value: '777', label: '777 - 可发言并删除自己的内容' },
+            { value: '444', label: '444 - 仅查看' },
+            { value: 'Null', label: 'Null - 不可见' }
+        ];
+        let permissionModalState = { userId: null, role: 'user' };
+        
+        // 颜色预览
+        document.addEventListener('DOMContentLoaded', function() {
+            const colorInput = document.getElementById('newColor');
+            const colorPreview = document.getElementById('new-color-preview');
+            
+            if (colorInput && colorPreview) {
+                colorPreview.style.backgroundColor = colorInput.value;
+                colorInput.addEventListener('input', function() {
+                    colorPreview.style.backgroundColor = colorInput.value;
+                });
+            }
+        });
+        
+        // 搜索功能
+        function searchUsers() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('#userTableBody tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+        
+        // 清除搜索
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            const rows = document.querySelectorAll('#userTableBody tr');
+            rows.forEach(row => {
+                row.style.display = '';
+            });
+        }
+        
+        // 监听回车键搜索
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchUsers();
+            }
+        });
+        
+        // 更改用户角色
+        async function changeUserRole(userId, newRole) {
+            if (!(await showConfirm(`确定要将用户角色更改为 ${newRole} 吗？`))) {
+                return;
+            }
+            fetch(`/api/admin/users/${userId}/role`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    role: newRole
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                    if (data.success) {
+                    // 更新页面上的角色显示
+                    const row = document.getElementById(`user-row-${userId}`);
+                    const roleCell = row.querySelector('td:nth-child(4)');
+                    const actionCell = row.querySelector('td:nth-child(6)');
+                    
+                    // 更新角色徽章
+                    roleCell.innerHTML = `<span class="role-badge role-${newRole}">${newRole}</span>`;
+                    
+                    // 更新操作按钮
+                    let newButton = '';
+                    if (userId === 1) {
+                        newButton = '<span class="default-info">系统管理员</span>';
+                    } else {
+                        if (newRole === 'user') {
+                            newButton = `<button class="btn btn-make-admin" onclick="changeUserRole(${userId}, 'admin')">设为管理员</button>`;
+                        } else {
+                            newButton = `<button class="btn btn-make-user" onclick="changeUserRole(${userId}, 'user')">设为用户</button>`;
+                        }
+                        newButton += `<button class="btn delete-btn" onclick="deleteUser(${userId}, '')">删除</button>`;
+                    }
+                    actionCell.innerHTML = newButton;
+                    showToast('success', data.message);
+                } else {
+                    showToast('error', '操作失败: ' + (data.message || '未知错误'));
+                }
+            })
+            .catch(error => {
+                showToast('error', '操作失败: ' + error.message);
+            });
+        }
+        
+        // 删除用户
+        async function deleteUser(userId, username) {
+            if (!username) {
+                // 如果没有传入用户名，从DOM中获取
+                const row = document.querySelector(`#user-row-${userId}`);
+                username = row.querySelector('td:nth-child(2)').textContent;
+            }
+            if (!(await showConfirm(`确定要删除用户 "${username}" 吗？此操作不可撤销！`))) {
+                return;
+            }
+            fetch(`/api/admin/users/${userId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById(`user-row-${userId}`).remove();
+                    showToast('success', data.message);
+                } else {
+                    showToast('error', '删除失败: ' + (data.message || '未知错误'));
+                }
+            })
+            .catch(error => {
+                showToast('error', '删除失败: ' + error.message);
+            });
+        }
+        
+        // 显示创建用户模态框
+        function showCreateUserModal() {
+            showModal('createUserModal');
+        }
+        
+        // 关闭创建用户模态框
+        function closeCreateUserModal() {
+            hideModal('createUserModal');
+            document.getElementById('createUserForm').reset();
+            document.getElementById('new-color-preview').style.backgroundColor = '#000000';
+        }
+        
+        // 创建用户
+        function submitCreateUserForm() {
+            const userData = {
+                username: document.getElementById('newUsername').value,
+                password: document.getElementById('newPassword').value,
+                nickname: document.getElementById('newNickname').value,
+                color: document.getElementById('newColor').value || '#000000',
+                badge: document.getElementById('newBadge').value,
+                role: document.getElementById('newRole').value
+            };
+            
+            fetch('/api/admin/users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(userData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('success', data.message);
+                    closeCreateUserModal();
+                    // 重新加载页面以显示新用户
+                    location.reload();
+                } else {
+                    showToast('error', '创建失败: ' + (data.message || '未知错误'));
+                }
+            })
+            .catch(error => {
+                showToast('error', '创建失败: ' + error.message);
+            });
+        }
+        
+        function renderLoadingState(targetId) {
+            const body = document.getElementById(targetId);
+            if (body) {
+                body.innerHTML = '<tr><td colspan="3" class="loading">加载中...</td></tr>';
+            }
+        }
+        
+        function renderPermissionTable(targetId, entries, scope) {
+            const tbody = document.getElementById(targetId);
+            if (!tbody) return;
+            if (!entries || !entries.length) {
+                tbody.innerHTML = '<tr><td colspan="3" class="empty">暂无数据</td></tr>';
+                return;
+            }
+            const isAdmin = permissionModalState.role === 'admin';
+            tbody.innerHTML = entries.map(item => {
+                const current = item.perm || 'Null';
+                const options = PERMISSION_OPTIONS.map(opt => {
+                    const selected = opt.value.toLowerCase() === current.toLowerCase() ? 'selected' : '';
+                    return `<option value="${opt.value}" ${selected}>${opt.label}</option>`;
+                }).join('');
+                return `
+                    <tr>
+                        <td>${escapeHtml(item.name)}</td>
+                        <td>${escapeHtml(item.description || '--')}</td>
+                        <td>
+                            <select class="permission-select" data-scope="${scope}" data-target="${item.id}" data-current="${current}" ${isAdmin ? 'disabled' : ''}>
+                                ${options}
+                            </select>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            if (!isAdmin) {
+                tbody.querySelectorAll('.permission-select').forEach(select => {
+                    select.addEventListener('change', handlePermissionChange);
+                });
+            }
+        }
+        
+        function handlePermissionChange(event) {
+            try {
+                const select = event.target;
+                const previous = select.dataset.current || select.value;
+                // 基本验证
+                const scope = select.dataset.scope;
+                const target = select.dataset.target;
+                if (!scope || typeof target === 'undefined') {
+                    showToast('error', '权限信息缺失，无法更新');
+                    return;
+                }
+                select.disabled = true;
+                fetch(`/api/admin/users/${permissionModalState.userId}/permissions`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        scope: scope,
+                        target_id: Number(target),
+                        perm: select.value
+                    })
+                })
+                .then(response => {
+                    // 尝试安全解析JSON
+                    return response.json().catch(() => ({ success: false, message: '服务器返回格式不正确' }));
+                })
+                .then(data => {
+                    if (data && data.success) {
+                        select.dataset.current = select.value;
+                        showToast('success', '权限已更新');
+                    } else {
+                        select.value = previous;
+                        showToast('error', data && data.message ? data.message : '权限更新失败');
+                    }
+                })
+                .catch(error => {
+                    select.value = previous;
+                    showToast('error', error && error.message ? error.message : '权限更新失败');
+                })
+                .finally(() => {
+                    select.disabled = false;
+                });
+            } catch (e) {
+                console.error('处理权限变更时发生错误:', e);
+                showToast('error', '内部错误：无法更新权限');
+            }
+        }
+        
+        function openPermissionModal(userId, username, role) {
+            permissionModalState = { userId, role };
+            const title = document.getElementById('permissionModalTitle');
+            if (title) {
+                title.textContent = `分区权限 - ${username}`;
+            }
+            const tip = document.getElementById('permissionRoleTip');
+            if (tip) {
+                tip.textContent = role === 'admin'
+                    ? '管理员自动拥有所有分区 su 权限，此处仅供查看。'
+                    : '为该用户配置 su / 777 / 444 / Null 权限。';
+            }
+            renderLoadingState('chatPermissionBody');
+            renderLoadingState('forumPermissionBody');
+            showModal('permissionModal');
+            
+            fetch(`/api/admin/users/${userId}/permissions`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderPermissionTable('chatPermissionBody', data.chat, 'chat');
+                        renderPermissionTable('forumPermissionBody', data.forum, 'forum');
+                    } else {
+                        throw new Error(data.message || '加载权限失败');
+                    }
+                })
+                .catch(error => {
+                    const message = error.message || '加载权限失败';
+                    const chatBody = document.getElementById('chatPermissionBody');
+                    const forumBody = document.getElementById('forumPermissionBody');
+                    if (chatBody) chatBody.innerHTML = `<tr><td colspan="3" class="empty">${message}</td></tr>`;
+                    if (forumBody) forumBody.innerHTML = `<tr><td colspan="3" class="empty">${message}</td></tr>`;
+                    showToast('error', message);
+                });
+        }
+        
+        function closePermissionModal() {
+            hideModal('permissionModal');
+        }
+        
+        // 点击模态框外部关闭
+        window.addEventListener('click', function(event) {
+            const createModal = document.getElementById('createUserModal');
+            if (event.target === createModal) {
+                closeCreateUserModal();
+            }
+            const permModal = document.getElementById('permissionModal');
+            if (event.target === permModal) {
+                closePermissionModal();
+            }
+        });
+    </script>
+{% endblock %}

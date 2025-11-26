@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <title>403 禁止访问 - 群星议会</title>
+    <style>
+        .error-container {
+            text-align: center;
+            padding: 50px 20px;
+            max-width: 600px;
+            margin: 50px auto;
+        }
+        
+        .error-code {
+            font-size: 100px;
+            font-weight: bold;
+            color: #6c757d;
+            line-height: 1;
+            margin-bottom: 20px;
+        }
+        
+        .error-message {
+            font-size: 24px;
+            margin-bottom: 30px;
+        }
+        
+        .error-description {
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .btn-home {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        .btn-home:hover {
+            background-color: #0069d9;
+        }
+        
+        @media (max-width: 600px) {
+            .error-container {
+                padding: 20px 15px;
+                margin: 20px auto;
+            }
+            
+            .error-code {
+                font-size: 70px;
+            }
+            
+            .error-message {
+                font-size: 20px;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="error-container">
+        <div class="error-code">403</div>
+        <h1 class="error-message">禁止访问</h1>
+        <p class="error-description">
+            您没有权限访问此页面。可能是因为您没有登录，或者您的账户没有足够的权限。
+        </p>
+        <a href="/" class="btn-home">返回首页</a>
+    </div>
+{% endblock %}

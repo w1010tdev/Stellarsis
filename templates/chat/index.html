@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block additional_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat_rooms.css') }}">
+{% endblock %}
+{% block content %}
+    <div class="rooms-container">
+        <h1 class="section-title">聊天室</h1>
+        {% if rooms %}
+        <div class="rooms-grid">
+            {% for room in rooms %}
+            {% set perm = room_permissions.get(room.id, 'Null') %}
+            <div class="room-card">
+                <div class="room-card-header">
+                    <h3>{{ room.name }}</h3>
+                    <span class="perm-badge perm-{{ perm|lower() }}">{{ perm }}</span>
+                </div>
+                <p class="room-description">{{ room.description }}</p>
+                <div class="room-actions">
+                    <a href="{{ url_for('chat_room', room_id=room.id) }}" class="btn">进入</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>暂无可访问的聊天室，请联系管理员以获取权限。</p>
+        </div>
+        {% endif %}
+    </div>
+{% endblock %}

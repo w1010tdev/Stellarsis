@@ -1,0 +1,117 @@
+/* Toast / Alert styling */
+#toast-container {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none; /* 让点击穿透除关闭按钮外 */
+}
+
+.toast {
+  min-width: 200px;
+  max-width: 360px;
+  background: rgba(0,0,0,0.85);
+  color: #fff;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+  transform: translateY(-8px);
+  opacity: 0;
+  transition: opacity 240ms ease, transform 240ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: auto;
+}
+
+.toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.toast.hide {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.toast-success {
+  background: linear-gradient(90deg, #2ecc71, #27ae60);
+}
+
+.toast-error {
+  background: linear-gradient(90deg, #e74c3c, #c0392b);
+}
+
+.toast-warning {
+  background: linear-gradient(90deg, #f39c12, #d68910);
+}
+
+.toast-info {
+  background: linear-gradient(90deg, #3498db, #2c82c9);
+}
+
+.toast .toast-close {
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.9);
+  font-size: 16px;
+  margin-left: 0.6rem;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  #toast-container {
+    left: 0.5rem;
+    right: 0.5rem;
+    top: auto;
+    bottom: 1rem;
+  }
+  .toast {
+    width: auto;
+    max-width: 100%;
+  }
+}
+
+/* 确认模态样式 */
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100000;
+  padding: 1rem;
+}
+.confirm-modal {
+  background: #fff;
+  color: #222;
+  border-radius: 8px;
+  max-width: 520px;
+  width: 100%;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  padding: 1rem 1.25rem;
+  box-sizing: border-box;
+}
+.confirm-title {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.1rem;
+}
+.confirm-message {
+  margin: 0.25rem 0 1rem 0;
+  font-size: 0.95rem;
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.confirm-ok {
+  min-width: 84px;
+}
+.confirm-cancel {
+  background: transparent;
+}

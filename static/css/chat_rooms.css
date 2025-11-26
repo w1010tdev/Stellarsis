@@ -1,0 +1,111 @@
+.rooms-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+}
+
+.section-title {
+  font-size: 2rem;
+  margin-bottom: 25px;
+  color: var(--dark-color);
+  text-align: center;
+}
+
+.rooms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 25px;
+}
+
+.room-card {
+  background-color: white;
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  transition: var(--transition-normal);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.room-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+}
+
+.room-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid var(--border-color);
+  gap: 10px;
+}
+
+.room-card-header h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  color: var(--dark-color);
+}
+
+.room-description {
+  padding: 16px;
+  flex-grow: 1;
+  color: #6c757d;
+  line-height: 1.6;
+}
+
+.room-actions {
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--border-color);
+  text-align: right;
+}
+
+.room-actions a {
+  display: inline-block;
+  padding: 8px 16px;
+  background-color: var(--primary-color);
+  color: white;
+  text-decoration: none;
+  border-radius: var(--border-radius-sm);
+  font-weight: 500;
+  transition: var(--transition-fast);
+}
+
+.room-actions a:hover {
+  background-color: var(--primary-dark);
+  text-decoration: none;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .rooms-grid {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 16px;
+  }
+  
+  .section-title {
+    font-size: 1.8rem;
+  }
+  
+  .room-card h3 {
+    font-size: 1.2rem;
+    padding: 14px;
+  }
+  
+  .room-description {
+    padding: 14px;
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .rooms-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .section-title {
+    font-size: 1.7rem;
+  }
+}
