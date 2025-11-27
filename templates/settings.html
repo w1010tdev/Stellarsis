@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block additional_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+{% endblock %}
+{% block content %}
+<div class="settings-layout">
+    <aside class="settings-sidebar">
+        <h3>设置</h3>
+        <a href="{{ url_for('settings_index') }}" class="active">总览</a>
+        <a href="{{ url_for('profile') }}">修改个人资料</a>
+        <a href="{{ url_for('change_password') }}">修改密码</a>
+        <a href="{{ url_for('settings_follows') }}">关注管理</a>
+        <a href="{{ url_for('logout') }}" style="color:var(--danger-color);">退出登录</a>
+    </aside>
+    <section class="settings-main">
+        <h2>账户设置</h2>
+        <p>在这里可以快速访问与账号相关的设置：修改个人资料、修改密码、管理关注列表与登出。</p>
+        <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;">
+            <a class="btn" href="{{ url_for('profile') }}">修改个人资料</a>
+            <a class="btn btn-secondary" href="{{ url_for('change_password') }}">修改密码</a>
+            <a class="btn" href="{{ url_for('settings_follows') }}">管理关注列表</a>
+            <a class="btn btn-danger" href="{{ url_for('logout') }}">退出登录</a>
+        </div>
+    </section>
+</div>
+{% endblock %}

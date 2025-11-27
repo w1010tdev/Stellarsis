@@ -15,7 +15,7 @@
 .admin-table {
   width: 100%;
   border-collapse: collapse;
-  background-color: white;
+  background-color: var(--surface-color);
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-md);
   overflow: hidden;
@@ -57,7 +57,7 @@
 }
 
 .btn-edit {
-  background-color: var(--primary-color);
+  background-color: var(--btn-primary);
 }
 
 .btn-edit:hover {
@@ -65,7 +65,7 @@
 }
 
 .btn-delete {
-  background-color: var(--danger-color);
+  background-color: var(--btn-danger);
 }
 
 .btn-delete:hover {
@@ -74,7 +74,7 @@
 
 /* 兼容旧样式：将 .delete-btn 也映射为删除样式，便于模板统一使用 */
 .delete-btn {
-  background-color: var(--danger-color);
+  background-color: var(--btn-danger);
   color: white;
 }
 .delete-btn:hover {
@@ -82,11 +82,11 @@
 }
 
 .btn-permission {
-  background-color: #8e44ad;
+  background-color: var(--secondary-color);
 }
 
 .btn-permission:hover {
-  background-color: #6c3483;
+  background-color: var(--secondary-dark);
 }
 
 .btn-make-admin {
@@ -110,7 +110,7 @@
 .search-box {
   margin-bottom: 25px;
   padding: 15px;
-  background-color: white;
+  background-color: var(--surface-color);
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-md);
 }
@@ -149,6 +149,7 @@
 .modal-content.modal-wide {
   width: 720px;
   max-width: 95%;
+  transition: transform var(--transition-fast), opacity var(--transition-fast);
 }
 
 .permission-tip {
@@ -165,7 +166,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: var(--dark-color);
 }
 
@@ -177,10 +178,10 @@
 
 .permission-table th,
 .permission-table td {
-  padding: 10px;
+  padding: 8px;
   border-bottom: 1px solid var(--border-color);
   border-right: 1px solid var(--border-color);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .permission-table th:last-child,
@@ -241,7 +242,8 @@
 }
 
 .admin-actions .btn {
-  padding: 10px 20px;
+  padding: 10px 16px;
+  min-height: 40px;
   font-weight: 500;
 }
 
@@ -274,7 +276,7 @@
   display: flex;
   height: calc(100vh - 160px);
   margin: 20px 0;
-  background-color: white;
+  background-color: var(--surface-color);
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-md);
   overflow: hidden;

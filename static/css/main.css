@@ -1,9 +1,14 @@
 :root {
   /* 基础颜色 */
-  --primary-color: #3498db;
-  --primary-dark: #2980b9;
-  --secondary-color: #2ecc71;
-  --secondary-dark: #27ae60;
+  /* 主色调（做小幅调整以增加层次感） */
+  --primary-color: #2563eb; /* 更饱和的蓝色（更具活力） */
+  --primary-dark: #1e40af;
+  --accent-start: #7c3aed;
+  --accent-end: #06b6d4;
+  --secondary-color: #64748b; /* 中性灰蓝，作为次要动作色 */
+  --secondary-dark: #475569;
+  --btn-primary: var(--primary-color);
+  --btn-danger: var(--danger-color);
   --danger-color: #e74c3c;
   --warning-color: #f39c12;
   --dark-color: #2c3e50;
@@ -35,6 +40,8 @@
   --breakpoint-tablet: 768px;
   --breakpoint-desktop: 992px;
   --breakpoint-large: 1200px;
+  /* 表面色：用于卡片、模态等局部表面，避免大面积纯白 */
+  --surface-color: #fbfdff;
 }
 
 /* 重置和基础样式 */
@@ -56,14 +63,14 @@ body {
 
 .container {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 0 var(--spacing-md);
 }
 
 /* 页头样式 */
 header {
-  background-color: white;
+  background-color: var(--surface-color);
   box-shadow: var(--shadow-sm);
   position: sticky;
   top: 0;
@@ -74,11 +81,11 @@ header .container {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  height: 70px;
+  height: 60px; /* 缩小全局头部高度 */
 }
 
 header h1 {
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   font-weight: 700;
 }
 
@@ -125,12 +132,18 @@ nav ul li a.active {
   display: none;
   background: none;
   border: none;
-  font-size: 1.5rem;
+  font-size: 2rem;
   cursor: pointer;
   color: var(--text-color);
   /* 放在最右一列 */
   grid-column: 3;
   justify-self: end;
+  transition: transform 0.25s ease, color 0.2s ease, opacity 0.2s ease;
+}
+
+.menu-toggle.open {
+  transform: rotate(90deg);
+  color: var(--primary-color);
 }
 
 /* 将导航放到中间列，菜单按钮放右侧 */
@@ -183,7 +196,7 @@ footer {
 
 /* 卡片通用样式 */
 .card {
-  background-color: white;
+  background-color: var(--surface-color);
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-md);
   padding: var(--spacing-md);
@@ -206,11 +219,10 @@ footer {
   line-height: 1.6;
 }
 
-/* 按钮通用样式 */
 .btn {
   display: inline-block;
   padding: 8px 16px;
-  background-color: var(--primary-color);
+  background-color: var(--btn-primary);
   color: white;
   border: none;
   border-radius: var(--border-radius-sm);
@@ -221,30 +233,20 @@ footer {
   text-decoration: none;
 }
 
-.btn:hover {
-  background-color: var(--primary-dark);
-  transform: translateY(-1px);
-}
+.btn:hover { transform: translateY(-1px); }
 
-.btn:active {
-  transform: translateY(0);
-}
+.btn:active { transform: translateY(0); }
 
 .btn-secondary {
   background-color: var(--secondary-color);
 }
 
-.btn-secondary:hover {
-  background-color: var(--secondary-dark);
-}
-
+.btn-secondary:hover { background-color: var(--secondary-dark); }
 .btn-danger {
-  background-color: var(--danger-color);
+  background-color: var(--btn-danger);
 }
 
-.btn-danger:hover {
-  background-color: #c0392b;
-}
+.btn-danger:hover { background-color: #c0392b; }
 
 /* 统一删除按钮样式：用于所有执行删除/危险操作的按钮 */
 .btn.delete-btn {
@@ -264,6 +266,16 @@ footer {
   padding: 6px 12px;
   font-size: 0.875rem;
 }
+
+/* 统一按钮大小：覆盖 btn-sm/btn-lg 以便全站按钮统一 */
+.btn {
+  padding: 10px 16px;
+  min-height: 40px;
+  font-size: 0.95rem;
+}
+
+.btn-sm { padding: 8px 12px; font-size: 0.9rem; min-height: 36px; }
+.btn-lg { padding: 12px 18px; font-size: 1rem; min-height: 44px; }
 
 .btn-lg {
   padding: 12px 24px;
@@ -291,9 +303,9 @@ footer {
 .perm-badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
+  padding: 2px 6px;
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
   color: white;
@@ -325,13 +337,18 @@ footer {
 }
 
 .permission-banner {
-  margin: 15px 0;
-  padding: 12px 16px;
-  border-left: 4px solid var(--primary-color);
-  border-radius: var(--border-radius-sm);
-  background-color: white;
+  margin: 10px 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--primary-color);
+  border-radius: 6px;
+  background-color: var(--surface-color);
   box-shadow: var(--shadow-sm);
   color: #4d4d4d;
+  display: flex; /* 让权限条更紧凑，避免在小屏或与在线人数区域冲突 */
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.95rem;
 }
 
 .permission-banner.perm-su {
@@ -361,10 +378,120 @@ footer {
   font-size: 0.95rem;
 }
 
+/* 全局 message badge（用于资料预览/消息徽章），确保在非聊天页面也有圆角与适度内边距 */
+.message-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #fff;
+  font-weight: 700;
+}
+
+/* 在线人数与在线列表小组件 */
+.online-users {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+  color: var(--text-color);
+}
+
+.mobile-online-btn {
+  position: fixed;
+  right: 1rem;
+  bottom: 1.25rem;
+  background: var(--primary-color);
+  color: #fff;
+  border: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+  z-index: 9999;
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+}
+.mobile-online-btn:hover { transform: translateY(-3px); }
+
+/* 通用模态和弹窗过渡（覆盖部分未设置过渡的 modal 类） */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.35);
+  z-index: 100000;
+  opacity: 0;
+  transition: opacity var(--transition-default);
+}
+.modal-backdrop.show {
+  display: flex;
+  opacity: 1;
+}
+.modal-backdrop .modal-content {
+  transform: translateY(6px) scale(0.995);
+  opacity: 0;
+  transition: transform var(--transition-default), opacity var(--transition-default);
+}
+.modal-backdrop.show .modal-content {
+  transform: none;
+  opacity: 1;
+}
+
+/* 响应式微调：确保权限条不换行遮挡元素 */
+@media (max-width: 768px) {
+  .permission-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  header .container { height: 56px; }
+  header h1 { font-size: 1.45rem; }
+  /* 显示移动端汉堡并切换主菜单显示行为（使用可过渡的高度/透明度） */
+  .menu-toggle { display: block; }
+  nav ul {
+    /* 不使用 display 切换，以便支持过渡动画 */
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 56px;
+    right: 12px;
+    background: var(--surface-color);
+    box-shadow: var(--shadow-md);
+    border-radius: var(--border-radius-md);
+    padding: 10px 0;
+    min-width: 160px;
+    z-index: 10010;
+    overflow: hidden;
+    max-height: 0; /* 折叠 */
+    opacity: 0;
+    transform: translateY(-6px);
+    pointer-events: none;
+    transition: max-height 0.36s cubic-bezier(.2,.9,.2,1), opacity 0.22s ease, transform 0.22s ease;
+  }
+  nav ul.show {
+    max-height: 480px; /* 足够显示若干菜单项 */
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  nav ul li { margin-left: 0; padding: 6px 8px; }
+}
+
+@media (max-width: 480px) {
+  .permission-banner { font-size: 0.9rem; padding: 8px 10px; }
+  .mobile-online-btn { right: 0.6rem; bottom: 1rem; width: 40px; height: 40px; }
+}
+
 .empty-state {
   margin-top: 20px;
   padding: 30px;
-  background-color: white;
+  background-color: var(--surface-color);
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-md);
   text-align: center;
@@ -432,7 +559,7 @@ footer {
   visibility: visible;
 }
 .modal-content {
-  background-color: white;
+  background-color: var(--surface-color);
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-lg);
   max-width: 90%;
@@ -506,22 +633,31 @@ footer {
     display: block;
   }
   
-  /* 隐藏导航菜单 */
+  /* 使用 max-height/opacity 控制展开以支持平滑过渡 */
   nav ul {
-    display: none;
+    display: flex;
+    flex-direction: column;
     position: absolute;
     top: 70px;
     left: 0;
     width: 100%;
-    background-color: white;
-    flex-direction: column;
+    background-color: var(--surface-color);
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     z-index: 999;
-    padding: var(--spacing-md) 0;
+    padding: 0 var(--spacing-md);
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
+    transition: max-height 0.36s cubic-bezier(.2,.9,.2,1), opacity 0.22s ease, transform 0.22s ease;
   }
-  
+
   nav ul.show {
-    display: flex;
+    max-height: 600px;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
   }
   
   nav ul li {
@@ -575,29 +711,6 @@ footer {
   }
 }
 
-/* 屏幕阅读器访问 */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-/* 滚动条优化 */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: var(--border-radius-sm);
-}
 
 ::-webkit-scrollbar-thumb {
   background: #c1c1c1;
@@ -607,3 +720,26 @@ footer {
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
+
+/* 未读徽章样式（紧凑、美观，与现有设计风格一致） */
+.unread-badge {
+  display: inline-block;
+  min-width: 20px;
+  height: 20px;
+  line-height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--danger-color);
+  color: white;
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-align: center;
+  margin-left: 8px;
+}
+
+/* 设置页侧边导航 */
+.settings-layout { display: grid; grid-template-columns: 260px 1fr; gap: 20px; }
+.settings-sidebar { background: var(--surface-color); padding: 16px; border-radius: var(--border-radius-md); box-shadow: var(--shadow-sm); }
+.settings-sidebar a { display: block; padding: 10px 12px; color: var(--text-color); text-decoration: none; border-radius: 8px; margin-bottom: 6px; }
+.settings-sidebar a.active, .settings-sidebar a:hover { background: rgba(37,99,235,0.06); color: var(--primary-color); }
+.settings-main { background: var(--surface-color); padding: 18px; border-radius: var(--border-radius-md); box-shadow: var(--shadow-sm); }

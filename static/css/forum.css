@@ -22,8 +22,8 @@
 .new-thread-btn {
   display: inline-block;
   margin-bottom: 25px;
-  padding: 8px 20px;
-  background-color: var(--secondary-color);
+  padding: 10px 16px;
+  background-color: var(--btn-primary);
   color: white;
   text-decoration: none;
   border-radius: var(--border-radius-sm);
@@ -32,13 +32,13 @@
 }
 
 .new-thread-btn:hover {
-  background-color: var(--secondary-dark);
+  background-color: var(--primary-dark);
   text-decoration: none;
 }
 
 /* 分区卡片 */
 .section-card {
-  background-color: white;
+  background-color: var(--surface-color);
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-md);
   overflow: hidden;
@@ -254,7 +254,7 @@
   max-width: 800px;
   margin: 40px auto;
   padding: 30px;
-  background-color: white;
+  background-color: var(--surface-color);
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-lg);
 }

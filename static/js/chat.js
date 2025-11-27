@@ -863,7 +863,7 @@ function updateExistingMessage(clientId, serverMessage) {
 // 删除聊天室消息
 function deleteChatMessage(messageId, messageElement) {
     if (!messageId) return;
-    showConfirm('确定要删除此消息吗？此操作不可撤销。')
+    showConfirm('确定要删除此消息吗？此操作不可撤销。', {danger: true})
         .then(function (confirmed) {
             if (!confirmed) return;
             // 调用后端删除接口

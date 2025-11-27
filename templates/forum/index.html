@@ -14,7 +14,8 @@
             <div class="section-header">
                 <h2 class="section-title">{{ section.name }}</h2>
                 <div class="section-actions">
-                    <span class="perm-badge perm-{{ perm|lower() }}">{{ perm }}</span>
+                                <span class="perm-badge perm-{{ perm|lower() }}">{{ perm }}</span>
+                                <span class="unread-badge" data-section-id="{{ section.id }}" title="未读" style="display:none"></span>
                     <a href="{{ url_for('forum_section', section_id=section.id) }}" class="view-all">进入</a>
                 </div>
             </div>
@@ -46,4 +47,22 @@
         </div>
         {% endif %}
     </div>
+    <script>
+        // 填充贴吧未读数
+        fetch('/api/last_views/unread_counts')
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.success) {
+                    const forum = data.forum || {};
+                    Object.keys(forum).forEach(id => {
+                        const el = document.querySelector('.unread-badge[data-section-id="' + id + '"]');
+                        if (el) {
+                            const n = forum[id];
+                            el.textContent = n > 0 ? n : '';
+                            el.style.display = n > 0 ? 'inline-block' : 'none';
+                        }
+                    });
+                }
+            }).catch(e => console.error('获取未读数失败', e));
+    </script>
 {% endblock %}

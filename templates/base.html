@@ -25,8 +25,7 @@
                     <li><a href="{{ url_for('chat_index') }}">即时聊天</a></li>
                     <li><a href="{{ url_for('forum_index') }}">贴吧</a></li>
                     {% if current_user.is_authenticated %}
-                    <li><a href="{{ url_for('profile') }}">个人中心</a></li>
-                    <li><a href="{{ url_for('logout') }}">登出</a></li>
+                    <li><a href="{{ url_for('settings_index') }}">设置</a></li>
                     {% else %}
                     <li><a href="{{ url_for('login') }}">登录</a></li>
                     {% endif %}
@@ -65,7 +64,9 @@
             if (menuToggle && mainMenu) {
                 menuToggle.addEventListener('click', function () {
                     mainMenu.classList.toggle('show');
-                    menuToggle.textContent = mainMenu.classList.contains('show') ? '✕' : '☰';
+                    const open = mainMenu.classList.contains('show');
+                    menuToggle.textContent = open ? '✕' : '☰';
+                    menuToggle.classList.toggle('open', open);
                 });
 
                 // 点击菜单外区域关闭
@@ -73,6 +74,7 @@
                     if (!mainMenu.contains(event.target) && !menuToggle.contains(event.target) && mainMenu.classList.contains('show')) {
                         mainMenu.classList.remove('show');
                         menuToggle.textContent = '☰';
+                        menuToggle.classList.remove('open');
                     }
                 });
 
@@ -83,6 +85,7 @@
                         if (window.innerWidth <= 768) {
                             mainMenu.classList.remove('show');
                             menuToggle.textContent = '☰';
+                            menuToggle.classList.remove('open');
                         }
                     });
                 });

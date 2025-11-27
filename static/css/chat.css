@@ -19,7 +19,7 @@
   align-items: center;
   margin-bottom: 20px;
   padding: 12px 16px;
-  background-color: white;
+  background-color: var(--surface-color);
   border-radius: var(--border-radius-sm);
   box-shadow: var(--shadow-sm);
   font-weight: 500;
@@ -47,7 +47,8 @@
   border-radius: var(--border-radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-md);
-  background-color: white;
+  background-color: var(--surface-color);
+  position: relative; /* 允许内部绝对定位（如 .online-users）相对于容器定位 */
 }
 
 #chat-messages {
@@ -58,6 +59,7 @@
   flex-direction: column;
   gap: 15px;
   background-color: #f9fbfd;
+  position: relative; /* 使在线用户小条可相对于消息区定位 */
 }
 
 .chat-message {
@@ -92,7 +94,7 @@
 .chat-message.remote {
   margin-right: auto;
   margin-left: 0;
-  background-color: #fff;
+  background-color: var(--surface-color);
   border-bottom-left-radius: 6px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   text-align: left;
@@ -111,7 +113,7 @@
   padding: 2px 6px;
   margin-right: 6px;
   color: white;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 0.75rem;
   font-weight: bold;
 }
@@ -178,7 +180,7 @@
   display: flex;
   padding: 12px 15px;
   border-top: 1px solid var(--border-color);
-  background-color: white;
+  background-color: var(--surface-color);
 }
 
 #message-input.read-only {
@@ -487,15 +489,16 @@
 
   /* 将在线人数压缩为右上角小条，避免占用主视图 */
   .online-users {
-    position: absolute;
+    position: absolute; /* 相对于 #chat-messages 定位 */
     top: 12px;
     right: 12px;
+    margin: 0; /* 取消流式布局的外边距 */
     padding: 6px 10px;
     border-radius: 20px;
-    background: white;
+    background: rgba(255,255,255,0.98);
     box-shadow: var(--shadow-sm);
     font-weight: 600;
-    z-index: 55;
+    z-index: 60;
   }
 
   /* 隐藏较大的连接状态提示，只在有错误/状态类时显示 */

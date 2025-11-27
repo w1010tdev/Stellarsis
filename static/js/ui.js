@@ -66,6 +66,7 @@
     window.showConfirm = function (message, options) {
         options = options || {};
         var title = options.title || '';
+        var danger = !!options.danger;
         var confirmText = options.confirmText || '确定';
         var cancelText = options.cancelText || '取消';
         var withInput = !!options.input;
@@ -142,6 +143,10 @@
             var okBtn = document.createElement('button');
             okBtn.className = 'btn btn-primary confirm-ok';
             okBtn.textContent = confirmText;
+            if (danger) {
+                okBtn.classList.add('btn-danger');
+                okBtn.classList.remove('btn-primary');
+            }
             okBtn.style.padding = '8px 12px';
             btnRow.appendChild(okBtn);
 

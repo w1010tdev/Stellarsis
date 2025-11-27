@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block additional_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+{% endblock %}
+{% block content %}
+<div class="settings-layout">
+    <aside class="settings-sidebar">
+        <h3>设置</h3>
+        <a href="{{ url_for('settings_index') }}">总览</a>
+        <a href="{{ url_for('profile') }}">修改个人资料</a>
+        <a href="{{ url_for('change_password') }}">修改密码</a>
+        <a href="{{ url_for('settings_follows') }}" class="active">关注管理</a>
+        <a href="{{ url_for('logout') }}" style="color:var(--danger-color);">退出登录</a>
+    </aside>
+    <section class="settings-main">
+        <h2>关注管理</h2>
+        <p>在此可查看已关注用户、取消关注，或通过搜索添加新的关注。</p>
+        <div style="margin-top:12px;">
+            <div class="form-group">
+                <label>搜索用户（用户名）</label>
+                <input id="follow-search" class="form-control" placeholder="输入用户名并回车搜索">
+                <div id="search-result" style="margin-top:8px;"></div>
+            </div>
+            <h3 style="margin-top:18px;">已关注</h3>
+            <ul id="follow-list" style="list-style:none;padding:0;margin-top:8px;">
+                {% for f in follows %}
+                <li style="display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid #eee;">
+                    <div>
+                        <strong>{{ f.followed.nickname or f.followed.username }}</strong>
+                        <div style="font-size:0.9rem;color:#666">@{{ f.followed.username }}</div>
+                    </div>
+                    <div>
+                        <button class="btn btn-secondary" data-unfollow-id="{{ f.followed.id }}">取消关注</button>
+                    </div>
+                </li>
+                {% else %}
+                <li class="empty-state">暂无关注</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </section>
+</div>
+<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}

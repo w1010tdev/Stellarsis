@@ -37,21 +37,10 @@
   transform: translateY(-8px);
 }
 
-.toast-success {
-  background: linear-gradient(90deg, #2ecc71, #27ae60);
-}
-
-.toast-error {
-  background: linear-gradient(90deg, #e74c3c, #c0392b);
-}
-
-.toast-warning {
-  background: linear-gradient(90deg, #f39c12, #d68910);
-}
-
-.toast-info {
-  background: linear-gradient(90deg, #3498db, #2c82c9);
-}
+.toast-success { background: var(--secondary-color); }
+.toast-error { background: var(--btn-danger); }
+.toast-warning { background: var(--warning-color); }
+.toast-info { background: var(--btn-primary); }
 
 .toast .toast-close {
   background: transparent;
@@ -87,7 +76,7 @@
   padding: 1rem;
 }
 .confirm-modal {
-  background: #fff;
+  background: var(--surface-color);
   color: #222;
   border-radius: 8px;
   max-width: 520px;
@@ -114,4 +103,15 @@
 }
 .confirm-cancel {
   background: transparent;
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+.confirm-ok {
+  background: var(--btn-primary);
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
 }

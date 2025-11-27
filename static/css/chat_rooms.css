@@ -18,7 +18,7 @@
 }
 
 .room-card {
-  background-color: white;
+  background-color: var(--surface-color);
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-md);
   overflow: hidden;
@@ -64,8 +64,8 @@
 
 .room-actions a {
   display: inline-block;
-  padding: 8px 16px;
-  background-color: var(--primary-color);
+  padding: 10px 16px;
+  background-color: var(--btn-primary);
   color: white;
   text-decoration: none;
   border-radius: var(--border-radius-sm);

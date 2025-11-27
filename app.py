@@ -1,4 +1,4 @@
-# App.py
+# app.py
 import os
 import time
 import json
@@ -191,6 +191,39 @@ class ForumPermission(Base):
     user = relationship('User', backref='forum_permissions')
     section = relationship('ForumSection')
 
+class UserFollow(Base):
+    __tablename__ = 'user_follows'
+    id = Column(Integer, primary_key=True)
+    follower_id = Column(Integer, ForeignKey('users.id'), nullable=False)  # 关注者
+    followed_id = Column(Integer, ForeignKey('users.id'), nullable=False)  # 被关注者
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    follower = relationship('User', foreign_keys=[follower_id], backref='following')
+    followed = relationship('User', foreign_keys=[followed_id], backref='followers')
+
+# 记录用户最后查看时间的表：聊天室与贴吧分区
+class ChatLastView(Base):
+    __tablename__ = 'chat_last_views'
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    room_id = Column(Integer, ForeignKey('chat_rooms.id'), nullable=False)
+    last_view = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship('User')
+    room = relationship('ChatRoom')
+
+
+class ForumLastView(Base):
+    __tablename__ = 'forum_last_views'
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    section_id = Column(Integer, ForeignKey('forum_sections.id'), nullable=False)
+    last_view = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship('User')
+    section = relationship('ForumSection')
+
+Base.metadata.create_all(bind=engine)
 
 PERMISSION_VALUES = {'su', '777', '444', 'Null'}
 CHAT_SEND_PERMISSIONS = {'su', '777'}
@@ -216,22 +249,26 @@ def normalize_permission_value(value):
 
 def get_chat_permission_value(user, room_id):
     """获取用户在指定聊天室的权限"""
-    if not user or not room_id:
+    # 明确只对 None 做空值判断，避免 0 或者其他可判断值被错误当作空
+    if not user or room_id is None:
         return 'Null'
     if user.is_admin():
         return 'su'
     perm = db_session.query(ChatPermission).filter_by(user_id=user.id, room_id=room_id).first()
-    return perm.perm if perm else 'Null'
+    # 规范化权限值以避免数据库中存储格式差异导致的比较失败
+    return normalize_permission_value(perm.perm) if perm else 'Null'
 
 
 def get_forum_permission_value(user, section_id):
     """获取用户在指定贴吧分区的权限"""
-    if not user or not section_id:
+    # 明确只对 None 做空值判断，避免 0 或者其他可判断值被错误当作空
+    if not user or section_id is None:
         return 'Null'
     if user.is_admin():
         return 'su'
     perm = db_session.query(ForumPermission).filter_by(user_id=user.id, section_id=section_id).first()
-    return perm.perm if perm else 'Null'
+    # 规范化权限值以避免数据库中存储格式差异导致的比较失败
+    return normalize_permission_value(perm.perm) if perm else 'Null'
 
 
 def user_can_view_chat(user, room_id):
@@ -249,19 +286,6 @@ def user_can_view_forum(user, section_id):
 def user_can_post_forum(user, section_id):
     return get_forum_permission_value(user, section_id) in FORUM_POST_PERMISSIONS
 
-
-class UserFollow(Base):
-    __tablename__ = 'user_follows'
-    id = Column(Integer, primary_key=True)
-    follower_id = Column(Integer, ForeignKey('users.id'), nullable=False)  # 关注者
-    followed_id = Column(Integer, ForeignKey('users.id'), nullable=False)  # 被关注者
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    follower = relationship('User', foreign_keys=[follower_id], backref='following')
-    followed = relationship('User', foreign_keys=[followed_id], backref='followers')
-
-
-Base.metadata.create_all(bind=engine)
 
 # 检查并更新数据库结构
 def update_database_schema():
@@ -634,6 +658,18 @@ def chat_room(room_id):
     if permission == 'Null':
         abort(403)
 
+    # 记录用户最后查看该聊天室的时间（用于未读统计）
+    try:
+        last = db_session.query(ChatLastView).filter_by(user_id=current_user.id, room_id=room_id).first()
+        now = datetime.utcnow()
+        if last:
+            last.last_view = now
+        else:
+            db_session.add(ChatLastView(user_id=current_user.id, room_id=room_id, last_view=now))
+        db_session.commit()
+    except Exception:
+        db_session.rollback()
+
     return render_template('chat/room.html', room=room, room_permission=permission)
 
 @app.route('/api/chat/<int:room_id>/history')
@@ -745,11 +781,16 @@ def api_delete_forum_reply(reply_id):
         if not reply:
             return jsonify({'success': False, 'message': '回复未找到'}), 404
 
-        # 获取关联的分区ID（通过 thread）
-        thread = db_session.query(ForumThread).filter_by(id=reply.thread_id).first()
-        section_id = thread.section_id if thread else None
+        # 通过 ORM 关系获取关联主题（更可靠），并确保主题存在
+        thread = getattr(reply, 'thread', None)
+        if not thread:
+            # 如果关系未加载，尝试按 id 查询（兼容性处理）
+            thread = db_session.query(ForumThread).filter_by(id=reply.thread_id).first()
+        if not thread:
+            return jsonify({'success': False, 'message': '关联主题不存在'}), 400
+        section_id = thread.section_id
 
-        # 管理员快捷通过
+        # 管理员快捷通过；get_forum_permission_value 已返回规范化值
         if current_user.is_admin():
             allowed = True
         else:
@@ -787,6 +828,127 @@ def get_online_count():
     
     return jsonify(count=online_count)
 
+
+@app.route('/api/last_views/unread_counts')
+@login_required
+def api_unread_counts():
+    """返回用户在可访问的聊天室和贴吧分区上的未读数量映射"""
+    try:
+        chat_counts = {}
+        forum_counts = {}
+
+        # 聊天室
+        rooms = db_session.query(ChatRoom).all()
+        for room in rooms:
+            if get_chat_permission_value(current_user, room.id) == 'Null':
+                continue
+            last = db_session.query(ChatLastView).filter_by(user_id=current_user.id, room_id=room.id).first()
+            if last:
+                cnt = db_session.query(ChatMessage).filter(ChatMessage.room_id == room.id, ChatMessage.timestamp > last.last_view).count()
+            else:
+                cnt = db_session.query(ChatMessage).filter_by(room_id=room.id).count()
+            chat_counts[room.id] = cnt
+
+        # 贴吧分区
+        sections = db_session.query(ForumSection).all()
+        for section in sections:
+            if get_forum_permission_value(current_user, section.id) == 'Null':
+                continue
+            last = db_session.query(ForumLastView).filter_by(user_id=current_user.id, section_id=section.id).first()
+            if last:
+                last_time = last.last_view
+                cnt_threads = db_session.query(ForumThread).filter(ForumThread.section_id == section.id, ForumThread.timestamp > last_time).count()
+                # 回复：需要关联 thread -> section
+                cnt_replies = db_session.query(ForumReply).join(ForumThread, ForumReply.thread_id == ForumThread.id)\
+                    .filter(ForumThread.section_id == section.id, ForumReply.timestamp > last_time).count()
+            else:
+                cnt_threads = db_session.query(ForumThread).filter_by(section_id=section.id).count()
+                cnt_replies = db_session.query(ForumReply).join(ForumThread, ForumReply.thread_id == ForumThread.id)\
+                    .filter(ForumThread.section_id == section.id).count()
+            forum_counts[section.id] = cnt_threads + cnt_replies
+
+        return jsonify(success=True, chat=chat_counts, forum=forum_counts)
+    except Exception as e:
+        logger.exception('计算未读数时发生错误')
+        return jsonify(success=False, message=str(e)), 500
+
+
+@app.route('/api/follows', methods=['GET', 'POST'])
+@login_required
+def api_follows():
+    if request.method == 'GET':
+        # 返回当前用户的关注列表
+        follows = db_session.query(UserFollow).filter_by(follower_id=current_user.id).all()
+        data = []
+        for f in follows:
+            data.append({
+                'id': f.followed.id,
+                'username': f.followed.username,
+                'nickname': f.followed.nickname,
+                'followed_at': f.created_at.isoformat()
+            })
+        return jsonify(success=True, follows=data)
+
+    # POST - 添加关注
+    data = request.get_json() or {}
+    username = data.get('username')
+    user_id = data.get('user_id')
+    if not username and not user_id:
+        return jsonify(success=False, message='需要指定 username 或 user_id'), 400
+
+    try:
+        if user_id:
+            target = db_session.query(User).get(int(user_id))
+        else:
+            target = db_session.query(User).filter_by(username=username).first()
+
+        if not target:
+            return jsonify(success=False, message='目标用户不存在'), 404
+        if target.id == current_user.id:
+            return jsonify(success=False, message='不能关注自己'), 400
+
+        existing = db_session.query(UserFollow).filter_by(follower_id=current_user.id, followed_id=target.id).first()
+        if existing:
+            return jsonify(success=False, message='已关注'), 400
+
+        follow = UserFollow(follower_id=current_user.id, followed_id=target.id)
+        db_session.add(follow)
+        db_session.commit()
+        return jsonify(success=True, message='关注成功', user={'id': target.id, 'username': target.username, 'nickname': target.nickname})
+    except Exception as e:
+        db_session.rollback()
+        logger.exception('添加关注失败')
+        return jsonify(success=False, message=str(e)), 500
+
+
+@app.route('/api/follows/<int:followed_id>', methods=['DELETE'])
+@login_required
+def api_unfollow(followed_id):
+    try:
+        rel = db_session.query(UserFollow).filter_by(follower_id=current_user.id, followed_id=followed_id).first()
+        if not rel:
+            return jsonify(success=False, message='未找到关注关系'), 404
+        db_session.delete(rel)
+        db_session.commit()
+        return jsonify(success=True, message='已取消关注')
+    except Exception as e:
+        db_session.rollback()
+        logger.exception('取消关注失败')
+        return jsonify(success=False, message=str(e)), 500
+
+
+@app.route('/settings')
+@login_required
+def settings_index():
+    return render_template('settings.html')
+
+
+@app.route('/settings/follows')
+@login_required
+def settings_follows():
+    follows = db_session.query(UserFollow).filter_by(follower_id=current_user.id).all()
+    return render_template('settings/follows.html', follows=follows)
+
 # 贴吧相关路由
 @app.route('/forum')
 @login_required
@@ -814,6 +976,18 @@ def forum_section(section_id):
         abort(403)
     threads = db_session.query(ForumThread).filter_by(section_id=section_id)\
         .order_by(ForumThread.timestamp.desc()).all()
+    # 记录用户最后查看该分区的时间（用于未读统计）
+    try:
+        last = db_session.query(ForumLastView).filter_by(user_id=current_user.id, section_id=section_id).first()
+        now = datetime.utcnow()
+        if last:
+            last.last_view = now
+        else:
+            db_session.add(ForumLastView(user_id=current_user.id, section_id=section_id, last_view=now))
+        db_session.commit()
+    except Exception:
+        db_session.rollback()
+
     return render_template(
         'forum/section.html',
         section=section,
@@ -1015,6 +1189,120 @@ def chat_management():
 def forum_management():
     if not current_user.is_admin():
         abort(403)
+    
+    sections = db_session.query(ForumSection).all()
+
+    # 为了避免在模板中对 SQLAlchemy 的动态关系调用 len()/count 导致错误，
+    # 在后端预计算每个分区的主题数和回复数，并传递到模板。
+    sections_data = []
+    for section in sections:
+        threads_obj = section.threads
+        # 获取线程列表（兼容 dynamic relationship 或 InstrumentedList）
+        try:
+            if hasattr(threads_obj, 'all') and callable(getattr(threads_obj, 'all')):
+                threads_list = threads_obj.all()
+            else:
+                threads_list = list(threads_obj)
+        except Exception:
+            try:
+                threads_list = list(threads_obj)
+            except Exception:
+                threads_list = []
+
+        thread_count = 0
+        reply_count = 0
+        try:
+            thread_count = len(threads_list)
+        except Exception:
+            # 兜底：尝试调用 count()，若不是参数类型的 count 则会抛出 TypeError
+            try:
+                thread_count = threads_obj.count()
+            except Exception:
+                thread_count = 0
+
+        for thread in threads_list:
+            replies_obj = getattr(thread, 'replies', [])
+            try:
+                if hasattr(replies_obj, 'all') and callable(getattr(replies_obj, 'all')):
+                    replies_list = replies_obj.all()
+                else:
+                    replies_list = list(replies_obj)
+            except Exception:
+                try:
+                    replies_list = list(replies_obj)
+                except Exception:
+                    replies_list = []
+            try:
+                reply_count += len(replies_list)
+            except Exception:
+                reply_count += 0
+
+        sections_data.append({
+            'section': section,
+            'thread_count': thread_count,
+            'reply_count': reply_count,
+            'threads_list': threads_list
+        })
+
+    return render_template('admin/forum.html', sections=sections_data)
+
+@app.route('/admin/import_users', methods=['POST'])
+@login_required
+def admin_import_users():
+    if not current_user.is_admin():
+        abort(403)
+    if 'file' not in request.files:
+        flash('未选择文件', 'danger')
+        return redirect(url_for('user_management'))
+    file = request.files['file']
+    if file.filename == '':
+        flash('未选择文件', 'danger')
+        return redirect(url_for('user_management'))
+    import csv
+    import io
+    success, failed = [], []
+    try:
+        stream = io.StringIO(file.stream.read().decode('utf-8'))
+        reader = csv.DictReader(stream)
+        for row in reader:
+            username = row.get('username', '').strip()
+            password = row.get('password', '').strip()
+            nickname = row.get('nickname', '').strip()
+            role = row.get('role', 'user').strip().lower()
+            if not username or not password:
+                failed.append({'username': username, 'reason': '用户名或密码缺失'})
+                continue
+            if len(username) < 3 or len(password) < 6:
+                failed.append({'username': username, 'reason': '用户名或密码长度不符'})
+                continue
+            if role not in ['user', 'admin']:
+                failed.append({'username': username, 'reason': '角色无效'})
+                continue
+            if db_session.query(User).filter_by(username=username).first():
+                failed.append({'username': username, 'reason': '用户名已存在'})
+                continue
+            try:
+                new_user = User(
+                    username=username,
+                    nickname=nickname,
+                    role=role
+                )
+                new_user.set_password(password)
+                db_session.add(new_user)
+                db_session.commit()
+                success.append(username)
+            except Exception as e:
+                db_session.rollback()
+                failed.append({'username': username, 'reason': str(e)})
+        flash(f'成功导入 {len(success)} 个用户，失败 {len(failed)} 个', 'success' if not failed else 'warning')
+        if failed:
+            # 可选：将失败信息传递到页面
+            session['import_failed'] = failed
+        else:
+            session.pop('import_failed', None)
+    except Exception as e:
+        flash(f'导入失败: {str(e)}', 'danger')
+    return redirect(url_for('user_management'))
     
     sections = db_session.query(ForumSection).all()
 
@@ -1562,6 +1850,40 @@ def create_user():
     except Exception as e:
         logger.error(f"创建用户失败: {str(e)}")
         return jsonify(success=False, message=f"创建用户失败: {str(e)}"), 500
+
+
+@app.route('/api/search_user')
+@login_required
+def api_search_user():
+    q = request.args.get('username', '').strip()
+    if not q:
+        return jsonify(success=False, message='缺少查询字符串'), 400
+    user = db_session.query(User).filter_by(username=q).first()
+    if not user:
+        # 支持昵称搜索
+        user = db_session.query(User).filter(User.nickname == q).first()
+    if not user:
+        return jsonify(success=True, user=None)
+    return jsonify(success=True, user={'id': user.id, 'username': user.username, 'nickname': user.nickname})
+
+
+@app.route('/api/search_users')
+@login_required
+def api_search_users():
+    """模糊搜索用户：在用户名或昵称中进行不区分大小写的子串匹配，返回最多20条结果"""
+    q = (request.args.get('username') or '').strip()
+    if not q:
+        return jsonify(success=True, users=[])
+    try:
+        pattern = f"%{q}%"
+        users = db_session.query(User).filter(
+            (User.username.ilike(pattern)) | (User.nickname.ilike(pattern))
+        ).limit(20).all()
+        data = [{'id': u.id, 'username': u.username, 'nickname': u.nickname} for u in users]
+        return jsonify(success=True, users=data)
+    except Exception as e:
+        logger.exception('搜索用户失败')
+        return jsonify(success=False, message=str(e)), 500
 
 
 # 聊天管理相关路由

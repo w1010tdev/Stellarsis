@@ -13,6 +13,7 @@
                 <div class="room-card-header">
                     <h3>{{ room.name }}</h3>
                     <span class="perm-badge perm-{{ perm|lower() }}">{{ perm }}</span>
+                    <span class="unread-badge" data-room-id="{{ room.id }}" title="未读消息" style="display:none"></span>
                 </div>
                 <p class="room-description">{{ room.description }}</p>
                 <div class="room-actions">
@@ -27,4 +28,22 @@
         </div>
         {% endif %}
     </div>
+    <script>
+        // 获取未读数并填充到房间卡
+        fetch('/api/last_views/unread_counts')
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.success) {
+                    const chat = data.chat || {};
+                    Object.keys(chat).forEach(id => {
+                        const el = document.querySelector('.unread-badge[data-room-id="' + id + '"]');
+                        if (el) {
+                            const n = chat[id];
+                            el.textContent = n > 0 ? n : '';
+                            el.style.display = n > 0 ? 'inline-block' : 'none';
+                        }
+                    });
+                }
+            }).catch(e => console.error('获取未读数失败', e));
+    </script>
 {% endblock %}

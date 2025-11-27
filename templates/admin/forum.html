@@ -182,7 +182,7 @@
         
         // 删除分区
         async function deleteSection(sectionId, sectionName) {
-            if (!(await showConfirm(`确定要删除贴吧分区 "${sectionName}" 吗？此操作将删除该分区下的所有帖子和回复，不可撤销！`))) {
+            if (!(await showConfirm(`确定要删除贴吧分区 "${sectionName}" 吗？此操作将删除该分区下的所有帖子和回复，不可撤销！`, {danger: true}))) {
                 return;
             }
             fetch(`/api/admin/forum/sections/${sectionId}`, {
@@ -297,7 +297,7 @@
         
         // 删除所有帖子
         async function deleteAllPosts() {
-            if (!(await showConfirm('警告：此操作将删除所有贴吧分区下的所有帖子和回复，此操作不可撤销！确定要继续吗？'))) {
+            if (!(await showConfirm('警告：此操作将删除所有贴吧分区下的所有帖子和回复，此操作不可撤销！确定要继续吗？', {danger: true}))) {
                 return;
             }
             // 首先删除所有分区（除了默认分区）
@@ -348,7 +348,7 @@
                 showToast('warning', '请输入有效的帖子ID');
                 return;
             }
-            if (!(await showConfirm(`确定要删除ID为 ${postId} 的帖子吗？此操作不可撤销！`))) {
+            if (!(await showConfirm(`确定要删除ID为 ${postId} 的帖子吗？此操作不可撤销！`, {danger: true}))) {
                 return;
             }
             fetch(`/api/admin/forum/posts/${postId}`, {

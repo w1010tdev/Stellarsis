@@ -184,7 +184,7 @@
             // 删除回复
             window.deleteReply = function(replyId, username) {
                 if (!replyId) return;
-                showConfirm(`确定要删除回复 ${username ? ('来自 ' + username) : ''}？此操作不可撤销。`)
+                showConfirm(`确定要删除回复 ${username ? ('来自 ' + username) : ''}？此操作不可撤销。`, {danger: true})
                 .then(function(confirmed) {
                     if (!confirmed) return;
                     fetch(`/api/forum/reply/${replyId}`, {
@@ -212,7 +212,7 @@
             // 删除主题帖（使用 DELETE 接口）
             window.deleteThread = function(threadId, title) {
                 if (!threadId) return;
-                showConfirm(`确定要删除主题帖 "${title || threadId}"？此操作不可撤销。`)
+                showConfirm(`确定要删除主题帖 "${title || threadId}"？此操作不可撤销。`, {danger: true})
                 .then(function(confirmed) {
                     if (!confirmed) return;
                     fetch(`/api/forum/thread/${threadId}`, {
