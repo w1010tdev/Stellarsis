@@ -59,7 +59,7 @@ try:
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     handler.setFormatter(formatter)
     
-    logger = logging.getLogger('social_platform')
+    logger = logging.getLogger('stellarsis')
     logger.setLevel(logging.INFO)
     logger.addHandler(handler)
     
@@ -69,7 +69,7 @@ except Exception as e:
     print(f"配置日志失败: {str(e)}")
     # 备用方案
     logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger('social_platform')
+    logger = logging.getLogger('stellarsis')
 
 # 初始化数据库
 engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
@@ -610,7 +610,7 @@ def change_password():
         flash('密码已成功修改', 'success')
         return redirect(url_for('chat_index'))
     
-    return render_template('change_password.html', form=form)
+    return render_template('settings/change_password.html', form=form)
 
 @app.route('/profile', methods=['GET', 'POST'])
 @login_required
@@ -629,7 +629,7 @@ def profile():
         form.color.data = current_user.color
         form.badge.data = current_user.badge
     
-    return render_template('profile.html', form=form)
+    return render_template('settings/profile.html', form=form)
 
 # 聊天相关路由
 @app.route('/chat')
@@ -1272,9 +1272,6 @@ def admin_import_users():
             if not username or not password:
                 failed.append({'username': username, 'reason': '用户名或密码缺失'})
                 continue
-            if len(username) < 3 or len(password) < 6:
-                failed.append({'username': username, 'reason': '用户名或密码长度不符'})
-                continue
             if role not in ['user', 'admin']:
                 failed.append({'username': username, 'reason': '角色无效'})
                 continue
@@ -1639,25 +1636,52 @@ def delete_user(user_id):
         return jsonify(success=False, message="权限不足"), 403
     
     try:
-        user = db_session.query(User).get(user_id)
-        if not user:
-            return jsonify(success=False, message="用户不存在"), 404
-        
-        if user.id == 1:
-            return jsonify(success=False, message="不能删除超级管理员"), 400
-        
-        # 删除用户相关数据
-        db_session.query(ChatMessage).filter_by(user_id=user_id).delete()
-        db_session.query(ForumThread).filter_by(user_id=user_id).delete()
-        db_session.query(ForumReply).filter_by(user_id=user_id).delete()
-        
-        db_session.delete(user)
-        db_session.commit()
-        
-        log_admin_action(f"删除了用户 {user.username}")
-        return jsonify(success=True, message="用户删除成功")
+        ok, msg = remove_user_and_related(user_id, session=db_session)
+        if ok:
+            log_admin_action(f"删除了用户 {msg}")
+            return jsonify(success=True, message="用户删除成功")
+        else:
+            return jsonify(success=False, message=msg), 400
     except Exception as e:
         return jsonify(success=False, message=f"删除用户失败: {str(e)}"), 500
+
+
+def remove_user_and_related(user_id, session=None):
+    """删除用户以及相关数据（用于可测试化的内部函数）。
+    返回 (True, username) 或 (False, message) 。
+    """
+    if session is None:
+        session = db_session
+
+    user = session.query(User).get(user_id)
+    if not user:
+        return False, "用户不存在"
+
+    if user.id == 1:
+        return False, "不能删除超级管理员"
+
+    try:
+        # 删除用户相关数据
+        # - 消息、帖子、回复
+        session.query(ChatMessage).filter_by(user_id=user_id).delete()
+        session.query(ForumThread).filter_by(user_id=user_id).delete()
+        session.query(ForumReply).filter_by(user_id=user_id).delete()
+        # - 权限（聊天室/贴吧）
+        session.query(ChatPermission).filter_by(user_id=user_id).delete()
+        session.query(ForumPermission).filter_by(user_id=user_id).delete()
+        # - 关注关系（既作为关注者也作为被关注者）
+        session.query(UserFollow).filter((UserFollow.follower_id == user_id) | (UserFollow.followed_id == user_id)).delete(synchronize_session=False)
+        # - 最后查看时间记录
+        session.query(ChatLastView).filter_by(user_id=user_id).delete()
+        session.query(ForumLastView).filter_by(user_id=user_id).delete()
+
+        username = user.username
+        session.delete(user)
+        session.commit()
+        return True, username
+    except Exception as e:
+        session.rollback()
+        return False, f"删除用户失败: {str(e)}"
 
 @app.route('/api/admin/users/<int:user_id>/role', methods=['PUT'])
 @login_required
@@ -2301,9 +2325,11 @@ def handle_message(data):
     db_session.add(message)
     db_session.commit()
     
-    # 发送消息给房间内其他所有人（不包括发送者自己），避免重复显示
+    # 发送消息给房间内所有人（包括发送者），并携带 client_id（如果客户端发送了），
+    # 这样发送者可以收到带有服务器 id 的确认消息以更新本地 pending 消息
     room_name = f"room_{room_id}"
-    emit('message', {
+    client_id = data.get('client_id')
+    payload = {
         'id': message.id,
         'content': message.content,  # 原始Markdown
         'timestamp': message.timestamp.isoformat(),
@@ -2312,7 +2338,14 @@ def handle_message(data):
         'nickname': current_user.nickname or current_user.username,
         'color': current_user.color,
         'badge': current_user.badge
-    }, room=room_name, include_self=False)
+    }
+
+    # 如果前端传来了 client_id，包含在payload中以便发送者进行匹配
+    if client_id:
+        payload['client_id'] = client_id
+
+    # include_self=True 使得发送者也能收到这条消息（用于将本地 pending 更新为服务器ID）
+    emit('message', payload, room=room_name, include_self=True)
 
 @socketio.on('get_online_users')
 def handle_get_online_users(data):
@@ -2530,4 +2563,4 @@ if __name__ == '__main__':
     init_db()
     CORS(app, resources={r"/socket.io/*": {"origins": "*"}})
     logger.info("应用启动成功")
-    socketio.run(app, debug=app.config['DEBUG'])
+    socketio.run(app, host='0.0.0.0', port=5000,debug=app.config['DEBUG'])
