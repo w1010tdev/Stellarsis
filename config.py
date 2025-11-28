@@ -6,7 +6,7 @@ load_dotenv()
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'you-will-never-guess'
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'sqlite:///social_platform.db'
+        'sqlite:///stellarsis.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     DEBUG = True  # 用于热重载
     SOCKETIO_ASYNC_MODE = 'eventlet'

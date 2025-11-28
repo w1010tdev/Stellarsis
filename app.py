@@ -59,7 +59,7 @@ try:
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     handler.setFormatter(formatter)
     
-    logger = logging.getLogger('social_platform')
+    logger = logging.getLogger('stellarsis')
     logger.setLevel(logging.INFO)
     logger.addHandler(handler)
     
@@ -69,7 +69,7 @@ except Exception as e:
     print(f"配置日志失败: {str(e)}")
     # 备用方案
     logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger('social_platform')
+    logger = logging.getLogger('stellarsis')
 
 # 初始化数据库
 engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
@@ -610,7 +610,7 @@ def change_password():
         flash('密码已成功修改', 'success')
         return redirect(url_for('chat_index'))
     
-    return render_template('change_password.html', form=form)
+    return render_template('settings/change_password.html', form=form)
 
 @app.route('/profile', methods=['GET', 'POST'])
 @login_required
@@ -629,7 +629,7 @@ def profile():
         form.color.data = current_user.color
         form.badge.data = current_user.badge
     
-    return render_template('profile.html', form=form)
+    return render_template('settings/profile.html', form=form)
 
 # 聊天相关路由
 @app.route('/chat')
@@ -2301,9 +2301,11 @@ def handle_message(data):
     db_session.add(message)
     db_session.commit()
     
-    # 发送消息给房间内其他所有人（不包括发送者自己），避免重复显示
+    # 发送消息给房间内所有人（包括发送者），并携带 client_id（如果客户端发送了），
+    # 这样发送者可以收到带有服务器 id 的确认消息以更新本地 pending 消息
     room_name = f"room_{room_id}"
-    emit('message', {
+    client_id = data.get('client_id')
+    payload = {
         'id': message.id,
         'content': message.content,  # 原始Markdown
         'timestamp': message.timestamp.isoformat(),
@@ -2312,7 +2314,14 @@ def handle_message(data):
         'nickname': current_user.nickname or current_user.username,
         'color': current_user.color,
         'badge': current_user.badge
-    }, room=room_name, include_self=False)
+    }
+
+    # 如果前端传来了 client_id，包含在payload中以便发送者进行匹配
+    if client_id:
+        payload['client_id'] = client_id
+
+    # include_self=True 使得发送者也能收到这条消息（用于将本地 pending 更新为服务器ID）
+    emit('message', payload, room=room_name, include_self=True)
 
 @socketio.on('get_online_users')
 def handle_get_online_users(data):
@@ -2530,4 +2539,4 @@ if __name__ == '__main__':
     init_db()
     CORS(app, resources={r"/socket.io/*": {"origins": "*"}})
     logger.info("应用启动成功")
-    socketio.run(app, debug=app.config['DEBUG'])
+    socketio.run(app, host='0.0.0.0', port=5000,debug=app.config['DEBUG'])

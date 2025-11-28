@@ -275,61 +275,14 @@ function setupPolling() {
                     if (!messagesContainer) return;
                     let hasNewMessages = false;
                     data.messages.forEach(msg => {
-                        // skip if we've already processed this server id
-                        if (msg.id && processedMessageIds.has(msg.id)) return;
+                        if (msg.id > lastMessageId) {
+                            addMessageToUI(msg, 0,1);
+                            hasNewMessages = true;
 
-                        // Try to match this server message to a pending local message
-                        let matched = false;
-                        const serverContent = msg.content || msg.message || '';
-                        const serverTsMs = msg.timestamp ? new Date(msg.timestamp).getTime() : Date.now();
-
-                        if (serverContent && pendingMessages.size > 0) {
-                            for (const [cid, pending] of pendingMessages.entries()) {
-                                try {
-                                    // Exact content match + reasonable time window (30s)
-                                    const pendingSent = pending.sentTime || pending.timestamp || 0;
-                                    // allow match when content equals and timestamps within 30s OR the calendar date matches (tolerate timezone differences)
-                                    const serverDateIso = new Date(serverTsMs).toISOString().slice(0,10);
-                                    const pendingDateIso = new Date(pendingSent).toISOString().slice(0,10);
-                                    if (pending.content === serverContent && (Math.abs(serverTsMs - pendingSent) < 30000 || serverDateIso === pendingDateIso)) {
-                                        console.debug('Polling matched pending by content/time (or same-date)', cid, '->', msg.id, 'serverDate=', serverDateIso, 'pendingDate=', pendingDateIso);
-                                        updateExistingMessage(cid, msg);
-                                        pendingMessages.delete(cid);
-                                        processedMessageIds.add(msg.id || cid);
-                                        matched = true;
-                                        break;
-                                    }
-
-                                    // Fallback: compare simplified content/time hash
-                                    const pendingHash = generateContentHash(pending.content || '', pending.timestamp || pending.sentTime || Date.now());
-                                    const serverHash = generateContentHash(serverContent, msg.timestamp || Date.now());
-                                    if (pendingHash === serverHash) {
-                                        console.debug('Polling matched pending by hash', cid, '->', msg.id);
-                                        updateExistingMessage(cid, msg);
-                                        pendingMessages.delete(cid);
-                                        processedMessageIds.add(msg.id || cid);
-                                        matched = true;
-                                        break;
-                                    }
-                                } catch (e) {
-                                    console.debug('Polling pending match error for', cid, e);
-                                }
+                            // 更新最后一条消息ID
+                            if (msg.id > lastMessageId) {
+                                lastMessageId = msg.id;
                             }
-                        }
-
-                        if (!matched) {
-                            // New message for UI
-                            addMessageToUI(msg, 0, 1);
-                            if (msg.id) processedMessageIds.add(msg.id);
-                            hasNewMessages = true;
-                        } else {
-                            // matched — still update lastMessageId if necessary
-                            hasNewMessages = true;
-                        }
-
-                        // 更新最后一条消息ID
-                        if (msg.id && msg.id > lastMessageId) {
-                            lastMessageId = msg.id;
                         }
                     });
 
@@ -429,50 +382,31 @@ function setupWebSocket() {
         });
 
         chatSocket.on('message', (data) => {
-            let handled = false;
-            if (data.id && pendingMessages.size > 0) {
-                const serverContent = data.content || data.message || '';
-                if (serverContent) {
-                    let matchedClientId = null;
-                    for (const [cid, pending] of pendingMessages.entries()) {
-                        try {
-                            console.debug('检查 pending:', cid, 'content=', pending.content, 'sentTime=', pending.sentTime, 'serverContent=', serverContent, 'serverTimestamp=', data.timestamp);
-                            // 精确内容+时间匹配（优先）
-                            if (pending.content === serverContent) {
-                                const serverTime = data.timestamp ? new Date(data.timestamp).getTime() : 0;
-                                const sentTime = pending.sentTime || 0;
-                                const serverDateIso = serverTime ? new Date(serverTime).toISOString().slice(0,10) : '';
-                                const pendingDateIso = sentTime ? new Date(sentTime).toISOString().slice(0,10) : '';
-                                if (!serverTime || Math.abs(serverTime - sentTime) < 15000 || (serverDateIso && pendingDateIso && serverDateIso === pendingDateIso)) {
-                                    matchedClientId = cid;
-                                    console.debug('精确匹配通过:', cid, 'serverDate=', serverDateIso, 'pendingDate=', pendingDateIso);
-                                    break;
-                                }
-                            }
-                        } catch (err) {
-                            console.debug('pending match check failed for', cid, err);
-                        }
-                    }
-
-                    if (matchedClientId) {
-                        console.debug('Matched pending message by content/time/hash to client_id=', matchedClientId, 'server id=', data.id);
-                        updateExistingMessage(matchedClientId, data);
-                        pendingMessages.delete(matchedClientId);
-                        if (data.id) processedMessageIds.add(data.id); else processedMessageIds.add(matchedClientId);
-                        handled = true;
-                    }
-                }
-            }
             // 简单去重：如果已经处理过相同的服务器消息ID，则忽略
             if (data.id && processedMessageIds.has(data.id)) {
                 console.debug('忽略重复的服务器消息:', data.id);
                 return;
             }
-            // 如果上述都没匹配到，则这是一个新的消息（普通逻辑）
-            if (!handled) {
-                console.debug('未匹配到任何 pending，作为新消息添加，serverId=', data.id);
+
+            // 检查是否是对本地消息的确认
+            if (data.client_id && pendingMessages.has(data.client_id)) {
+                // 更新现有消息，而不是添加新消息
+                updateExistingMessage(data.client_id, data);
+                pendingMessages.delete(data.client_id);
+
+                // 标记为已处理（使用服务器ID如果有，否则使用client_id短期占位）
+                if (data.id) {
+                    processedMessageIds.add(data.id);
+                } else {
+                    processedMessageIds.add(data.client_id);
+                }
+            } else {
+                // 新消息
                 addMessageToUI(data);
-                if (data.id) processedMessageIds.add(data.id);
+
+                if (data.id) {
+                    processedMessageIds.add(data.id);
+                }
             }
 
             // 控制已处理集合大小，避免无限增长
@@ -594,7 +528,13 @@ function updateOnlineUsersList() {
         const followBtn = document.createElement('button');
         followBtn.className = 'follow-btn ' + (followedUserIds.has(user.id) ? 'following' : '');
         followBtn.textContent = followedUserIds.has(user.id) ? '✓' : '+';
-        // styling handled by CSS (.follow-btn)
+        followBtn.style.float = 'right';
+        followBtn.style.border = '1px solid #ccc';
+        followBtn.style.borderRadius = '3px';
+        followBtn.style.width = '24px';
+        followBtn.style.height = '24px';
+        followBtn.style.fontSize = '12px';
+        followBtn.style.cursor = 'pointer';
         followBtn.onclick = (e) => {
             e.stopPropagation();
             toggleFollowUser(user.id);
@@ -645,11 +585,8 @@ function sendMessage() {
     // 通过WebSocket发送
     if (chatSocket && chatSocket.connected) {
         // 本地预览
-            // 本地预览
-            // include both id and client_id on the local preview so server echoes can be matched
-            const localMessage = {
-                id: clientId,
-                client_id: clientId,
+        const localMessage = {
+            id: clientId,
             content: message,
             timestamp: new Date().toISOString(),
             user_id: currentUserId,
@@ -864,197 +801,62 @@ function addStatusMessage(msg) {
 
 // 更新现有消息
 function updateExistingMessage(clientId, serverMessage) {
-    // Allow call with just the serverMessage
-    if (typeof clientId === 'object' && clientId !== null && !serverMessage) {
-        serverMessage = clientId;
-        clientId = serverMessage.client_id || null;
+    // 查找对应的消息元素
+    const existingMessage = document.querySelector(`[data-message-id="${clientId}"]`);
+    if (!existingMessage) return;
+
+    // 更新ID（从临时ID到服务器ID）
+    existingMessage.dataset.messageId = serverMessage.id;
+
+    // 更新时间戳
+    const timeElement = existingMessage.querySelector('.message-time');
+    if (timeElement) {
+        timeElement.textContent = formatTimeDisplay(serverMessage.timestamp);
     }
 
-    if (!serverMessage) {
-        console.debug('updateExistingMessage: missing serverMessage');
-        return;
-    }
+    // 清除pending状态
+    existingMessage.classList.remove('pending-message');
 
-    const serverId = serverMessage.id;
-    const serverClientId = serverMessage.client_id || null;
-    console.debug('updateExistingMessage: start lookup', { clientId, serverId, serverClientId });
-
-    let existingMessage = null;
-
-    // 1) direct clientId match
-    if (clientId) {
-        existingMessage = document.querySelector(`[data-message-id="${clientId}"]`);
-        if (existingMessage) console.debug('updateExistingMessage: found by clientId selector', clientId);
-    }
-
-    // 2) match serverClientId (server echoed our client_id)
-    if (!existingMessage && serverClientId) {
-        existingMessage = document.querySelector(`[data-message-id="${serverClientId}"]`);
-        if (existingMessage) console.debug('updateExistingMessage: found by server.client_id selector', serverClientId);
-    }
-
-    // 3) match serverId (maybe UI already added server id as data attr)
-    if (!existingMessage && serverId) {
-        existingMessage = document.querySelector(`[data-message-id="${serverId}"]`);
-        if (existingMessage) console.debug('updateExistingMessage: found by server id selector', serverId);
-    }
-
-    // 4) try other common temporary-data attributes
-    if (!existingMessage) {
-        const altAttrs = ['data-client-id', 'data-temp-id', 'data-tempid', 'data-message-temp'];
-        for (const a of altAttrs) {
-            try {
-                const sel = `[${a}="${clientId || serverClientId || ''}"]`;
-                if ((clientId || serverClientId) && document.querySelector(sel)) {
-                    existingMessage = document.querySelector(sel);
-                    if (existingMessage) {
-                        console.debug('updateExistingMessage: found by alt attr', a);
-                        break;
-                    }
-                }
-            } catch (e) {
-                // ignore malformed selectors
-            }
+    // 重新渲染内容（如有需要）
+    const contentElement = existingMessage.querySelector('.message-content');
+    if (contentElement && typeof window.renderContent === 'function') {
+        try {
+            contentElement.innerHTML = window.renderContent(serverMessage.content);
+        } catch (e) {
+            console.error('更新消息内容失败:', e);
         }
     }
 
-    // 5) fallback: scan pending elements and match by originalContent + username OR hash + time
-    if (!existingMessage) {
-        const pendingEls = document.querySelectorAll('.chat-message.pending-message');
-        const targetContent = (serverMessage.content || serverMessage.message || '').trim();
-        const targetUser = (serverMessage.nickname || serverMessage.username || currentNickname || currentUsername);
-        const serverTsMs = serverMessage.timestamp ? new Date(serverMessage.timestamp).getTime() : null;
+    // 更新processed集合
+    processedMessageIds.delete(clientId);
+    processedMessageIds.add(serverMessage.id);
 
-        for (const el of pendingEls) {
-            try {
-                const contentEl = el.querySelector('.message-content');
-                const userEl = el.querySelector('.message-username');
-                const original = contentEl && contentEl.dataset ? (contentEl.dataset.originalContent || '').trim() : '';
-                const username = userEl ? userEl.textContent && userEl.textContent.trim() : '';
-
-                // exact original content + username match
-                if (original && targetContent && original === targetContent && username === (currentNickname || currentUsername)) {
-                    existingMessage = el;
-                    console.debug('updateExistingMessage: matched pending by original content + username');
-                    break;
-                }
-
-                // time-tolerant match if element stores sentTime
-                const sentAttr = el.dataset.sentTime || el.getAttribute('data-sent-time');
-                const sentMs = sentAttr ? Number(sentAttr) : null;
-                if (original && targetContent && sentMs && serverTsMs && Math.abs(serverTsMs - sentMs) < 60000 && normalizeWhitespace(original) === normalizeWhitespace(targetContent)) {
-                    existingMessage = el;
-                    console.debug('updateExistingMessage: matched pending by content+time tolerance', { sentMs, serverTsMs });
-                    break;
-                }
-
-                // hash fallback
-                const elHash = generateContentHash(original || '', sentMs || Date.now());
-                const serverHash = generateContentHash(targetContent || '', serverTsMs || Date.now());
-                if (elHash === serverHash) {
-                    existingMessage = el;
-                    console.debug('updateExistingMessage: matched pending by hash fallback', elHash);
-                    break;
-                }
-            } catch (e) {
-                console.debug('updateExistingMessage: error inspecting pending element', e);
-            }
-        }
-    }
-
-    if (!existingMessage) {
-        console.debug('updateExistingMessage: could not find pending element for', { clientId, serverId, serverClientId });
-        return;
-    }
-
-    // At this point we have the element to update
-    const oldId = existingMessage.dataset.messageId || (clientId || serverClientId || null);
+    // 如果当前用户有删除权限，为更新后的消息添加删除按钮（有可能最初是临时ID，未添加）
     try {
-        // set new id
-        if (serverId) existingMessage.dataset.messageId = serverId; else if (serverClientId) existingMessage.dataset.messageId = serverClientId;
-
-        // update timestamp display
-        const timeElement = existingMessage.querySelector('.message-time');
-        if (timeElement) timeElement.textContent = formatTimeDisplay(serverMessage.timestamp || new Date().toISOString());
-
-        // remove pending marker
-        existingMessage.classList.remove('pending-message');
-
-        // update rendered content
-        const contentElement = existingMessage.querySelector('.message-content');
-        if (contentElement) {
-            contentElement.dataset.originalContent = serverMessage.content || serverMessage.message || contentElement.dataset.originalContent || '';
-            try {
-                if (typeof window.renderContent === 'function') {
-                    contentElement.innerHTML = window.renderContent(contentElement.dataset.originalContent);
-                } else {
-                    contentElement.innerHTML = `<div class="render-fallback">${escapeHtml(contentElement.dataset.originalContent)}</div>`;
-                }
-            } catch (e) {
-                console.warn('updateExistingMessage: rendering replacement failed', e);
-            }
-        }
-
-        // update processedMessageIds set
-        try {
-            if (oldId && processedMessageIds.has(oldId)) processedMessageIds.delete(oldId);
-            if (serverId) processedMessageIds.add(serverId);
-        } catch (e) {
-            console.debug('updateExistingMessage: processedMessageIds update error', e);
-        }
-
-        // ensure delete button present if permitted
-        try {
-            const confirmedMessage = document.querySelector(`[data-message-id="${serverId || serverClientId}"]`);
-            if (confirmedMessage) {
-                const hasDel = confirmedMessage.querySelector('.message-delete-btn');
-                // If a delete button already exists it may still have an old click handler
-                // bound to the temporary id. Replace it so it uses the authoritative id.
-                if (hasDel) {
-                    try {
-                        const replaced = hasDel.cloneNode(true);
-                        hasDel.parentNode.replaceChild(replaced, hasDel);
-                        // rebind new handler
-                        replaced.addEventListener('click', function (e) {
-                            e.stopPropagation();
-                            deleteChatMessage(serverId || serverClientId, confirmedMessage);
-                        });
-                    } catch (e) {
-                        // If cloning/rebinding fails we'll remove the old handler and proceed to add a fresh button below
-                        try { hasDel.remove(); } catch (er) { /* ignore */ }
-                    }
-                }
-
-                if (!confirmedMessage.querySelector('.message-delete-btn')) {
-                    const userElement = confirmedMessage.querySelector('.message-user');
-                    const canDeleteAll = (typeof roomPermission !== 'undefined' && roomPermission === 'su');
-                    const canDeleteOwn = (typeof roomPermission !== 'undefined' && roomPermission === '777' && Number(serverMessage.user_id) === Number(currentUserId));
-                    if (userElement && (canDeleteAll || canDeleteOwn)) {
-                        const delBtn = document.createElement('button');
-                        delBtn.className = 'btn delete-btn message-delete-btn';
-                        delBtn.title = '删除消息';
-                        delBtn.textContent = '删除';
-                        delBtn.style.marginLeft = '8px';
-                        delBtn.addEventListener('click', function (e) {
-                            e.stopPropagation();
-                            deleteChatMessage(serverId || serverClientId, confirmedMessage);
-                        });
-                        userElement.appendChild(delBtn);
-                    }
+        const existingMessage = document.querySelector(`[data-message-id="${serverMessage.id}"]`);
+        if (existingMessage) {
+            const hasDel = existingMessage.querySelector('.message-delete-btn');
+            if (!hasDel) {
+                const userElement = existingMessage.querySelector('.message-user');
+                // 仅当 userElement 存在且权限允许时添加按钮
+                const canDeleteAll = (typeof roomPermission !== 'undefined' && roomPermission === 'su');
+                const canDeleteOwn = (typeof roomPermission !== 'undefined' && roomPermission === '777' && Number(serverMessage.user_id) === Number(currentUserId));
+                if (userElement && (canDeleteAll || canDeleteOwn)) {
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'btn delete-btn message-delete-btn';
+                    delBtn.title = '删除消息';
+                    delBtn.textContent = '删除';
+                    delBtn.style.marginLeft = '8px';
+                    delBtn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        deleteChatMessage(serverMessage.id, existingMessage);
+                    });
+                    userElement.appendChild(delBtn);
                 }
             }
-        } catch (e) {
-            console.warn('updateExistingMessage: adding delete button failed', e);
         }
-
-        console.debug('updateExistingMessage: successfully updated', { oldId, newId: serverId || serverClientId });
     } catch (e) {
-        console.error('updateExistingMessage: error updating element', e);
-    }
-
-    // helper to normalize whitespace for comparisons
-    function normalizeWhitespace(s) {
-        return (s || '').replace(/\s+/g, ' ').trim();
+        console.warn('为已确认消息添加删除按钮失败:', e);
     }
 }
 

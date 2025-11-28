@@ -19,8 +19,10 @@
     <header>
         <div class="container">
             <h1><a href="/">群星议会</a></h1>
-            <button class="menu-toggle" id="menu-toggle">☰</button>
-            <nav>
+            <button class="menu-toggle" id="menu-toggle">
+                <span></span>
+            </button>
+            <nav id="main-nav">
                 <ul id="main-menu">
                     <li><a href="{{ url_for('chat_index') }}">即时聊天</a></li>
                     <li><a href="{{ url_for('forum_index') }}">贴吧</a></li>
@@ -36,6 +38,8 @@
             </nav>
         </div>
     </header>
+    <!-- backdrop should be a body-level overlay so it can catch clicks outside header/nav reliably -->
+    <div class="nav-backdrop" id="nav-backdrop"></div>
     <main class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -59,35 +63,43 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const menuToggle = document.getElementById('menu-toggle');
+            const mainNav = document.getElementById('main-nav');
+            const navBackdrop = document.getElementById('nav-backdrop');
             const mainMenu = document.getElementById('main-menu');
 
-            if (menuToggle && mainMenu) {
-                menuToggle.addEventListener('click', function () {
-                    mainMenu.classList.toggle('show');
-                    const open = mainMenu.classList.contains('show');
-                    menuToggle.textContent = open ? '✕' : '☰';
-                    menuToggle.classList.toggle('open', open);
-                });
+            if (menuToggle && mainNav && navBackdrop) {
+                const toggleMenu = () => {
+                    const isOpen = mainNav.classList.contains('show');
+                    mainNav.classList.toggle('show', !isOpen);
+                    navBackdrop.classList.toggle('show', !isOpen);
+                    menuToggle.classList.toggle('open', !isOpen);
+                    document.body.style.overflow = !isOpen ? 'hidden' : '';
+                };
 
-                // 点击菜单外区域关闭
-                document.addEventListener('click', function (event) {
-                    if (!mainMenu.contains(event.target) && !menuToggle.contains(event.target) && mainMenu.classList.contains('show')) {
-                        mainMenu.classList.remove('show');
-                        menuToggle.textContent = '☰';
-                        menuToggle.classList.remove('open');
-                    }
-                });
+                menuToggle.addEventListener('click', toggleMenu);
+                navBackdrop.addEventListener('click', toggleMenu);
 
                 // 菜单项点击后关闭菜单(移动端)
                 const menuLinks = mainMenu.querySelectorAll('a');
                 menuLinks.forEach(link => {
                     link.addEventListener('click', function () {
                         if (window.innerWidth <= 768) {
-                            mainMenu.classList.remove('show');
-                            menuToggle.textContent = '☰';
+                            mainNav.classList.remove('show');
+                            navBackdrop.classList.remove('show');
                             menuToggle.classList.remove('open');
+                            document.body.style.overflow = '';
                         }
                     });
+                });
+
+                // 窗口大小变化时关闭菜单
+                window.addEventListener('resize', function () {
+                    if (window.innerWidth > 768 && mainNav.classList.contains('show')) {
+                        mainNav.classList.remove('show');
+                        navBackdrop.classList.remove('show');
+                        menuToggle.classList.remove('open');
+                        document.body.style.overflow = '';
+                    }
                 });
             }
         });
