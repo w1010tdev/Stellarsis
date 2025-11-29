@@ -1,4 +1,4 @@
-# Stellarsis - Stellar Information System
+# Stellarsis
 
 Stellarsis (The same as the game of paradox) is a feature-rich online community platform that integrates chat, forum, user management, and more. The system provides users with a secure, efficient, and scalable communication environment, supporting multi-room chat, partitioned forums, user following, and other features.
 
@@ -9,7 +9,7 @@ Stellarsis (The same as the game of paradox) is a feature-rich online community 
 
 ## Features Overview
 
-StellarSIS provides the following main features:
+Stellarsis provides the following main features:
 
 - **User Authentication System**: Secure login/logout, password change, profile settings
 - **Chat System**: Multi-room real-time chat with Markdown message support
