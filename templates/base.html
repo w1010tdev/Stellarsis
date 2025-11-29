@@ -5,9 +5,68 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>群星议会</title>
+    <!-- Theme preloader: apply critical vars quickly and load full theme CSS -->
+    <script>
+        (function () {
+            try {
+                var themeBase = "{{ url_for('static', filename='css/themes/') }}";
+                var theme = null;
+                try { theme = localStorage.getItem('theme'); } catch (e) { }
+                // cookie fallback
+                function getCookie(name) {
+                    var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+                    if (match) return decodeURIComponent(match[2]);
+                    return null;
+                }
+                if (!theme) theme = getCookie('theme');
+                // small set of critical variables to reduce flash
+                var critical = {
+                    light: {
+                        '--surface-color': '#ffffff',
+                        '--text-color': '#0f172a',
+                        '--neutral-50': '#f8fafc',
+                        '--background-image': 'linear-gradient(135deg,#f0f4ff 0%,#e6e9ff 100%)'
+                    },
+                    dark: {
+                        '--surface-color': '#0b1220',
+                        '--text-color': '#e6eef8',
+                        '--neutral-50': '#071029',
+                        '--background-image': 'linear-gradient(135deg,#071029 0%,#0b1220 100%)'
+                    },
+                    solarized: {
+                        '--surface-color': '#fdf6e3',
+                        '--text-color': '#073642',
+                        '--neutral-50': '#fdf6e3',
+                        '--background-image': 'linear-gradient(135deg,#fff8e6 0%,#f6ecd0 100%)'
+                    },
+                    purple: {
+                        '--surface-color': '#0f0826',
+                        '--text-color': '#efe6ff',
+                        '--neutral-50': '#0b0716',
+                        '--background-image': 'linear-gradient(135deg,#120427 0%,#2b0f4a 100%)'
+                    }
+                };
+                if (theme && critical[theme]) {
+                    var vars = critical[theme];
+                    Object.keys(vars).forEach(function (k) {
+                        document.documentElement.style.setProperty(k, vars[k]);
+                    });
+                    // attach full theme CSS (overrides all variables) for full styling
+                    var link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.id = 'theme-full-css';
+                    link.href = themeBase + theme + '.css';
+                    document.head.appendChild(link);
+                }
+            } catch (e) {
+                console.error('theme preloader error', e);
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/alerts.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/command-palette.css') }}">
     <!-- KaTeX CSS -->
     <link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css"
         crossorigin="anonymous">
@@ -58,7 +117,9 @@
         </div>
     </footer>
     {% block scripts %}
-    <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/theme-switcher.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/command-palette.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
     <!-- 汉堡菜单JS交互 -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
