@@ -26,6 +26,12 @@ For detailed feature documentation, please see our [Wiki](wiki.md) (English) or 
 3. Run application: `python app.py`
 4. Access `http://localhost:5000`
 
+## API Documentation
+
+For API documentation, please refer to:
+- [English API Documentation](API_DOCUMENTATION.md)
+- [中文API文档](API_DOCUMENTATION_ZH.md)
+
 ## Default Account
 
 - **Username**: admin

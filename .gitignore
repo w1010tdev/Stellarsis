@@ -1,1 +1,1 @@
-Nothing should be ignored - the changes only include source/config files (.md files) and the .gitignore itself. No build artifacts, dependencies, or temporary files are present in the change list.
+Nothing should be ignored based on the provided file changes, as they only include source files (API_DOCUMENTATION.md, API_DOCUMENTATION_ZH.md) and a config file (README.md) without any build artifacts, dependencies, or temporary files.
