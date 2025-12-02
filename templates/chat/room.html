@@ -39,7 +39,8 @@
       rows="2"
     ></textarea>
       <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
-        <input id="chat-image-input" type="file" accept="image/*" class="form-control" style="width:auto;padding:6px;" />
+        <input id="chat-image-input" type="file" accept="image/*" class="form-control" style="display:none;" />
+        <button id="chat-upload-btn" class="btn btn-outline" style="width:auto;padding:6px;">📷 上传</button>
         <div id="chat-image-list" style="flex:1"></div>
       </div>
     <button id="send-button" class="btn btn-primary">发送</button>
@@ -127,5 +128,13 @@
       initWhenReady();
     });
   });
+</script>
+<script src="{{ url_for('static', filename='js/uploads.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    var btn = document.getElementById('chat-upload-btn');
+    var input = document.getElementById('chat-image-input');
+    if (btn && input) btn.addEventListener('click', function(e){ e.preventDefault(); input.click(); });
+});
 </script>
 {% endblock %}

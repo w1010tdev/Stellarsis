@@ -1085,7 +1085,7 @@ def api_upload_image():
         # 去除反斜杠，构造 URL
         url = url_for('static', filename=relative_path.replace('\\', '/'))
         markdown_link = f"![{secure_filename(base)}]({url})"
-        return jsonify(success=True, url=url, markdown=markdown_link)
+        return jsonify(success=True, url=url, markdown=markdown_link, id=ui.id, filename=ui.filename)
     except Exception as e:
         db_session.rollback()
         logger.exception('保存用户上传图片失败')
@@ -1109,11 +1109,68 @@ def api_list_user_images():
         return jsonify(success=False, message='服务器错误'), 500
 
 
+@app.route('/api/upload/image/<int:image_id>', methods=['DELETE'])
+@login_required
+def api_delete_image(image_id):
+    try:
+        ui = db_session.query(UserImage).get(image_id)
+        if not ui:
+            return jsonify(success=False, message='图片不存在'), 404
+        # 权限：图片所有者或管理员可删除
+        if not (current_user.is_admin() or ui.user_id == current_user.id):
+            return jsonify(success=False, message='权限不足'), 403
+
+        # 删除磁盘文件
+        try:
+            p = Path(ui.filepath)
+            if p.exists():
+                p.unlink()
+        except Exception:
+            pass
+
+        db_session.delete(ui)
+        db_session.commit()
+        logger.info(f"用户 {current_user.username} 删除上传图片 {ui.filename} (ID:{ui.id})")
+        return jsonify(success=True, message='图片已删除')
+    except Exception as e:
+        db_session.rollback()
+        logger.exception('删除上传图片失败')
+        return jsonify(success=False, message='服务器错误'), 500
+
+
+@app.route('/api/admin/recalculate-upload-sizes', methods=['POST'])
+@login_required
+def api_admin_recalculate_upload_sizes():
+    if not current_user.is_admin():
+        return jsonify(success=False, message='权限不足'), 403
+    try:
+        # 统计每个用户已上传的图片总大小
+        rows = db_session.query(UserImage.user_id, UserImage.file_size).all()
+        totals = {}
+        for user_id, size in rows:
+            try:
+                totals[user_id] = totals.get(user_id, 0) + (size or 0)
+            except Exception:
+                totals[user_id] = totals.get(user_id, 0)
+        # 可选：将结果写入日志或数据库；这里返回 JSON
+        log_admin_action(f"管理员 {current_user.username} 重新统计了所有用户上传图片大小，共 {len(totals)} 个用户")
+        return jsonify(success=True, totals=totals)
+    except Exception as e:
+        logger.exception('重新统计上传大小失败')
+        return jsonify(success=False, message='服务器错误'), 500
+
+
 @app.route('/settings/follows')
 @login_required
 def settings_follows():
     follows = db_session.query(UserFollow).filter_by(follower_id=current_user.id).all()
     return render_template('settings/follows.html', follows=follows)
+
+
+@app.route('/settings/images')
+@login_required
+def settings_images():
+    return render_template('settings/images.html')
 
 # 贴吧相关路由
 @app.route('/forum')

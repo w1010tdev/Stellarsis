@@ -29,7 +29,10 @@
         </div>
             <div class="form-group">
                 <label for="post-image-input">上传图片 (可插入 Markdown)</label>
-                <input id="post-image-input" type="file" accept="image/*" class="form-control" {% if not can_post %}disabled{% endif %} />
+                <input id="post-image-input" type="file" accept="image/*" class="form-control" style="display:none;" {% if not can_post %}disabled{% endif %} />
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button id="post-upload-btn" class="btn btn-primary" {% if not can_post %}disabled{% endif %}>上传图片</button>
+                </div>
                 <div id="post-image-preview" style="margin-top:8px"></div>
                 <div id="post-image-list" style="margin-top:12px"></div>
             </div>
@@ -74,4 +77,11 @@
     });
 </script>
     <script src="{{ url_for('static', filename='js/uploads.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    var btn = document.getElementById('post-upload-btn');
+    var input = document.getElementById('post-image-input');
+    if (btn && input) btn.addEventListener('click', function(e){ e.preventDefault(); input.click(); });
+});
+</script>
 {% endblock %}

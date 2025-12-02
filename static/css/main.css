@@ -1388,3 +1388,19 @@ footer a,
   .image-upload-preview { max-height: 180px; }
   .image-upload-thumb { width:48px;height:48px; }
 }
+
+/* Upload buttons should use semantic tokens and be accessible */
+.btn-primary, .btn-primary:hover, .btn-primary:focus {
+  background-color: var(--btn-primary);
+  color: var(--on-primary);
+  border-color: transparent;
+}
+.btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-color); }
+.btn-sm { padding: 0.25rem 0.5rem; font-size: 0.85rem; }
+
+.image-upload-item .image-upload-markdown { min-width: 120px; }
+.image-upload-item .image-upload-insert { margin-left: 6px; }
+.image-upload-item .image-upload-delete { margin-left: 6px; }
+
+/* Make settings sidebar link more prominent for image management */
+.settings-sidebar a[href*="images"] { font-weight: 700; }

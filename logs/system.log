@@ -1,0 +1,372 @@
+2025-12-02 19:23:11,900 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:23:12,097 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:23:12,140 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:23:12,151 - stellarsis - ERROR - 初始化数据库管理工具失败: cannot import name 'ASSOCIATION_PROXY' from 'sqlalchemy.ext.associationproxy' (C:\Users\admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\ext\associationproxy.py)
+2025-12-02 19:23:12,152 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:23:12,744 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:23:12,941 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:23:12,987 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:23:13,001 - stellarsis - ERROR - 初始化数据库管理工具失败: cannot import name 'ASSOCIATION_PROXY' from 'sqlalchemy.ext.associationproxy' (C:\Users\admin\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\ext\associationproxy.py)
+2025-12-02 19:23:13,001 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:33:48,947 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:33:49,158 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:33:49,203 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:33:49,203 - stellarsis - INFO - 正在初始化数据库管理工具...
+2025-12-02 19:35:13,081 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:35:13,282 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:35:13,327 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:35:13,327 - stellarsis - INFO - 正在初始化数据库管理工具...
+2025-12-02 19:35:13,351 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:35:13,351 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:35:13,368 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:35:13,368 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:37:24,351 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:37:24,558 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:37:24,601 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:37:24,601 - stellarsis - INFO - 正在初始化数据库管理工具...
+2025-12-02 19:37:24,604 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:37:24,604 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:37:24,618 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:37:24,618 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:37:24,681 - stellarsis - INFO - 数据库管理工具初始化成功，访问路径: /admin/db
+2025-12-02 19:37:24,681 - stellarsis - INFO - 数据库管理工具初始化成功，访问路径: /admin/db
+2025-12-02 19:37:24,682 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:37:24,682 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:37:25,309 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:37:25,511 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:37:25,552 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:37:25,552 - stellarsis - INFO - 正在初始化数据库管理工具...
+2025-12-02 19:37:25,555 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:37:25,555 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:37:25,568 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:37:25,568 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:37:25,630 - stellarsis - INFO - 数据库管理工具初始化成功，访问路径: /admin/db
+2025-12-02 19:37:25,630 - stellarsis - INFO - 数据库管理工具初始化成功，访问路径: /admin/db
+2025-12-02 19:37:25,631 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:37:25,631 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:39:01,858 - stellarsis - INFO - 管理员操作: 服务器关停，原因: fuckcf
+2025-12-02 19:39:01,858 - stellarsis - INFO - 管理员操作: 服务器关停，原因: fuckcf
+2025-12-02 19:39:09,442 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:39:09,639 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:39:09,680 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:39:09,680 - stellarsis - INFO - 正在初始化数据库管理工具...
+2025-12-02 19:39:09,683 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:39:09,683 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:39:09,696 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:39:09,696 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:39:09,758 - stellarsis - INFO - 数据库管理工具初始化成功，访问路径: /admin/db
+2025-12-02 19:39:09,758 - stellarsis - INFO - 数据库管理工具初始化成功，访问路径: /admin/db
+2025-12-02 19:39:09,759 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:39:09,759 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:39:10,399 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:39:10,610 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:39:10,653 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:39:10,653 - stellarsis - INFO - 正在初始化数据库管理工具...
+2025-12-02 19:39:10,656 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:39:10,656 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:39:10,670 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:39:10,670 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:39:10,734 - stellarsis - INFO - 数据库管理工具初始化成功，访问路径: /admin/db
+2025-12-02 19:39:10,734 - stellarsis - INFO - 数据库管理工具初始化成功，访问路径: /admin/db
+2025-12-02 19:39:10,734 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:39:10,734 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:40:33,540 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:40:33,780 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:40:33,836 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:40:33,836 - stellarsis - INFO - 正在初始化数据库管理工具...
+2025-12-02 19:40:33,837 - stellarsis - ERROR - 数据库管理工具初始化失败: Admin.__init__() got an unexpected keyword argument 'base_template'
+2025-12-02 19:40:33,837 - stellarsis - ERROR - 详细错误信息:
+Traceback (most recent call last):
+  File "C:\Users\admin\Downloads\Stellarsis-main\Stellarsis-main\admin_db_tool.py", line 95, in init_admin_tool
+    admin_ui = Admin(
+               ^^^^^^
+TypeError: Admin.__init__() got an unexpected keyword argument 'base_template'
+2025-12-02 19:40:33,838 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:41:41,550 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:41:41,751 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:41:41,792 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:41:41,792 - stellarsis - INFO - 正在初始化数据库管理工具...
+2025-12-02 19:41:41,793 - stellarsis - ERROR - 数据库管理工具初始化失败: Admin.__init__() got an unexpected keyword argument 'base_template'
+2025-12-02 19:41:41,793 - stellarsis - ERROR - 详细错误信息:
+Traceback (most recent call last):
+  File "C:\Users\admin\Downloads\Stellarsis-main\Stellarsis-main\admin_db_tool.py", line 95, in init_admin_tool
+    admin_ui = Admin(
+               ^^^^^^
+TypeError: Admin.__init__() got an unexpected keyword argument 'base_template'
+2025-12-02 19:41:41,794 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:41:42,415 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:41:42,610 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:41:42,651 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:41:42,652 - stellarsis - INFO - 正在初始化数据库管理工具...
+2025-12-02 19:41:42,652 - stellarsis - ERROR - 数据库管理工具初始化失败: Admin.__init__() got an unexpected keyword argument 'base_template'
+2025-12-02 19:41:42,652 - stellarsis - ERROR - 详细错误信息:
+Traceback (most recent call last):
+  File "C:\Users\admin\Downloads\Stellarsis-main\Stellarsis-main\admin_db_tool.py", line 95, in init_admin_tool
+    admin_ui = Admin(
+               ^^^^^^
+TypeError: Admin.__init__() got an unexpected keyword argument 'base_template'
+2025-12-02 19:41:42,653 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:42:12,259 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:42:12,525 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:42:12,578 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:42:12,579 - stellarsis - INFO - 正在初始化数据库管理工具...
+2025-12-02 19:42:12,579 - stellarsis - ERROR - 数据库管理工具初始化失败: Admin.__init__() got an unexpected keyword argument 'base_template'
+2025-12-02 19:42:12,580 - stellarsis - ERROR - 详细错误信息:
+Traceback (most recent call last):
+  File "C:\Users\admin\Downloads\Stellarsis-main\Stellarsis-main\admin_db_tool.py", line 95, in init_admin_tool
+    admin_ui = Admin(
+               ^^^^^^
+TypeError: Admin.__init__() got an unexpected keyword argument 'base_template'
+2025-12-02 19:42:12,581 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:42:13,300 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:42:13,493 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:42:13,533 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:42:13,534 - stellarsis - INFO - 正在初始化数据库管理工具...
+2025-12-02 19:42:13,534 - stellarsis - ERROR - 数据库管理工具初始化失败: Admin.__init__() got an unexpected keyword argument 'base_template'
+2025-12-02 19:42:13,534 - stellarsis - ERROR - 详细错误信息:
+Traceback (most recent call last):
+  File "C:\Users\admin\Downloads\Stellarsis-main\Stellarsis-main\admin_db_tool.py", line 95, in init_admin_tool
+    admin_ui = Admin(
+               ^^^^^^
+TypeError: Admin.__init__() got an unexpected keyword argument 'base_template'
+2025-12-02 19:42:13,535 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:44:39,267 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:44:39,538 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:44:39,564 - stellarsis - INFO - 正在初始化数据库管理工具...
+2025-12-02 19:44:39,565 - stellarsis - ERROR - 数据库管理工具初始化失败: Admin.__init__() got an unexpected keyword argument 'base_template'
+2025-12-02 19:44:39,565 - stellarsis - ERROR - 详细错误信息:
+Traceback (most recent call last):
+  File "C:\Users\admin\Downloads\Stellarsis-main\Stellarsis-main\admin_db_tool.py", line 95, in init_admin_tool
+    admin_ui = Admin(
+               ^^^^^^
+TypeError: Admin.__init__() got an unexpected keyword argument 'base_template'
+2025-12-02 19:44:39,581 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:44:39,581 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:46:44,094 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:46:44,327 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:46:44,356 - stellarsis - INFO - 正在初始化数据库管理工具...
+2025-12-02 19:46:44,356 - stellarsis - ERROR - 数据库管理工具初始化失败: Admin.__init__() got an unexpected keyword argument 'template_mode'
+2025-12-02 19:46:44,356 - stellarsis - ERROR - 详细错误信息:
+Traceback (most recent call last):
+  File "C:\Users\admin\Downloads\Stellarsis-main\Stellarsis-main\admin_db_tool.py", line 95, in init_admin_tool
+    admin_ui = Admin(
+               ^^^^^^
+TypeError: Admin.__init__() got an unexpected keyword argument 'template_mode'
+2025-12-02 19:46:44,373 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:46:44,373 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:46:45,010 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:46:45,202 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:46:45,229 - stellarsis - INFO - 正在初始化数据库管理工具...
+2025-12-02 19:46:45,229 - stellarsis - ERROR - 数据库管理工具初始化失败: Admin.__init__() got an unexpected keyword argument 'template_mode'
+2025-12-02 19:46:45,229 - stellarsis - ERROR - 详细错误信息:
+Traceback (most recent call last):
+  File "C:\Users\admin\Downloads\Stellarsis-main\Stellarsis-main\admin_db_tool.py", line 95, in init_admin_tool
+    admin_ui = Admin(
+               ^^^^^^
+TypeError: Admin.__init__() got an unexpected keyword argument 'template_mode'
+2025-12-02 19:46:45,245 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:46:45,245 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:46:55,265 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:46:55,471 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:46:55,498 - stellarsis - INFO - 正在初始化数据库管理工具...
+2025-12-02 19:46:55,526 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:46:55,526 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:46:55,540 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:46:55,540 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:46:55,564 - stellarsis - INFO - 正在初始化数据库管理工具...
+2025-12-02 19:46:55,564 - stellarsis - INFO - 正在初始化数据库管理工具...
+2025-12-02 19:46:55,590 - stellarsis - INFO - 数据库管理工具初始化成功，访问路径: /admin/dbtool
+2025-12-02 19:46:55,590 - stellarsis - INFO - 数据库管理工具初始化成功，访问路径: /admin/dbtool
+2025-12-02 19:46:55,629 - stellarsis - INFO - 数据库管理工具初始化成功，访问路径: /admin/dbtool
+2025-12-02 19:46:55,629 - stellarsis - INFO - 数据库管理工具初始化成功，访问路径: /admin/dbtool
+2025-12-02 19:46:55,650 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:46:55,650 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:46:55,651 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:46:55,651 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:48:27,867 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:48:28,057 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:48:28,098 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:48:28,098 - stellarsis - INFO - 应用启动成功
+2025-12-02 19:48:28,677 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 19:48:28,863 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 19:48:28,904 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 19:48:28,904 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:09:33,964 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:09:34,235 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:09:34,280 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:09:34,280 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:09:34,875 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:09:35,087 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:09:35,130 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:09:35,131 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:10:50,900 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:10:51,137 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:10:51,186 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:10:51,187 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:11:06,398 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:11:06,611 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:11:06,656 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:11:06,657 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:14:27,161 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:14:27,372 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:14:27,418 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:14:27,418 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:14:28,087 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:14:28,319 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:14:28,369 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:14:28,369 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:14:41,300 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:14:41,503 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:14:41,548 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:14:41,548 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:19:02,449 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:19:02,657 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:19:02,702 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:19:02,702 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:19:27,968 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:19:28,182 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:19:28,232 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:19:28,232 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:19:28,394 - stellarsis - INFO - Admin admin accessed the database admin page.
+2025-12-02 20:19:28,628 - stellarsis - INFO - Admin admin accessed the database admin page.
+2025-12-02 20:19:28,771 - stellarsis - INFO - Admin admin accessed the database admin page.
+2025-12-02 20:19:28,957 - stellarsis - INFO - Admin admin accessed the database admin page.
+2025-12-02 20:19:59,370 - stellarsis - INFO - Admin admin accessed the database admin page.
+2025-12-02 20:19:59,574 - stellarsis - INFO - Admin admin accessed the database admin page.
+2025-12-02 20:21:17,338 - stellarsis - INFO - Admin admin accessed the database admin page.
+2025-12-02 20:21:52,827 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:21:53,049 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:21:53,097 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:21:53,098 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:21:57,712 - stellarsis - INFO - 数据库表列表: ['users', 'chat_rooms', 'forum_sections', 'chat_messages', 'forum_threads', 'chat_permissions', 'forum_permissions', 'user_follows', 'chat_last_views', 'forum_last_views', 'forum_replies']
+2025-12-02 20:22:54,619 - stellarsis - INFO - 数据库表列表: ['users', 'chat_rooms', 'forum_sections', 'chat_messages', 'forum_threads', 'chat_permissions', 'forum_permissions', 'user_follows', 'chat_last_views', 'forum_last_views', 'forum_replies']
+2025-12-02 20:25:07,990 - stellarsis - INFO - 数据库表列表: ['users', 'chat_rooms', 'forum_sections', 'chat_messages', 'forum_threads', 'chat_permissions', 'forum_permissions', 'user_follows', 'chat_last_views', 'forum_last_views', 'forum_replies']
+2025-12-02 20:25:17,622 - stellarsis - INFO - 数据库表列表: ['users', 'chat_rooms', 'forum_sections', 'chat_messages', 'forum_threads', 'chat_permissions', 'forum_permissions', 'user_follows', 'chat_last_views', 'forum_last_views', 'forum_replies']
+2025-12-02 20:28:35,807 - stellarsis - INFO - 数据库表列表: ['users', 'chat_rooms', 'forum_sections', 'chat_messages', 'forum_threads', 'chat_permissions', 'forum_permissions', 'user_follows', 'chat_last_views', 'forum_last_views', 'forum_replies']
+2025-12-02 20:31:33,288 - stellarsis - INFO - 数据库表列表: ['users', 'chat_rooms', 'forum_sections', 'chat_messages', 'forum_threads', 'chat_permissions', 'forum_permissions', 'user_follows', 'chat_last_views', 'forum_last_views', 'forum_replies']
+2025-12-02 20:34:15,617 - stellarsis - INFO - 数据库表列表: ['users', 'chat_rooms', 'forum_sections', 'chat_messages', 'forum_threads', 'chat_permissions', 'forum_permissions', 'user_follows', 'chat_last_views', 'forum_last_views', 'forum_replies']
+2025-12-02 20:34:24,988 - stellarsis - INFO - 数据库表列表: ['users', 'chat_rooms', 'forum_sections', 'chat_messages', 'forum_threads', 'chat_permissions', 'forum_permissions', 'user_follows', 'chat_last_views', 'forum_last_views', 'forum_replies']
+2025-12-02 20:37:31,365 - stellarsis - INFO - 数据库表列表: ['users', 'chat_rooms', 'forum_sections', 'chat_messages', 'forum_threads', 'chat_permissions', 'forum_permissions', 'user_follows', 'chat_last_views', 'forum_last_views', 'forum_replies']
+2025-12-02 20:37:41,511 - stellarsis - INFO - 管理员操作: 删除了表 users 中ID为 3 的记录
+2025-12-02 20:39:46,232 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:39:46,451 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:39:46,500 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:39:46,501 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:40:21,702 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:40:21,908 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:40:21,952 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:40:21,952 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:40:47,063 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:40:47,263 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:40:47,308 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:40:47,308 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:41:18,474 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:41:18,681 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:41:18,729 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:41:18,729 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:41:40,892 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:41:41,089 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:41:41,135 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:41:41,135 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:41:53,039 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:41:53,237 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:41:53,287 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:41:53,288 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:42:52,754 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:42:52,957 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:42:53,002 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:42:53,002 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:43:09,990 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:43:10,198 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:43:10,244 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:43:10,244 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:43:12,965 - stellarsis - INFO - 数据库表列表: ['users', 'chat_rooms', 'forum_sections', 'chat_messages', 'forum_threads', 'chat_permissions', 'forum_permissions', 'user_follows', 'chat_last_views', 'forum_last_views', 'forum_replies', 'user_images']
+2025-12-02 20:43:55,658 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:43:55,865 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:43:55,908 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:43:55,909 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:44:30,762 - stellarsis - INFO - 数据库表列表: ['users', 'chat_rooms', 'forum_sections', 'chat_messages', 'forum_threads', 'chat_permissions', 'forum_permissions', 'user_follows', 'chat_last_views', 'forum_last_views', 'forum_replies', 'user_images']
+2025-12-02 20:46:02,389 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:46:02,584 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:46:02,627 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:46:02,627 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:46:03,195 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:46:03,394 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:46:03,437 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:46:03,437 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:51:06,829 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:51:07,038 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:51:07,084 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:51:07,085 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:51:07,708 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 20:51:07,914 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 20:51:07,959 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 20:51:07,959 - stellarsis - INFO - 应用启动成功
+2025-12-02 20:51:12,441 - stellarsis - INFO - 数据库表列表: ['users', 'chat_rooms', 'forum_sections', 'chat_messages', 'forum_threads', 'chat_permissions', 'forum_permissions', 'user_follows', 'chat_last_views', 'forum_last_views', 'forum_replies', 'user_images']
+2025-12-02 20:52:32,298 - stellarsis - INFO - 数据库表列表: ['users', 'chat_rooms', 'forum_sections', 'chat_messages', 'forum_threads', 'chat_permissions', 'forum_permissions', 'user_follows', 'chat_last_views', 'forum_last_views', 'forum_replies', 'user_images']
+2025-12-02 21:01:31,123 - stellarsis - INFO - 管理员操作: 用户登录: admin
+2025-12-02 21:10:02,435 - stellarsis - INFO - 管理员操作: 修改了表 users 中ID为 2 的记录
+2025-12-02 21:13:17,559 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 21:13:17,765 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 21:13:17,815 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 21:13:17,816 - stellarsis - INFO - 应用启动成功
+2025-12-02 21:13:36,824 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 21:13:37,025 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 21:13:37,068 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 21:13:37,068 - stellarsis - INFO - 应用启动成功
+2025-12-02 21:15:10,916 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 21:15:11,130 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 21:15:11,175 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 21:15:11,176 - stellarsis - INFO - 应用启动成功
+2025-12-02 21:15:25,057 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 21:15:25,255 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 21:15:25,302 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 21:15:25,302 - stellarsis - INFO - 应用启动成功
+2025-12-02 21:16:42,922 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 21:16:43,178 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 21:16:43,237 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 21:16:43,237 - stellarsis - INFO - 应用启动成功
+2025-12-02 21:17:34,926 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 21:17:35,152 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 21:17:35,196 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 21:17:35,197 - stellarsis - INFO - 应用启动成功
+2025-12-02 21:17:50,235 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 21:17:50,448 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 21:17:50,494 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 21:17:50,494 - stellarsis - INFO - 应用启动成功
+2025-12-02 21:18:04,848 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 21:18:05,049 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 21:18:41,102 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 21:18:41,380 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 21:18:41,431 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 21:18:41,432 - stellarsis - INFO - 应用启动成功
+2025-12-02 21:20:59,187 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 21:20:59,379 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 21:20:59,423 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 21:20:59,423 - stellarsis - INFO - 应用启动成功
+2025-12-02 21:21:00,037 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 21:21:00,246 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 21:21:00,293 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 21:21:00,294 - stellarsis - INFO - 应用启动成功
+2025-12-02 21:21:09,887 - stellarsis - INFO - 管理员操作: 用户登录: admin
+2025-12-02 21:22:12,347 - stellarsis - INFO - 管理员操作: 用户创建新帖: admin - test
+2025-12-02 21:25:53,698 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 21:25:53,924 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 21:25:53,969 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 21:25:53,970 - stellarsis - INFO - 应用启动成功
+2025-12-02 21:26:17,070 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 21:26:17,280 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 21:26:17,325 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 21:26:17,325 - stellarsis - INFO - 应用启动成功
+2025-12-02 21:26:57,593 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 21:26:57,801 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 21:26:57,848 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 21:26:57,849 - stellarsis - INFO - 应用启动成功
+2025-12-02 21:28:20,430 - stellarsis - INFO - 应用启动成功 - 使用UTF-8编码日志
+2025-12-02 21:28:20,633 - stellarsis - INFO - 数据库结构更新完成
+2025-12-02 21:28:20,696 - stellarsis - INFO - 管理员操作: 数据库初始化完成
+2025-12-02 21:28:20,697 - stellarsis - INFO - 应用启动成功
+2025-12-02 21:31:24,871 - stellarsis - INFO - 用户 admin 删除上传图片 O1CN01a6pmNi24dfWQwmMp3_6000000007414-2-tps-270-90_1764681716_15234674ec004af7bc83d34cd5a2e32d.png (ID:1)
+2025-12-02 21:32:12,765 - stellarsis - INFO - 用户 admin 删除上传图片 img_1764682319_f490ac05df534b8fa68b6c160a8a5a00.webp (ID:3)
+2025-12-02 21:32:14,508 - stellarsis - INFO - 用户 admin 删除上传图片 1_1764682317_3e0eb1dfe85e42278386f1c176d607d5.webp (ID:2)
+2025-12-02 21:32:15,972 - stellarsis - INFO - 用户 admin 删除上传图片 O1CN01a6pmNi24dfWQwmMp3_6000000007414-2-tps-270-90_1764682287_0e8ef53d2f76465aa1ee2844fe4477a0.png (ID:1)

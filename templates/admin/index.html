@@ -33,9 +33,7 @@
     <!-- 管理工具区域 -->
     <div class="admin-tools" style="margin-top:20px;">
         <h2>系统管理工具</h2>
-        <a class="nav-link" href="{{ url_for('db_admin') }}">
-            数据库管理
-        </a>
+        <button id="btn-db-admin" class="btn btn">数据库管理</button>
         <div class="admin-actions">
             <button id="btn-system-info" class="btn btn">系统信息</button>
             <button id="btn-clear-cache" class="btn btn">清除缓存</button>
@@ -43,6 +41,7 @@
             <button id="btn-optimize-db" class="btn btn">优化数据库</button>
             <button id="btn-restart" class="btn delete-btn">重启服务器</button>
             <button id="btn-shutdown" class="btn delete-btn">关停服务器</button>
+            <button id="btn-recalc-uploads" class="btn btn">重新统计图片大小</button>
             <a href="#" id="btn-view-logs" class="btn btn">查看系统日志</a>
         </div>
 
@@ -161,6 +160,27 @@
                     showAdminResult(logs || '无日志', false);
                 } else {
                     showAdminResult('获取日志失败: ' + (data.message || JSON.stringify(data)), true);
+                }
+            })
+            .catch(err => showAdminResult('请求失败: ' + err.message, true));
+    });
+
+    var btnDb = document.getElementById('btn-db-admin');
+    if (btnDb) btnDb.addEventListener('click', function () { window.location.href = '{{ url_for('db_admin') }}'; });
+
+    var btnRecalc = document.getElementById('btn-recalc-uploads');
+    if (btnRecalc) btnRecalc.addEventListener('click', async function () {
+        const ok = await showConfirm('是否重新统计所有用户的上传图片大小？此操作仅统计并返回JSON。', { title: '重新统计图片大小' });
+        if (!ok) return;
+        fetch('/api/admin/recalculate-upload-sizes', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const totals = data.totals || {};
+                    const lines = Object.keys(totals).map(uid => `用户ID ${uid}: ${totals[uid]} 字节`);
+                    showAdminResult('统计结果:\n' + lines.join('\n'));
+                } else {
+                    showAdminResult('执行失败: ' + (data.message || JSON.stringify(data)), true);
                 }
             })
             .catch(err => showAdminResult('请求失败: ' + err.message, true));

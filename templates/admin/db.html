@@ -83,7 +83,7 @@
             {% for table in tables %}
             <div class="table-card">
                 <h4>{{ table }}</h4>
-                <a href="{{ url_for('db_table_view', table_name=table) }}" class="btn btn-primary">查看数据</a>
+                <button class="btn btn-primary" onclick="window.location.href='{{ url_for('db_table_view', table_name=table) }}'">查看数据</button>
             </div>
             {% endfor %}
         </div>
