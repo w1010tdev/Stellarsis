@@ -30,6 +30,15 @@
             <a href="{{ url_for('file_manager_view') }}" class="btn btn-primary">进入文件管理</a>
         </div>
     </div>
+    
+    <!-- 图片统计区域 -->
+    <div class="admin-dashboard" style="margin-top: 20px;">
+        <div class="dashboard-card">
+            <h2>图片统计</h2>
+            <p>总图片数量: {{ total_images }}</p>
+            <p>总图片大小: {{ total_image_size_mb }} MB</p>
+        </div>
+    </div>
     <!-- 管理工具区域 -->
     <div class="admin-tools" style="margin-top:20px;">
         <h2>系统管理工具</h2>
@@ -41,6 +50,7 @@
             <button id="btn-clear-cache" class="btn btn">清除缓存</button>
             <button id="btn-backup-db" class="btn btn">备份数据库</button>
             <button id="btn-optimize-db" class="btn btn">优化数据库</button>
+            <button id="btn-recalculate-images" class="btn btn">重新计算图片大小</button>
             <button id="btn-restart" class="btn delete-btn">重启服务器</button>
             <button id="btn-shutdown" class="btn delete-btn">关停服务器</button>
             <a href="#" id="btn-view-logs" class="btn btn">查看系统日志</a>
@@ -147,6 +157,18 @@
             .then(data => {
                 if (data.success) showAdminResult('关停已触发: ' + (data.message || '') + '\n原因: ' + (data.reason || ''), false);
                 else showAdminResult('关停失败: ' + (data.message || JSON.stringify(data)), true);
+            })
+            .catch(err => showAdminResult('请求失败: ' + err.message, true));
+    });
+
+    document.getElementById('btn-recalculate-images').addEventListener('click', async function () {
+        const ok = await showConfirm('确认要重新计算所有用户的图片上传大小？此操作可能需要一些时间。', { title: '重新计算图片大小' });
+        if (!ok) return;
+        fetch('/api/admin/recalculate-image-size', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) showAdminResult('重新计算图片大小成功完成: ' + (data.message || ''), false);
+                else showAdminResult('重新计算失败: ' + (data.message || JSON.stringify(data)), true);
             })
             .catch(err => showAdminResult('请求失败: ' + err.message, true));
     });

@@ -223,6 +223,20 @@ class ForumLastView(Base):
     user = relationship('User')
     section = relationship('ForumSection')
 
+
+class UserImage(Base):
+    __tablename__ = 'user_images'
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    filename = Column(String(255), nullable=False)  # 存储文件名
+    filepath = Column(String(512), nullable=False)  # 存储完整路径
+    file_size = Column(Integer, nullable=False)  # 文件大小（字节）
+    upload_time = Column(DateTime, default=datetime.utcnow)  # 上传时间
+    file_type = Column(String(50), nullable=False)  # 文件类型
+    
+    user = relationship('User', backref='images')
+
 Base.metadata.create_all(bind=engine)
 
 
@@ -1190,6 +1204,10 @@ def admin_index():
     online_count = 1  # 简化实现，实际应查询最近活动的用户
     chat_messages_count = db_session.query(ChatMessage).count()
     forum_posts_count = db_session.query(ForumThread).count() + db_session.query(ForumReply).count()
+    # 新增：图片统计
+    total_images = db_session.query(UserImage).count()
+    total_image_size = db_session.query(UserImage).with_entities(db_session.func.sum(UserImage.file_size)).scalar() or 0
+    total_image_size_mb = total_image_size / (1024 * 1024)
     
     # 获取系统信息
     python_version = sys.version.split()[0]
@@ -1204,6 +1222,8 @@ def admin_index():
                          online_count=online_count,
                          chat_messages_count=chat_messages_count,
                          forum_posts_count=forum_posts_count,
+                         total_images=total_images,
+                         total_image_size_mb=round(total_image_size_mb, 2),
                          python_version=python_version,
                          flask_version=flask_version,
                          database_path=database_path,
@@ -1874,6 +1894,43 @@ def get_user_permissions_detail(user_id):
 
     return jsonify(success=True, user={'id': user.id, 'username': user.username, 'role': user.role},
                    chat=chat_data, forum=forum_data)
+
+
+def allowed_image_file(filename):
+    """检查文件扩展名是否被允许"""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_IMAGE_EXTENSIONS']
+
+
+def get_file_size_mb(file_path):
+    """获取文件大小（MB）"""
+    try:
+        return os.path.getsize(file_path) / (1024 * 1024)
+    except:
+        return 0
+
+
+def get_user_total_image_size(user_id):
+    """获取用户上传的所有图片总大小"""
+    total_size = db_session.query(UserImage).filter_by(user_id=user_id).with_entities(db_session.func.sum(UserImage.file_size)).scalar() or 0
+    return total_size
+
+
+def calculate_all_users_image_size():
+    """重新计算所有用户上传图片的总大小"""
+    user_sizes = {}
+    users = db_session.query(User).all()
+    
+    for user in users:
+        total_size = db_session.query(UserImage).filter_by(user_id=user.id).with_entities(db_session.func.sum(UserImage.file_size)).scalar() or 0
+        user_sizes[user.id] = {
+            'username': user.username,
+            'total_size': total_size,
+            'total_size_mb': total_size / (1024 * 1024),
+            'image_count': db_session.query(UserImage).filter_by(user_id=user.id).count()
+        }
+    
+    return user_sizes
 
 
 @app.route('/api/admin/users/<int:user_id>/permissions', methods=['PUT'])
@@ -2863,6 +2920,87 @@ def not_found(error):
 @app.errorhandler(500)
 def server_error(error):
     return render_template('errors/500.html'), 500
+
+
+# 图片上传功能
+@app.route('/api/upload/image', methods=['POST'])
+@login_required
+def upload_image():
+    """用户上传图片接口"""
+    import uuid
+    from werkzeug.utils import secure_filename
+    
+    # 检查是否有文件上传
+    if 'image' not in request.files:
+        return jsonify(success=False, message="没有选择文件"), 400
+    
+    file = request.files['image']
+    
+    # 检查文件名是否为空
+    if file.filename == '':
+        return jsonify(success=False, message="未选择文件"), 400
+    
+    # 检查文件扩展名
+    if not allowed_image_file(file.filename):
+        return jsonify(success=False, message="不支持的文件格式"), 400
+    
+    # 检查文件大小
+    # 为了检查文件大小，我们需要临时读取文件
+    file.seek(0, os.SEEK_END)  # 移动到文件末尾
+    file_size = file.tell()  # 获取当前位置（文件大小）
+    file.seek(0)  # 移动回文件开头
+    
+    if file_size > app.config['MAX_IMAGE_SIZE'] and not current_user.is_admin():
+        return jsonify(success=False, message=f"文件大小超过限制 ({app.config['MAX_IMAGE_SIZE'] / (1024*1024):.1f}MB)"), 400
+    
+    # 检查用户上传的图片总大小是否超过限制（管理员无限制）
+    if not current_user.is_admin():
+        current_total_size = get_user_total_image_size(current_user.id)
+        if current_total_size + file_size > app.config['MAX_IMAGE_SIZE']:
+            return jsonify(success=False, message=f"您的图片总大小已超过限制 ({app.config['MAX_IMAGE_SIZE'] / (1024*1024):.1f}MB)"), 400
+    
+    # 生成安全的文件名
+    ext = file.filename.rsplit('.', 1)[1].lower()
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    upload_folder = app.config['UPLOAD_FOLDER']
+    
+    # 确保上传目录存在
+    os.makedirs(upload_folder, exist_ok=True)
+    
+    filepath = os.path.join(upload_folder, filename)
+    
+    # 保存文件
+    file.save(filepath)
+    
+    # 记录到数据库
+    user_image = UserImage(
+        user_id=current_user.id,
+        filename=filename,
+        filepath=filepath,
+        file_size=file_size,
+        file_type=ext
+    )
+    
+    db_session.add(user_image)
+    db_session.commit()
+    
+    return jsonify(success=True, message="上传成功", filename=filename, filepath=f"/{filepath}")
+
+
+@app.route('/api/admin/recalculate-image-size', methods=['POST'])
+@login_required
+def recalculate_all_users_image_size():
+    """管理员重新计算所有用户图片上传大小的接口"""
+    if not current_user.is_admin():
+        return jsonify(success=False, message="权限不足"), 403
+    
+    user_sizes = calculate_all_users_image_size()
+    
+    # 记录日志
+    log_admin_action(f"管理员 {current_user.username} 重新计算了所有用户的图片上传大小")
+    
+    return jsonify(success=True, message="重新计算完成", user_sizes=user_sizes)
+
 
 # 初始化数据
 def init_db():
