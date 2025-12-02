@@ -93,3 +93,12 @@ Stellarsis is a feature-rich real-time chat and forum system that combines chat 
 ## 许可证 / License
 
 MIT License
+
+## 上传图片 / Image Upload
+系统默认启用了用户图片上传功能，配置可通过 `config.py` 修改：
+
+- `UPLOAD_FOLDER`：文件保存目录，默认 `static/uploads`。
+- `ALLOWED_IMAGE_EXTENSIONS`：允许的图片扩展名列表，默认 `{'png', 'jpg', 'jpeg', 'gif', 'webp'}`。
+- `IMAGE_MAX_SIZE`：单张图片最大大小（字节），默认值为 5MB。
+
+前端上传接口： `POST /api/upload/image`（multipart/form-data, 字段 `file`），返回 JSON 包含 `url` 和 `markdown` 字段，便于复制与插入。

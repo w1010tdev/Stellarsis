@@ -12,3 +12,7 @@ class Config:
     SOCKETIO_ASYNC_MODE = 'eventlet'
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB 上传限制
     ONLINE_TIMEOUT = 300  # 5分钟无活动视为离线
+    # 图片上传相关配置
+    UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER') or os.path.join('static', 'uploads')
+    ALLOWED_IMAGE_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif', 'webp'])
+    IMAGE_MAX_SIZE = 5 * 1024 * 1024  # 单张图片最大 5MB

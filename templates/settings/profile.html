@@ -61,6 +61,17 @@
                     <button type="submit" class="btn btn-primary">保存设置</button>
                 </div>
             </form>
+            <div style="margin-top:18px;">
+                <h3>上传图片（仅支持图片）</h3>
+                <div class="form-group">
+                    <input id="profile-image-input" type="file" accept="image/*" class="form-control" />
+                    <div id="profile-image-preview" style="margin-top:8px"></div>
+                </div>
+                <div>
+                    <h4>我的图片</h4>
+                    <div id="profile-image-list"></div>
+                </div>
+            </div>
         </div>
     </section>
 </div>
@@ -124,4 +135,5 @@
         refreshPreview();
     });
 </script>
+<script src="{{ url_for('static', filename='js/uploads.js') }}"></script>
 {% endblock %}

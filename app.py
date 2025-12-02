@@ -14,6 +14,11 @@ from flask import (
     flash, session, send_from_directory, send_file, jsonify, abort,
     make_response
 )
+from werkzeug.utils import secure_filename
+try:
+    from PIL import Image
+except Exception:
+    Image = None
 import tempfile
 from flask_login import (
     LoginManager, UserMixin, login_user, 
@@ -43,6 +48,10 @@ app.config.from_object(Config)
 # 创建logs目录
 log_dir = Path(app.root_path) / 'logs'
 log_dir.mkdir(exist_ok=True)
+
+# 创建上传目录
+upload_dir = Path(app.root_path) / app.config.get('UPLOAD_FOLDER', 'static/uploads')
+upload_dir.mkdir(parents=True, exist_ok=True)
 
 # 配置日志
 try:
@@ -222,6 +231,19 @@ class ForumLastView(Base):
 
     user = relationship('User')
     section = relationship('ForumSection')
+
+class UserImage(Base):
+    __tablename__ = 'user_images'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    filename = Column(String(255), nullable=False)  # 存储文件名
+    filepath = Column(String(512), nullable=False)  # 存储完整路径
+    file_size = Column(Integer, nullable=False)  # 文件大小（字节）
+    upload_time = Column(DateTime, default=datetime.utcnow)  # 上传时间
+    file_type = Column(String(50), nullable=False)  # 文件类型
+
+    user = relationship('User', backref='images')
 
 Base.metadata.create_all(bind=engine)
 
@@ -487,6 +509,35 @@ def sanitize_content(content):
         pass
     
     return content
+
+
+def allowed_image_extension(filename):
+    if '.' not in filename:
+        return False
+    ext = filename.rsplit('.', 1)[1].lower()
+    return ext in app.config.get('ALLOWED_IMAGE_EXTENSIONS', set())
+
+
+def get_image_type(stream):
+    """Try to detect image type using Pillow if available, fallback to imghdr."""
+    try:
+        if Image:
+            stream.seek(0)
+            img = Image.open(stream)
+            fmt = img.format.lower() if img.format else None
+            stream.seek(0)
+            return fmt
+    except Exception:
+        try:
+            import imghdr
+            stream.seek(0)
+            t = imghdr.what(None, h=stream.read())
+            stream.seek(0)
+            return t
+        except Exception:
+            stream.seek(0)
+            return None
+    return None
 
 def get_online_users(room_id):
     """获取指定房间的在线用户"""
@@ -966,6 +1017,98 @@ def settings_index():
     return render_template('settings.html')
 
 
+@app.route('/api/upload/image', methods=['POST'])
+@login_required
+def api_upload_image():
+    """上传用户图片API，会返回图片的 URL 以及可直接复制的 Markdown 链接。
+    安全措施包括：登录检查、文件类型检测、文件大小限制以及文件名清理。
+    """
+    if 'file' not in request.files:
+        return jsonify(success=False, message='未找到文件'), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify(success=False, message='文件名为空'), 400
+
+    filename = file.filename
+    if not allowed_image_extension(filename):
+        return jsonify(success=False, message='不支持的文件扩展名'), 400
+
+    # 检查大小（客户端也应使用 MAX_CONTENT_LENGTH）
+    file.stream.seek(0, os.SEEK_END)
+    size = file.stream.tell()
+    file.stream.seek(0)
+    if size > app.config.get('IMAGE_MAX_SIZE', 5 * 1024 * 1024):
+        return jsonify(success=False, message='文件过大'), 413
+
+    # 检测实际文件内容是否为图片
+    detected = get_image_type(file.stream)
+    if not detected:
+        return jsonify(success=False, message='无法识别的图片类型'), 400
+
+    # 有些格式名不完全一致，如 jpeg->jpg，做规范化
+    normalized = detected.replace('jpeg', 'jpg') if detected else None
+    if normalized not in app.config.get('ALLOWED_IMAGE_EXTENSIONS', set()):
+        return jsonify(success=False, message=f'不被允许的图片类型: {detected}'), 400
+
+    # 安全文件名及唯一后缀
+    base = secure_filename(os.path.splitext(filename)[0]) or 'img'
+    ext = normalized or filename.rsplit('.', 1)[1].lower()
+    from uuid import uuid4
+    unique_name = f"{base}_{int(time.time())}_{uuid4().hex}.{ext}"
+
+    # 安全检查：确保上传目标目录位于应用的 static 目录之内
+    static_root = Path(app.root_path) / 'static'
+    upload_folder = (Path(app.root_path) / app.config.get('UPLOAD_FOLDER', 'static/uploads') / str(current_user.id)).resolve()
+    if not str(upload_folder).startswith(str(static_root.resolve())):
+        return jsonify(success=False, message='上传目录配置不合法'), 500
+    upload_folder.mkdir(parents=True, exist_ok=True)
+    filepath = upload_folder / unique_name
+
+    # 保存文件
+    try:
+        file.stream.seek(0)
+        with open(filepath, 'wb') as f:
+            f.write(file.stream.read())
+        # 在数据库中记录文件信息
+        ui = UserImage(
+            user_id=current_user.id,
+            filename=unique_name,
+            filepath=str(filepath),
+            file_size=filepath.stat().st_size,
+            file_type=normalized or ext
+        )
+        db_session.add(ui)
+        db_session.commit()
+
+        # 返回静态资源URL
+        relative_path = os.path.relpath(str(filepath), str(Path(app.root_path) / 'static'))
+        # 去除反斜杠，构造 URL
+        url = url_for('static', filename=relative_path.replace('\\', '/'))
+        markdown_link = f"![{secure_filename(base)}]({url})"
+        return jsonify(success=True, url=url, markdown=markdown_link)
+    except Exception as e:
+        db_session.rollback()
+        logger.exception('保存用户上传图片失败')
+        return jsonify(success=False, message='保存文件失败'), 500
+
+
+@app.route('/api/upload/images', methods=['GET'])
+@login_required
+def api_list_user_images():
+    """列出当前用户已上传的图片，支持前端展示和复制 Markdown 链接。"""
+    try:
+        images = db_session.query(UserImage).filter_by(user_id=current_user.id).order_by(UserImage.upload_time.desc()).all()
+        results = []
+        for im in images:
+            rel = os.path.relpath(str(im.filepath), str(Path(app.root_path) / 'static'))
+            url = url_for('static', filename=rel.replace('\\', '/'))
+            results.append({'id': im.id, 'filename': im.filename, 'url': url, 'markdown': f'![{im.filename}]({url})', 'uploaded': im.upload_time.isoformat()})
+        return jsonify(success=True, images=results)
+    except Exception as e:
+        logger.exception('列出用户图片失败')
+        return jsonify(success=False, message='服务器错误'), 500
+
+
 @app.route('/settings/follows')
 @login_required
 def settings_follows():
@@ -1345,63 +1488,6 @@ def admin_import_users():
     except Exception as e:
         flash(f'导入失败: {str(e)}', 'danger')
     return redirect(url_for('user_management'))
-    
-    sections = db_session.query(ForumSection).all()
-
-    # 为了避免在模板中对 SQLAlchemy 的动态关系调用 len()/count 导致错误，
-    # 在后端预计算每个分区的主题数和回复数，并传递到模板。
-    sections_data = []
-    for section in sections:
-        threads_obj = section.threads
-        # 获取线程列表（兼容 dynamic relationship 或 InstrumentedList）
-        try:
-            if hasattr(threads_obj, 'all') and callable(getattr(threads_obj, 'all')):
-                threads_list = threads_obj.all()
-            else:
-                threads_list = list(threads_obj)
-        except Exception:
-            try:
-                threads_list = list(threads_obj)
-            except Exception:
-                threads_list = []
-
-        thread_count = 0
-        reply_count = 0
-        try:
-            thread_count = len(threads_list)
-        except Exception:
-            # 兜底：尝试调用 count()，若不是参数类型的 count 则会抛出 TypeError
-            try:
-                thread_count = threads_obj.count()
-            except Exception:
-                thread_count = 0
-
-        for thread in threads_list:
-            replies_obj = getattr(thread, 'replies', [])
-            try:
-                if hasattr(replies_obj, 'all') and callable(getattr(replies_obj, 'all')):
-                    replies_list = replies_obj.all()
-                else:
-                    replies_list = list(replies_obj)
-            except Exception:
-                try:
-                    replies_list = list(replies_obj)
-                except Exception:
-                    replies_list = []
-            try:
-                reply_count += len(replies_list)
-            except Exception:
-                reply_count += 0
-
-        sections_data.append({
-            'section': section,
-            'thread_count': thread_count,
-            'reply_count': reply_count,
-            'threads_list': threads_list
-        })
-
-    return render_template('admin/forum.html', sections=sections_data)
-
 @app.route('/admin/file_manager')
 @login_required
 def file_manager_view():
@@ -2301,7 +2387,7 @@ def delete_forum_post(post_id):
 
 
 # SQLite数据库管理相关路由
-@app.route('/admin/db')
+@app.route('/admin/db/')
 @login_required
 def db_admin():
     if not current_user.is_admin():
@@ -2313,7 +2399,8 @@ def db_admin():
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
     tables = [row[0] for row in cursor.fetchall()]
     conn.close()
-
+    #use logger to log tables
+    logger.info(f"数据库表列表: {tables}")
     return render_template('admin/db.html', tables=tables)
 
 

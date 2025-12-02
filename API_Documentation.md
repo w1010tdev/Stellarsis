@@ -278,6 +278,16 @@ Most APIs require user authentication via session.
 - **PUT** `/api/admin/forum/sections/{section_id}`: 更新论坛分区
 - **DELETE** `/api/admin/forum/sections/{section_id}`: 删除论坛分区
 
+### 上传图片 / Upload Image
+- **POST** `/api/upload/image` (登录用户)
+  - 描述: 上传单个图片文件，返回文件的 URL 与可直接复制的 Markdown 链接。
+  - 请求: multipart/form-data, 字段名 `file`。
+  - 返回: `{ success: true, url: "/static/uploads/<user_id>/...", markdown: "![alt](url)" }`
+
+- **GET** `/api/upload/images` (登录用户)
+  - 描述: 列出当前用户上传的图片（按上传时间降序）。
+  - 返回: `{ success: true, images: [{id, filename, url, markdown, uploaded}, ...] }`
+
 ## WebSocket 事件 / WebSocket Events
 
 ### 连接事件 / Connection Events

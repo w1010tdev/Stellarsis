@@ -1376,3 +1376,15 @@ footer a,
   --text-primary: var(--color-text);
   --btn-primary-color: var(--btn-primary);
 }
+
+/* 图片上传 UI */
+.image-upload-preview { max-width: 100%; max-height: 210px; display:block; border-radius:8px; border:1px solid var(--card-border-color); }
+.image-upload-thumb { width: 56px; height: 56px; object-fit:cover; border-radius:6px; margin-right:8px; border:1px solid var(--card-border-color); }
+.image-upload-item { display:flex; align-items:center; gap:8px; padding:8px; background:var(--surface-color); border:1px solid var(--card-border-color); border-radius:8px; margin-bottom:8px; }
+.image-upload-markdown { flex:1; padding:6px 8px; border-radius:6px; border:1px solid var(--neutral-200); font-family:var(--font-family-monospace); font-size:0.9rem; }
+.image-upload-copy, .image-upload-insert { white-space: nowrap; }
+
+@media (max-width: 768px) {
+  .image-upload-preview { max-height: 180px; }
+  .image-upload-thumb { width:48px;height:48px; }
+}

@@ -27,6 +27,12 @@
                 支持Markdown格式和LaTeX公式。行内公式使用 \( ... \)，块级公式使用 \[ ... \]
             </div>
         </div>
+            <div class="form-group">
+                <label for="post-image-input">上传图片 (可插入 Markdown)</label>
+                <input id="post-image-input" type="file" accept="image/*" class="form-control" {% if not can_post %}disabled{% endif %} />
+                <div id="post-image-preview" style="margin-top:8px"></div>
+                <div id="post-image-list" style="margin-top:12px"></div>
+            </div>
         <button type="submit" class="btn btn-primary" {% if not can_post %}disabled{% endif %}>发布帖子</button>
     </form>
     <div class="preview-container">
@@ -67,4 +73,5 @@
         }
     });
 </script>
+    <script src="{{ url_for('static', filename='js/uploads.js') }}"></script>
 {% endblock %}
