@@ -190,8 +190,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!unsafe) return '';
         return unsafe
             .replace(/&/g, "&amp;")
-            .replace(/</g, "<")
-            .replace(/>/g, ">")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
     }

@@ -135,9 +135,19 @@ function escapeHtml(unsafe) {
 // 将 HTML 实体解码为原始字符（例如 &quot; -> "）
 function decodeHTMLEntities(str) {
     if (!str) return '';
+    // 多次解码以处理双重/多重转义的历史数据
     const txt = document.createElement('textarea');
-    txt.innerHTML = str;
-    return txt.value;
+    let prev = null;
+    let current = str;
+    let iterations = 0;
+    const MAX_ITER = 5;
+    while (current !== prev && iterations < MAX_ITER) {
+        txt.innerHTML = current;
+        prev = current;
+        current = txt.value;
+        iterations++;
+    }
+    return current;
 }
 
 // 标记消息为已删除（幂等）

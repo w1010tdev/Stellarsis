@@ -46,7 +46,7 @@
     registerCommand('forumlist', "贴吧分区列表", function () { window.location.replace('/forum'); return Promise.resolve('closed'); }, { aliases: ['fl'] });
     registerCommand('chatlist', "聊天室列表", function () { window.location.replace('/chat'); return Promise.resolve('closed'); }, { aliases: ['cl'] });
     registerCommand('settings', '设置', function () { window.location.replace('/settings'); return Promise.resolve('closed'); }, { aliases: ['st'] });
-    registerCommand('admin', '管理面板', function () { window.location.replace('/admin'); return Promise.resolve('closed'); }, { aliases: ['adm'] });
+    registerCommand('admin', '管理面板', function () { window.location.replace('/admin/index'); return Promise.resolve('closed'); }, { aliases: ['adm'] });
     registerCommand('tm', '切换主题: theme <name>', function (args) { var name = args[0]; if (!name) return Promise.reject('缺少主题名称'); if (typeof setTheme === 'function') setTheme(name); return Promise.resolve('已切换主题：' + name); });
 
     // focus command - focuses common inputs across site

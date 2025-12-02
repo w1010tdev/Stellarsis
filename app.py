@@ -32,7 +32,6 @@ from flask_cors import CORS
 from logging.handlers import RotatingFileHandler
 # 配置
 from config import Config
-
 # ----------
 # 初始化
 # ----------
@@ -226,62 +225,6 @@ class ForumLastView(Base):
 
 Base.metadata.create_all(bind=engine)
 
-# Optional: Flask-Admin DB browser (only if installed). Mounted at /admin/db and visible only to admins.
-try:
-    from flask_admin import Admin
-    from flask_admin.contrib.sqla import ModelView
-
-    admin_ui = None
-    # Try a few different initialization signatures to be robust across flask-admin versions
-    try:
-        admin_ui = Admin(app, name='DB Browser', template_mode='bootstrap3', url='/admin/db')
-    except TypeError as e1:
-        logger.info('Admin init with template_mode/url failed, trying fallback: %s' % e1)
-        try:
-            admin_ui = Admin(app, name='DB Browser', url='/admin/db')
-        except TypeError as e2:
-            logger.info('Admin init without template_mode failed, trying basic Admin init: %s' % e2)
-            try:
-                # Last-resort: basic init then init_app
-                admin_ui = Admin()
-                try:
-                    admin_ui.init_app(app)
-                except Exception:
-                    # Some Admin implementations expect app in constructor; try again
-                    admin_ui = Admin(app)
-            except Exception as e3:
-                logger.info('Failed to initialize Flask-Admin (all fallbacks): %s' % e3)
-
-    if admin_ui:
-        # secure ModelView that only allows access to authenticated admins
-        class SecureModelView(ModelView):
-            def is_accessible(self):
-                try:
-                    return current_user.is_authenticated and getattr(current_user, 'is_admin', lambda: False)()
-                except Exception:
-                    return False
-
-            def inaccessible_callback(self, name, **kwargs):
-                return redirect(url_for('login'))
-
-        try:
-            # register secured model views using the scoped session
-            admin_ui.add_view(SecureModelView(User, db_session, name='Users'))
-            admin_ui.add_view(SecureModelView(ChatRoom, db_session, name='ChatRooms'))
-            admin_ui.add_view(SecureModelView(ChatMessage, db_session, name='ChatMessages'))
-            admin_ui.add_view(SecureModelView(ForumSection, db_session, name='ForumSections'))
-            admin_ui.add_view(SecureModelView(ForumThread, db_session, name='ForumThreads'))
-            admin_ui.add_view(SecureModelView(ForumReply, db_session, name='ForumReplies'))
-            admin_ui.add_view(SecureModelView(UserFollow, db_session, name='Follows'))
-            admin_ui.add_view(SecureModelView(ChatPermission, db_session, name='ChatPermissions'))
-            admin_ui.add_view(SecureModelView(ForumPermission, db_session, name='ForumPermissions'))
-            logger.info('Flask-Admin DB Browser enabled')
-        except Exception as e:
-            logger.info('Flask-Admin found but failed to initialize model views: %s' % e)
-    else:
-        logger.info('Flask-Admin import succeeded but initialization returned no admin instance')
-except Exception as e:
-    logger.info('Flask-Admin not installed, skipping DB browser')
 
 PERMISSION_VALUES = {'su', '777', '444', 'Null'}
 CHAT_SEND_PERMISSIONS = {'su', '777'}
@@ -468,7 +411,6 @@ def grant_su_to_admins():
 
 
 grant_su_to_admins()
-
 # 用户加载函数
 @login_manager.user_loader
 def load_user(user_id):
@@ -525,17 +467,24 @@ def sanitize_content(content):
     """基础XSS防护 - 仅允许安全的HTML标签"""
     if not content:
         return ""
+    # 解码已有的HTML实体，避免双重转义导致在客户端仍然显示为实体
+    try:
+        content = html.unescape(content)
+    except Exception:
+        pass
     
-    # 先HTML转义
-    content = html.escape(content)
-    
-    # 允许的简单标签（Markdown会生成这些）
+    # 允许的简单标签（Markdown会生成这些） - 不使用 html.escape 全面转义以保留 Markdown 代码块
     allowed_tags = ['b', 'i', 'em', 'strong', 'code', 'pre', 'a', 'ul', 'ol', 'li', 'blockquote', 'br', 'hr']
     
-    # 处理链接（仅允许http/https）
-    content = re.sub(r'<a href=&quot;(https?://[^&quot;]+)&quot;>', 
-                    lambda m: f'<a href="{escape(m.group(1))}" target="_blank" rel="noopener noreferrer">', 
-                    content)
+    # 处理链接（仅允许 http/https），并将可能包含的 javascript: 存在的 href 设置为安全的占位
+    try:
+        # 使用安全的替换函数，避免在替换字符串内直接嵌入不匹配引号导致语法问题
+        def _link_safe(m):
+            return '<a href="%s" target="_blank" rel="noopener noreferrer"' % escape(m.group(1))
+        content = re.sub(r'<a\s+href=["\'](https?://[^"\']+)["\']', _link_safe, content, flags=re.I)
+        content = re.sub(r'href=["\']\s*javascript:[^"\']*["\']', 'href="#"', content, flags=re.I)
+    except Exception:
+        pass
     
     return content
 
@@ -746,7 +695,7 @@ def chat_history(room_id):
     # 转换为字典列表（只返回原始内容）
     messages_data = [{
         'id': msg.id,
-        'content': msg.content,  # 原始Markdown内容
+        'content': html.unescape(msg.content) if isinstance(msg.content, str) else msg.content,  # 原始Markdown内容（解码旧有实体）
         'timestamp': msg.timestamp.isoformat(),
         'user_id': msg.user_id,
         'username': msg.user.username,
@@ -781,6 +730,11 @@ def send_chat_message():
     if not user_can_send_chat(current_user, room_id):
         return jsonify(success=False, message="当前权限无法发送消息"), 403
 
+    # XSS基础防护（保持与 WebSocket 路径一致）
+    try:
+        message = sanitize_content(message)
+    except Exception:
+        pass
     # 保存到数据库
     message_obj = ChatMessage(
         content=message,
@@ -1057,6 +1011,14 @@ def forum_section(section_id):
     except Exception:
         db_session.rollback()
 
+    # 解码历史数据中的实体，避免在列表中显示 &lt; 等实体
+    try:
+        for th in threads:
+            if th.content and isinstance(th.content, str):
+                th.content = html.unescape(th.content)
+    except Exception:
+        pass
+
     return render_template(
         'forum/section.html',
         section=section,
@@ -1075,6 +1037,18 @@ def forum_thread(thread_id):
     if section_permission == 'Null':
         abort(403)
     replies = thread.replies.order_by(ForumReply.timestamp.asc()).all()
+    # 解码已存在的实体，保证客户端渲染时能正确还原 code block 内容
+    try:
+        if thread.content and isinstance(thread.content, str):
+            thread.content = html.unescape(thread.content)
+    except Exception:
+        pass
+    for r in replies:
+        try:
+            if r.content and isinstance(r.content, str):
+                r.content = html.unescape(r.content)
+        except Exception:
+            pass
     return render_template(
         'forum/thread.html',
         thread=thread,
@@ -1201,11 +1175,11 @@ def reply_post():
         color=current_user.color,
         badge=current_user.badge,
         timestamp=reply.timestamp.isoformat(),
-        content=reply.content  # 原始Markdown
+        content=html.unescape(reply.content) if isinstance(reply.content, str) else reply.content  # 原始Markdown（解码旧数据）
     )
 
 # 管理相关路由
-@app.route('/admin')
+@app.route('/admin/index')
 @login_required
 def admin_index():
     if not current_user.is_admin():  # 只有管理员才能访问
@@ -1219,7 +1193,7 @@ def admin_index():
     
     # 获取系统信息
     python_version = sys.version.split()[0]
-    flask_version = '2.3.2'  # 实际应导入flask.__version__
+    flask_version = '2.3.0'  # 假设使用 Flask 2.3.0
     database_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
     
     # 获取最近日志
@@ -1236,47 +1210,6 @@ def admin_index():
                          recent_logs=recent_logs)
 
 
-# Convenience redirect to the Flask-Admin UI. Some flask-admin versions
-# mount at /admin while others respect a custom url; offer a stable
-# /admin/db entry that redirects appropriately.
-@app.route('/admin/db')
-@login_required
-def admin_db_redirect():
-    if not current_user.is_admin():
-        abort(403)
-
-    try:
-        # If admin_ui exists and has a configured url attribute, use it
-        if 'admin_ui' in globals() and admin_ui:
-            url = getattr(admin_ui, 'url', None)
-            if url:
-                return redirect(url)
-    except Exception:
-        pass
-
-    # Fallback: try to discover a flask-admin mounted URL from the app's url_map
-    try:
-        # Look for rules that seem to belong to flask-admin (endpoint startswith 'admin.' usually)
-        for rule in app.url_map.iter_rules():
-            try:
-                if rule.rule and rule.rule.startswith('/admin') and rule.rule != '/admin':
-                    # prefer non-application /admin routes (likely flask-admin)
-                    logger.info('Redirecting /admin/db to discovered admin rule: %s' % rule.rule)
-                    return redirect(rule.rule)
-                # else if endpoint indicates admin blueprint
-                if rule.endpoint and str(rule.endpoint).startswith('admin.'):
-                    logger.info('Redirecting /admin/db to discovered admin endpoint rule: %s (endpoint=%s)' % (rule.rule, rule.endpoint))
-                    return redirect(rule.rule)
-            except Exception:
-                continue
-    except Exception:
-        logger.debug('扫描 url_map 以发现 admin UI 失败')
-
-    # 最后兜底：重定向到内置管理页面（应用自己的 /admin）
-    try:
-        return redirect(url_for('admin_index'))
-    except Exception:
-        return redirect('/admin')
 
 @app.route('/admin/users')
 @login_required
