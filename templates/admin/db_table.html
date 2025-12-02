@@ -1,0 +1,481 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ table_name }} - 数据库管理 - 群星议会{% endblock %}
+
+{% block additional_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+
+{% block admin_content %}
+<div class="db-table-container">
+    <div class="table-header">
+        <h2>表: {{ table_name }}</h2>
+        <div class="table-actions">
+            <button class="btn btn-primary" onclick="loadMoreData()">加载更多</button>
+        </div>
+    </div>
+    
+    <div class="table-info">
+        <p>显示前50条记录，按ID降序排列</p>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="data-table" id="dataTable">
+            <thead>
+                <tr>
+                    {% for col in columns %}
+                    <th>{{ col }}</th>
+                    {% endfor %}
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                {% for row in rows %}
+                <tr data-id="{{ row[0] }}">  <!-- 假设第一列是ID -->
+                    {% for cell in row %}
+                    <td class="cell-editable" data-column="{{ columns[loop.index0] }}">{{ cell|e }}</td>
+                    {% endfor %}
+                    <td class="actions">
+                        <button class="btn btn-sm btn-primary" onclick="editRow(this)">编辑</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteRow(this)">删除</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="loading-indicator" id="loadingIndicator" style="display: none;">
+        <p>加载中...</p>
+    </div>
+    
+    <div class="no-more-data" id="noMoreData" style="display: none;">
+        <p>没有更多数据</p>
+    </div>
+</div>
+
+<!-- 编辑模态框 -->
+<div class="modal" id="editModal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>编辑记录</h3>
+            <span class="close" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="editForm">
+                <input type="hidden" id="editRecordId" name="id">
+                <div id="editFields"></div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.db-table-container {
+    padding: 20px;
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.table-header h2 {
+    margin: 0;
+    color: var(--on-surface);
+}
+
+.table-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.table-info {
+    margin-bottom: 20px;
+    color: var(--muted-text-color);
+}
+
+.table-responsive {
+    overflow-x: auto;
+    margin-bottom: 20px;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface-color);
+    border: 1px solid var(--card-border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.data-table th {
+    background: var(--primary-color);
+    color: var(--on-primary);
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+}
+
+.data-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--card-border-color);
+    word-break: break-all;
+}
+
+.data-table tr:last-child td {
+    border-bottom: none;
+}
+
+.data-table tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.cell-editable {
+    cursor: pointer;
+}
+
+.cell-editable:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.actions {
+    white-space: nowrap;
+}
+
+.btn-sm {
+    padding: 4px 8px;
+    font-size: 12px;
+    margin-right: 5px;
+}
+
+.loading-indicator {
+    text-align: center;
+    padding: 20px;
+    color: var(--muted-text-color);
+}
+
+.no-more-data {
+    text-align: center;
+    padding: 20px;
+    color: var(--muted-text-color);
+}
+
+/* 模态框样式 */
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--overlay-strong);
+}
+
+.modal-content {
+    background-color: var(--surface-color);
+    margin: 5% auto;
+    padding: 0;
+    border: 1px solid var(--card-border-color);
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--card-border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--on-surface);
+}
+
+.close {
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    color: var(--text-color);
+}
+
+.close:hover {
+    color: var(--danger-500);
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.form-actions {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn {
+    display: inline-block;
+    padding: 8px 16px;
+    background: var(--primary-color);
+    color: var(--on-primary);
+    text-decoration: none;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.btn:hover {
+    background: var(--primary-700);
+}
+
+.btn-primary {
+    background: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background: var(--primary-700);
+}
+
+.btn-secondary {
+    background: var(--neutral-500);
+}
+
+.btn-secondary:hover {
+    background: var(--neutral-600);
+}
+
+.btn-danger {
+    background: var(--danger-500);
+}
+
+.btn-danger:hover {
+    background: var(--danger-600);
+}
+
+/* 输入框样式 */
+input[type="text"], input[type="number"], textarea {
+    width: 100%;
+    padding: 8px 12px;
+    margin: 5px 0;
+    border: 1px solid var(--card-border-color);
+    border-radius: 4px;
+    background: var(--surface-color);
+    color: var(--text-color);
+    box-sizing: border-box;
+}
+
+input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+</style>
+
+<script>
+let offset = 50; // 从第50条开始加载
+let isLoading = false;
+let hasMoreData = true;
+
+// 加载更多数据
+function loadMoreData() {
+    if (isLoading || !hasMoreData) return;
+    
+    isLoading = true;
+    document.getElementById('loadingIndicator').style.display = 'block';
+    
+    fetch(`/admin/db/table/{{ table_name }}/data?offset=${offset}&limit=50`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const tableBody = document.getElementById('tableBody');
+                
+                if (data.data.length === 0) {
+                    hasMoreData = false;
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                    document.getElementById('noMoreData').style.display = 'block';
+                    return;
+                }
+                
+                data.data.forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.setAttribute('data-id', row.id);
+                    
+                    // 生成表格行
+                    data.columns.forEach(col => {
+                        const td = document.createElement('td');
+                        td.className = 'cell-editable';
+                        td.setAttribute('data-column', col);
+                        td.textContent = row[col] !== null ? row[col] : 'NULL';
+                        tr.appendChild(td);
+                    });
+                    
+                    // 添加操作列
+                    const actionsTd = document.createElement('td');
+                    actionsTd.className = 'actions';
+                    actionsTd.innerHTML = `
+                        <button class="btn btn-sm btn-primary" onclick="editRow(this)">编辑</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteRow(this)">删除</button>
+                    `;
+                    tr.appendChild(actionsTd);
+                    
+                    tableBody.appendChild(tr);
+                });
+                
+                offset += 50;
+            } else {
+                alert('加载数据失败: ' + (data.message || '未知错误'));
+            }
+            
+            document.getElementById('loadingIndicator').style.display = 'none';
+            isLoading = false;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('loadingIndicator').style.display = 'none';
+            isLoading = false;
+            alert('加载数据时发生错误');
+        });
+}
+
+// 编辑行
+function editRow(button) {
+    const row = button.closest('tr');
+    const recordId = row.getAttribute('data-id');
+    const cells = row.querySelectorAll('.cell-editable');
+    
+    // 准备编辑字段
+    const editFieldsContainer = document.getElementById('editFields');
+    editFieldsContainer.innerHTML = '';
+    
+    cells.forEach(cell => {
+        const colName = cell.getAttribute('data-column');
+        const value = cell.textContent;
+        
+        // 跳过ID字段，因为它通常是主键
+        if (colName === 'id') return;
+        
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <label for="field_${colName}">${colName}:</label>
+            <input type="text" id="field_${colName}" name="${colName}" value="${value}" />
+        `;
+        editFieldsContainer.appendChild(div);
+    });
+    
+    // 设置记录ID
+    document.getElementById('editRecordId').value = recordId;
+    
+    // 显示模态框
+    document.getElementById('editModal').style.display = 'block';
+}
+
+// 删除行
+function deleteRow(button) {
+    if (!confirm('确定要删除这条记录吗？此操作不可撤销。')) {
+        return;
+    }
+    
+    const row = button.closest('tr');
+    const recordId = row.getAttribute('data-id');
+    
+    fetch(`/admin/db/table/{{ table_name }}/delete`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            id: recordId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            row.remove();
+            alert('记录删除成功');
+        } else {
+            alert('删除失败: ' + (data.message || '未知错误'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('删除时发生错误');
+    });
+}
+
+// 关闭模态框
+function closeModal() {
+    document.getElementById('editModal').style.display = 'none';
+}
+
+// 保存编辑
+document.getElementById('editForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const recordId = document.getElementById('editRecordId').value;
+    
+    const data = { id: recordId };
+    for (let [key, value] of formData.entries()) {
+        if (key !== 'id') {
+            data[key] = value;
+        }
+    }
+    
+    fetch(`/admin/db/table/{{ table_name }}/edit`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            // 更新表格中的数据
+            const row = document.querySelector(`tr[data-id="${recordId}"]`);
+            if (row) {
+                const cells = row.querySelectorAll('.cell-editable');
+                cells.forEach(cell => {
+                    const colName = cell.getAttribute('data-column');
+                    if (colName !== 'id' && data.hasOwnProperty(colName)) {
+                        cell.textContent = data[colName];
+                    }
+                });
+            }
+            
+            closeModal();
+            alert('记录更新成功');
+        } else {
+            alert('更新失败: ' + (result.message || '未知错误'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('更新时发生错误');
+    });
+});
+
+// 点击模态框外部关闭
+window.onclick = function(event) {
+    const modal = document.getElementById('editModal');
+    if (event.target === modal) {
+        closeModal();
+    }
+}
+</script>
+{% endblock %}

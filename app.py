@@ -2299,6 +2299,212 @@ def delete_forum_post(post_id):
     except Exception as e:
         return jsonify(success=False, message=f"删除失败: {str(e)}"), 500
 
+
+# SQLite数据库管理相关路由
+@app.route('/admin/db')
+@login_required
+def db_admin():
+    if not current_user.is_admin():
+        abort(403)
+
+    # 获取所有表名
+    conn = sqlite3.connect(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    tables = [row[0] for row in cursor.fetchall()]
+    conn.close()
+
+    return render_template('admin/db.html', tables=tables)
+
+
+@app.route('/admin/db/table/<table_name>')
+@login_required
+def db_table_view(table_name):
+    if not current_user.is_admin():
+        abort(403)
+
+    # 验证表名是否合法（防止SQL注入）
+    conn = sqlite3.connect(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    valid_tables = [row[0] for row in cursor.fetchall()]
+    
+    if table_name not in valid_tables:
+        abort(404)
+    
+    # 获取表结构
+    cursor.execute(f"PRAGMA table_info({table_name});")
+    columns = cursor.fetchall()
+    column_names = [col[1] for col in columns]
+    
+    # 获取前50条数据
+    cursor.execute(f"SELECT * FROM {table_name} ORDER BY id DESC LIMIT 50;")
+    rows = cursor.fetchall()
+    
+    conn.close()
+
+    return render_template('admin/db_table.html', 
+                         table_name=table_name, 
+                         columns=column_names, 
+                         rows=rows)
+
+
+@app.route('/admin/db/table/<table_name>/data')
+@login_required
+def db_table_data(table_name):
+    if not current_user.is_admin():
+        return jsonify(success=False, message="权限不足"), 403
+
+    # 验证表名是否合法（防止SQL注入）
+    conn = sqlite3.connect(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    valid_tables = [row[0] for row in cursor.fetchall()]
+    
+    if table_name not in valid_tables:
+        return jsonify(success=False, message="表不存在"), 404
+    
+    # 获取分页参数
+    offset = request.args.get('offset', 0, type=int)
+    limit = min(request.args.get('limit', 50, type=int), 100)  # 限制最大返回100条
+    
+    # 获取表结构
+    cursor.execute(f"PRAGMA table_info({table_name});")
+    columns = cursor.fetchall()
+    column_names = [col[1] for col in columns]
+    
+    # 获取数据
+    cursor.execute(f"SELECT * FROM {table_name} ORDER BY id DESC LIMIT {limit} OFFSET {offset};")
+    rows = cursor.fetchall()
+    
+    conn.close()
+    
+    # 将数据转换为字典列表
+    data = []
+    for row in rows:
+        row_dict = {}
+        for i, col_name in enumerate(column_names):
+            row_dict[col_name] = row[i]
+        data.append(row_dict)
+
+    return jsonify({
+        'success': True,
+        'data': data,
+        'columns': column_names
+    })
+
+
+@app.route('/admin/db/table/<table_name>/edit', methods=['POST'])
+@login_required
+def db_table_edit(table_name):
+    if not current_user.is_admin():
+        return jsonify(success=False, message="权限不足"), 403
+
+    # 验证表名是否合法（防止SQL注入）
+    conn = sqlite3.connect(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    valid_tables = [row[0] for row in cursor.fetchall()]
+    
+    if table_name not in valid_tables:
+        return jsonify(success=False, message="表不存在"), 404
+    
+    data = request.get_json()
+    if not data:
+        return jsonify(success=False, message="无效数据"), 400
+    
+    record_id = data.get('id')
+    if not record_id:
+        return jsonify(success=False, message="记录ID不能为空"), 400
+    
+    # 获取表结构，确定主键
+    cursor.execute(f"PRAGMA table_info({table_name});")
+    columns = cursor.fetchall()
+    primary_key = None
+    for col in columns:
+        if col[5] == 1:  # 主键标识
+            primary_key = col[1]
+            break
+    
+    if not primary_key:
+        primary_key = 'id'  # 默认主键
+    
+    # 构建更新语句
+    updates = []
+    values = []
+    for key, value in data.items():
+        if key not in ['id']:  # 排除ID字段，因为它是主键
+            updates.append(f"{key} = ?")
+            values.append(value)
+    
+    if not updates:
+        return jsonify(success=False, message="没有要更新的字段"), 400
+    
+    values.append(record_id)  # 主键值用于WHERE子句
+    
+    try:
+        update_sql = f"UPDATE {table_name} SET {', '.join(updates)} WHERE {primary_key} = ?"
+        cursor.execute(update_sql, values)
+        conn.commit()
+        
+        log_admin_action(f"修改了表 {table_name} 中ID为 {record_id} 的记录")
+        return jsonify(success=True, message="记录更新成功")
+    except Exception as e:
+        conn.rollback()
+        return jsonify(success=False, message=f"更新失败: {str(e)}"), 500
+    finally:
+        conn.close()
+
+
+@app.route('/admin/db/table/<table_name>/delete', methods=['POST'])
+@login_required
+def db_table_delete(table_name):
+    if not current_user.is_admin():
+        return jsonify(success=False, message="权限不足"), 403
+
+    # 验证表名是否合法（防止SQL注入）
+    conn = sqlite3.connect(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    valid_tables = [row[0] for row in cursor.fetchall()]
+    
+    if table_name not in valid_tables:
+        return jsonify(success=False, message="表不存在"), 404
+    
+    data = request.get_json()
+    if not data:
+        return jsonify(success=False, message="无效数据"), 400
+    
+    record_id = data.get('id')
+    if not record_id:
+        return jsonify(success=False, message="记录ID不能为空"), 400
+    
+    # 获取表结构，确定主键
+    cursor.execute(f"PRAGMA table_info({table_name});")
+    columns = cursor.fetchall()
+    primary_key = None
+    for col in columns:
+        if col[5] == 1:  # 主键标识
+            primary_key = col[1]
+            break
+    
+    if not primary_key:
+        primary_key = 'id'  # 默认主键
+    
+    try:
+        delete_sql = f"DELETE FROM {table_name} WHERE {primary_key} = ?"
+        cursor.execute(delete_sql, (record_id,))
+        conn.commit()
+        
+        log_admin_action(f"删除了表 {table_name} 中ID为 {record_id} 的记录")
+        return jsonify(success=True, message="记录删除成功")
+    except Exception as e:
+        conn.rollback()
+        return jsonify(success=False, message=f"删除失败: {str(e)}"), 500
+    finally:
+        conn.close()
+
+
 # 文件管理工具函数
 def list_directory(path):
     """列出目录内容（安全版）"""
