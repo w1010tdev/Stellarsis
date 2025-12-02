@@ -86,22 +86,26 @@ function initializeRenderingSystem() {
         // 定义渲染函数，包含完整的降级方案
         window.renderContent = function (content) {
             try {
+                // 先将 HTML 实体解码回原始字符，再交由 marked 渲染
+                const decoded = decodeHTMLEntities(content);
                 // 安全检查：确保marked可用
                 if (typeof marked !== 'undefined' && typeof marked.parse === 'function') {
-                    return marked.parse(content);
+                    return marked.parse(decoded);
                 }
                 // 降级到简单HTML渲染
-                return simpleHtmlRender(content);
+                return simpleHtmlRender(decoded);
             } catch (e) {
                 console.warn('高级渲染失败，使用降级方案:', e);
-                return simpleHtmlRender(content);
+                return simpleHtmlRender(decodeHTMLEntities(content));
             }
         };
 
-        // 简单HTML渲染作为备选方案
+        // 简单HTML渲染作为备选方案（先解码再安全转义）
         function simpleHtmlRender(content) {
-            // 基本的Markdown行内元素支持
-            let html = escapeHtml(content)
+            // 先解码 HTML 实体，再做安全转义以避免 XSS
+            let safe = escapeHtml(decodeHTMLEntities(content));
+            // 基本的Markdown行内元素支持（在安全的文本上替换）
+            let html = safe
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                 .replace(/\*(.*?)\*/g, '<em>$1</em>')
                 .replace(/`(.*?)`/g, '<code>$1</code>')
@@ -126,6 +130,46 @@ function escapeHtml(unsafe) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+}
+
+// 将 HTML 实体解码为原始字符（例如 &quot; -> "）
+function decodeHTMLEntities(str) {
+    if (!str) return '';
+    const txt = document.createElement('textarea');
+    txt.innerHTML = str;
+    return txt.value;
+}
+
+// 标记消息为已删除（幂等）
+function markMessageRemoved(el) {
+    if (!el) return false;
+    try {
+        // 如果已标记为删除，跳过
+        if (el.dataset && el.dataset.deleted === '1') return false;
+
+        // 如果已经存在 .message-removed，也视为已删除
+        if (el.querySelector && el.querySelector('.message-removed')) {
+            if (el.dataset) el.dataset.deleted = '1';
+            return false;
+        }
+
+        // 尝试移除显示内容区（安全降级）
+        try {
+            el.querySelectorAll('.message-content, .message-user').forEach(n => n.remove());
+        } catch (e) {
+            // ignore
+        }
+
+        const removedNotice = document.createElement('div');
+        removedNotice.className = 'message-removed';
+        removedNotice.textContent = '该消息已被删除';
+        el.appendChild(removedNotice);
+        if (el.dataset) el.dataset.deleted = '1';
+        return true;
+    } catch (e) {
+        console.error('markMessageRemoved failed', e);
+        return false;
+    }
 }
 
 // 生成内容哈希
@@ -333,6 +377,27 @@ function setupPolling() {
                         }
                     });
 
+                    // 检测服务器上已不存在但客户端仍然显示的消息（标记为已删除）
+                    try {
+                        const serverIds = new Set((data.messages || []).filter(m => m && m.id).map(m => String(m.id)));
+                        document.querySelectorAll('[data-message-id]').forEach(function (el) {
+                            try {
+                                const mid = el.dataset.messageId;
+                                if (!mid) return;
+                                // 跳过本地 pending 客户端ID
+                                if (mid.indexOf('client-') === 0 || mid.indexOf('sent-') === 0) return;
+                                if (!serverIds.has(String(mid))) {
+                                    // 标记为已删除（幂等操作，避免重复插入）
+                                    try {
+                                        markMessageRemoved(el);
+                                    } catch (e) {
+                                        if (el.parentNode) el.parentNode.removeChild(el);
+                                    }
+                                }
+                            } catch (e) { /* ignore per-element errors */ }
+                        });
+                    } catch (e) { console.debug('轮询删除检测失败', e); }
+
                     if (hasNewMessages) {
                         messagesContainer.scrollTop = messagesContainer.scrollHeight;
                     }
@@ -483,6 +548,24 @@ function setupWebSocket() {
                     if (v) processedMessageIds.delete(v);
                 }
             }
+        });
+
+        // listen for message deletion broadcasts from server
+        chatSocket.on('message_deleted', function (data) {
+            try {
+                var mid = data && (data.id || data.message_id);
+                if (!mid) return;
+                var el = document.querySelector('[data-message-id="' + mid + '"]');
+                if (el) {
+                    try {
+                        // use idempotent helper to avoid duplicate notices
+                        markMessageRemoved(el);
+                    } catch (e) {
+                        // fallback remove
+                        if (el.parentNode) el.parentNode.removeChild(el);
+                    }
+                }
+            } catch (e) { console.error('处理 message_deleted 失败', e); }
         });
 
         chatSocket.on('online_users', (data) => {
@@ -970,6 +1053,11 @@ function updateExistingMessage(clientId, serverMessage) {
     // At this point we have the element to update
     const oldId = existingMessage.dataset.messageId || (clientId || serverClientId || null);
     try {
+        // 如果该元素已被标记为已删除，则不要重新恢复内容
+        if (existingMessage.dataset && existingMessage.dataset.deleted === '1') {
+            console.debug('updateExistingMessage: 目标元素已标记为删除，跳过恢复', { oldId, serverId });
+            return;
+        }
         // set new id
         if (serverId) existingMessage.dataset.messageId = serverId; else if (serverClientId) existingMessage.dataset.messageId = serverClientId;
 
@@ -1075,13 +1163,9 @@ function deleteChatMessage(messageId, messageElement) {
                     if (data && data.success) {
                         // 可选择完全移除或替换为已删除提示
                         try {
-                            if (messageElement && messageElement.parentNode) {
-                                // 将内容替换为已删除提示
-                                messageElement.querySelectorAll('.message-content, .message-user').forEach(n => n.remove());
-                                const removedNotice = document.createElement('div');
-                                removedNotice.className = 'message-removed';
-                                removedNotice.textContent = '该消息已被删除';
-                                messageElement.appendChild(removedNotice);
+                            // 使用幂等标记函数，避免重复插入删除提示
+                            if (messageElement) {
+                                markMessageRemoved(messageElement);
                             }
                         } catch (e) {
                             console.warn('更新删除的消息UI失败，尝试移除元素:', e);
@@ -1230,8 +1314,23 @@ function tryRenderMessage(element, content) {
         }
     }
 
-    // 降级渲染
-    element.innerHTML = `<div class="render-fallback">${escapeHtml(content)}</div>`;
+    // 渲染系统尚未准备好：把元素加入待渲染队列，稍后处理（renderReady 时会调用 processMessageQueue）
+    try {
+        // 保证 dataset.originalContent 存在
+        if (element && element.dataset) element.dataset.originalContent = content;
+        // 先显示解码后的安全文本作为占位（避免直接显示被转义的实体）
+        element.innerHTML = `<div class="render-fallback">${escapeHtml(decodeHTMLEntities(content))}</div>`;
+        // 将该元素排入全局队列以便后续重新渲染
+        try {
+            messageQueue.push({ element: element, content: content });
+        } catch (e) {
+            // 如果全局队列不可用，则尽量不阻塞
+            console.debug('无法将元素加入渲染队列', e);
+        }
+    } catch (e) {
+        console.debug('降级渲染失败，直接转义显示', e);
+        element.innerHTML = `<div class="render-fallback">${escapeHtml(content)}</div>`;
+    }
     return false;
 }
 

@@ -448,3 +448,38 @@ Most APIs require user authentication via session.
 
 - **API 版本**: 1.0
 - **最后更新**: 2023年
+
+## 额外事件 / Additional WebSocket Events
+
+### 请求删除消息 / delete_message (客户端 -> 服务器)
+- **事件**: `delete_message`
+- **描述**: 客户端请求服务器删除指定消息（优先使用 WebSocket，当不可用时可使用 HTTP DELETE）
+- **数据**:
+  ```json
+  {
+    "room_id": 1,
+    "message_id": 123
+  }
+  ```
+
+### 消息已删除广播 / message_deleted (服务器 -> 客户端)
+- **事件**: `message_deleted`
+- **描述**: 服务器在删除数据库中的消息后，广播该事件以便各客户端更新 UI
+- **数据**:
+  ```json
+  {
+    "id": 123,
+    "room_id": 1,
+    "deleted_by": 2,
+    "timestamp": "2025-12-02T12:00:00Z"
+  }
+  ```
+
+客户端实现说明:
+- 推荐在具备 WebSocket 的情况下优先向服务器发送 `delete_message`，服务器验证并删除后广播 `message_deleted`，客户端收到后应把对应消息替换为“该消息已被删除”的占位元素；如果使用轮询/AJAX 的降级方案，轮询到服务器历史列表不包含某条消息时也应把该消息标记为已删除。
+
+## 管理面板 - 直接浏览数据库
+
+如果服务器安装了 `Flask-Admin`，系统会在 `/admin/db` 下开放一个只对管理员可见的数据库浏览和编辑界面（基于模型视图）。该界面允许通过浏览器直接查看、搜索和编辑数据表（用户、消息、分区、权限等）。
+
+注意: 在生产环境中启用该界面时请确保仅允许受信任的管理员访问，并使用 HTTPS + 强密码以及 IP 白名单/额外多因素认证以降低风险。

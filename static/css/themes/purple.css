@@ -82,3 +82,33 @@ body {
   background-color: var(--neutral-50) !important;
   color: var(--text-color) !important;
 }
+
+/* Improve code block contrast for purple theme */
+.markdown pre, pre, code, .chat-message pre, .chat-message code {
+  background-color: #1b1230 !important; /* darker purple background */
+  color: #f3f0ff !important; /* high-contrast light text */
+  border-radius: 6px;
+  padding: 0.6rem 0.9rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Courier New', monospace;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  box-shadow: none;
+  overflow: auto;
+}
+
+.markdown code, .chat-message code {
+  background-color: rgba(255,255,255,0.03);
+  color: #f3f0ff !important;
+  padding: 0.12em 0.32em;
+  border-radius: 4px;
+}
+
+/* Ensure fenced code blocks have clear borders and spacing */
+.markdown pre.code-block, pre.fenced, pre {
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+/* Improve token contrast for highlighted languages if present */
+.markdown pre .token, pre .token {
+  color: #f3f0ff !important;
+}

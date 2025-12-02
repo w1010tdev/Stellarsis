@@ -226,6 +226,63 @@ class ForumLastView(Base):
 
 Base.metadata.create_all(bind=engine)
 
+# Optional: Flask-Admin DB browser (only if installed). Mounted at /admin/db and visible only to admins.
+try:
+    from flask_admin import Admin
+    from flask_admin.contrib.sqla import ModelView
+
+    admin_ui = None
+    # Try a few different initialization signatures to be robust across flask-admin versions
+    try:
+        admin_ui = Admin(app, name='DB Browser', template_mode='bootstrap3', url='/admin/db')
+    except TypeError as e1:
+        logger.info('Admin init with template_mode/url failed, trying fallback: %s' % e1)
+        try:
+            admin_ui = Admin(app, name='DB Browser', url='/admin/db')
+        except TypeError as e2:
+            logger.info('Admin init without template_mode failed, trying basic Admin init: %s' % e2)
+            try:
+                # Last-resort: basic init then init_app
+                admin_ui = Admin()
+                try:
+                    admin_ui.init_app(app)
+                except Exception:
+                    # Some Admin implementations expect app in constructor; try again
+                    admin_ui = Admin(app)
+            except Exception as e3:
+                logger.info('Failed to initialize Flask-Admin (all fallbacks): %s' % e3)
+
+    if admin_ui:
+        # secure ModelView that only allows access to authenticated admins
+        class SecureModelView(ModelView):
+            def is_accessible(self):
+                try:
+                    return current_user.is_authenticated and getattr(current_user, 'is_admin', lambda: False)()
+                except Exception:
+                    return False
+
+            def inaccessible_callback(self, name, **kwargs):
+                return redirect(url_for('login'))
+
+        try:
+            # register secured model views using the scoped session
+            admin_ui.add_view(SecureModelView(User, db_session, name='Users'))
+            admin_ui.add_view(SecureModelView(ChatRoom, db_session, name='ChatRooms'))
+            admin_ui.add_view(SecureModelView(ChatMessage, db_session, name='ChatMessages'))
+            admin_ui.add_view(SecureModelView(ForumSection, db_session, name='ForumSections'))
+            admin_ui.add_view(SecureModelView(ForumThread, db_session, name='ForumThreads'))
+            admin_ui.add_view(SecureModelView(ForumReply, db_session, name='ForumReplies'))
+            admin_ui.add_view(SecureModelView(UserFollow, db_session, name='Follows'))
+            admin_ui.add_view(SecureModelView(ChatPermission, db_session, name='ChatPermissions'))
+            admin_ui.add_view(SecureModelView(ForumPermission, db_session, name='ForumPermissions'))
+            logger.info('Flask-Admin DB Browser enabled')
+        except Exception as e:
+            logger.info('Flask-Admin found but failed to initialize model views: %s' % e)
+    else:
+        logger.info('Flask-Admin import succeeded but initialization returned no admin instance')
+except Exception as e:
+    logger.info('Flask-Admin not installed, skipping DB browser')
+
 PERMISSION_VALUES = {'su', '777', '444', 'Null'}
 CHAT_SEND_PERMISSIONS = {'su', '777'}
 CHAT_VIEW_PERMISSIONS = {'su', '777', '444'}
@@ -765,6 +822,19 @@ def api_delete_chat_message(room_id, message_id):
         db_session.delete(msg)
         db_session.commit()
         logger.info(f"用户 {current_user.id} 删除了聊天室消息 {message_id} 在房间 {room_id}")
+        try:
+                # 广播删除事件给所有客户端，客户端根据 room_id 决定是否处理
+                payload = {
+                    'id': message_id,
+                    'room_id': room_id,
+                    'deleted_by': getattr(current_user, 'id', None),
+                    'timestamp': datetime.utcnow().isoformat()
+                }
+                # 某些 socketio/server 版本不接受 broadcast 参数；默认 emit() 不带 to/room 会推送给所有连接
+                socketio.emit('message_deleted', payload)
+        except Exception as e:
+            # 记录广播失败但不影响原有删除流程
+            logger.exception('广播 message_deleted 失败')
         return jsonify({'success': True, 'message': '消息已删除'})
     except Exception as e:
         db_session.rollback()
@@ -1069,8 +1139,8 @@ def new_post(section_id):
             return jsonify(success=False, message="标题不能为空且不超过128字符"), 400
         
         # 内容长度限制
-        if not content or len(content) > 10000:
-            return jsonify(success=False, message="内容不能为空且不超过10000字符"), 400
+        if not content or len(content) > 100000:
+            return jsonify(success=False, message="内容不能为空且不超过100000字符"), 400
         
         # XSS基础防护
         content = sanitize_content(content)
@@ -1164,6 +1234,49 @@ def admin_index():
                          flask_version=flask_version,
                          database_path=database_path,
                          recent_logs=recent_logs)
+
+
+# Convenience redirect to the Flask-Admin UI. Some flask-admin versions
+# mount at /admin while others respect a custom url; offer a stable
+# /admin/db entry that redirects appropriately.
+@app.route('/admin/db')
+@login_required
+def admin_db_redirect():
+    if not current_user.is_admin():
+        abort(403)
+
+    try:
+        # If admin_ui exists and has a configured url attribute, use it
+        if 'admin_ui' in globals() and admin_ui:
+            url = getattr(admin_ui, 'url', None)
+            if url:
+                return redirect(url)
+    except Exception:
+        pass
+
+    # Fallback: try to discover a flask-admin mounted URL from the app's url_map
+    try:
+        # Look for rules that seem to belong to flask-admin (endpoint startswith 'admin.' usually)
+        for rule in app.url_map.iter_rules():
+            try:
+                if rule.rule and rule.rule.startswith('/admin') and rule.rule != '/admin':
+                    # prefer non-application /admin routes (likely flask-admin)
+                    logger.info('Redirecting /admin/db to discovered admin rule: %s' % rule.rule)
+                    return redirect(rule.rule)
+                # else if endpoint indicates admin blueprint
+                if rule.endpoint and str(rule.endpoint).startswith('admin.'):
+                    logger.info('Redirecting /admin/db to discovered admin endpoint rule: %s (endpoint=%s)' % (rule.rule, rule.endpoint))
+                    return redirect(rule.rule)
+            except Exception:
+                continue
+    except Exception:
+        logger.debug('扫描 url_map 以发现 admin UI 失败')
+
+    # 最后兜底：重定向到内置管理页面（应用自己的 /admin）
+    try:
+        return redirect(url_for('admin_index'))
+    except Exception:
+        return redirect('/admin')
 
 @app.route('/admin/users')
 @login_required
@@ -2526,12 +2639,25 @@ def on_join(data):
     current_user.last_seen = datetime.utcnow()
     db_session.commit()
     # 广播用户进入（供关注者监听）
-    emit('user_join', {
-        'user_id': current_user.id,
-        'username': current_user.username,
-        'nickname': current_user.nickname or current_user.username,
-        'room_id': room_id
-    }, broadcast=True)
+    # emit to the room so only users in the room receive it (includes sender)
+    try:
+        socketio.emit('user_join', {
+            'user_id': current_user.id,
+            'username': current_user.username,
+            'nickname': current_user.nickname or current_user.username,
+            'room_id': room_id
+        }, room=room_name)
+    except Exception:
+        # fallback to emit without room if socketio.emit signature differs
+        try:
+            emit('user_join', {
+                'user_id': current_user.id,
+                'username': current_user.username,
+                'nickname': current_user.nickname or current_user.username,
+                'room_id': room_id
+            })
+        except Exception:
+            pass
 
 
 # 修改 on_leave：广播用户离开
@@ -2551,12 +2677,23 @@ def on_leave(data):
     room_name = f"room_{room_id}"
     leave_room(room_name)
     # 广播用户离开
-    emit('user_leave', {
-        'user_id': current_user.id,
-        'username': current_user.username,
-        'nickname': current_user.nickname or current_user.username,
-        'room_id': room_id
-    }, broadcast=True)
+    try:
+        socketio.emit('user_leave', {
+            'user_id': current_user.id,
+            'username': current_user.username,
+            'nickname': current_user.nickname or current_user.username,
+            'room_id': room_id
+        }, room=room_name)
+    except Exception:
+        try:
+            emit('user_leave', {
+                'user_id': current_user.id,
+                'username': current_user.username,
+                'nickname': current_user.nickname or current_user.username,
+                'room_id': room_id
+            })
+        except Exception:
+            pass
 
 
 # 全局上下文处理器
@@ -2629,4 +2766,3 @@ if __name__ == '__main__':
     CORS(app, resources={r"/socket.io/*": {"origins": "*"}})
     logger.info("应用启动成功")
     socketio.run(app, host='0.0.0.0', port=5000,debug=app.config['DEBUG'])
-

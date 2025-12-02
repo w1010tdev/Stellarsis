@@ -537,7 +537,7 @@ main {
 .settings-sidebar a:hover {
   transform: translateX(2px);
   background: var(--settings-hover-gradient);
-  color: var(--primary-700);
+  color: var(--text-color);
 }
 
 .settings-sidebar a.active {
@@ -1069,8 +1069,8 @@ header h1 a:visited {
   text-decoration: none;
 }
 
-/* 确保全局链接样式一致性 */
-a:visited {
+/* 确保全局链接样式一致性：所有状态颜色一致，避免浏览器默认不同颜色 */
+a, a:visited, a:focus, a:active {
   color: var(--primary-color);
   text-decoration: none;
 }
@@ -1150,7 +1150,7 @@ a {
 }
 
 /* 链接悬停效果 - 用颜色变化替代下划线 */
-a:hover {
+a:hover, a:focus {
   color: var(--primary-dark);
   text-decoration: none;
   /* 确保悬停时也不显示下划线 */
