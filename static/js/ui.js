@@ -22,7 +22,9 @@
         closeBtn.className = 'toast-close';
         closeBtn.setAttribute('aria-label', '关闭');
         closeBtn.innerHTML = '×';
-        closeBtn.addEventListener('click', function () {
+        // 确保关闭按钮点击不冒泡到页面其它元素
+        closeBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
             hideToast(toast);
         });
         toast.appendChild(closeBtn);
@@ -45,9 +47,23 @@
         if (!toast) return;
         toast.classList.remove('show');
         toast.classList.add('hide');
-        toast.addEventListener('transitionend', function () {
+        // 在隐藏动画期间不要阻塞页面交互
+        try { toast.style.pointerEvents = 'none'; } catch (e) {}
+
+        // 移除元素的保护逻辑：优先使用 transitionend，若未触发则使用回退定时器
+        var removed = false;
+        function doRemove() {
+            if (removed) return; removed = true;
             if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
-        });
+        }
+        // 尝试监听 transitionend（一次性）
+        var onEnd = function (e) {
+            if (e && e.target !== toast) return;
+            doRemove();
+        };
+        toast.addEventListener('transitionend', onEnd, { once: true });
+        // 回退：确保在动画时长外仍会被移除（避免某些浏览器/用户设置阻止 transitionend）
+        setTimeout(doRemove, 800);
     }
 
     // 全局暴露
