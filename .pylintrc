@@ -2,32 +2,6 @@
 # 允许 Pylint 在较低分数下仍然通过
 fail-under=6.0
 
-[MESSAGES CONTROL]
-# 禁用一些不太关键的检查
-disable=
-    trailing-whitespace,
-    line-too-long,
-    missing-module-docstring,
-    missing-class-docstring,
-    missing-function-docstring,
-    broad-exception-caught,
-    redefined-outer-name,
-    import-outside-toplevel,
-    unused-variable,
-    unused-argument,
-    wrong-import-order,
-    unused-import,
-    too-many-lines,
-    too-few-public-methods,
-    too-many-return-statements,
-    too-many-branches,
-    too-many-locals,
-    too-many-statements,
-    inconsistent-return-statements,
-    function-redefined,
-    no-else-return,
-    logging-fstring-interpolation
-
 [FORMAT]
 # 增加行长度限制
 max-line-length=120

@@ -537,7 +537,7 @@ main {
 .settings-sidebar a:hover {
   transform: translateX(2px);
   background: var(--settings-hover-gradient);
-  color: var(--primary-700);
+  color: var(--text-color);
 }
 
 .settings-sidebar a.active {
@@ -740,7 +740,7 @@ footer {
   justify-content: center;
   gap: var(--spacing-xs);
   padding: 0.625rem 1.25rem;
-  background-color: var(--primary-600);
+  background-color: var(--primary-600) !important;
   color: var(--on-primary) !important;
   border: none;
   border-radius: var(--radius-md);
@@ -1069,8 +1069,8 @@ header h1 a:visited {
   text-decoration: none;
 }
 
-/* 确保全局链接样式一致性 */
-a:visited {
+/* 确保全局链接样式一致性：所有状态颜色一致，避免浏览器默认不同颜色 */
+a, a:visited, a:focus, a:active {
   color: var(--primary-color);
   text-decoration: none;
 }
@@ -1150,7 +1150,7 @@ a {
 }
 
 /* 链接悬停效果 - 用颜色变化替代下划线 */
-a:hover {
+a:hover, a:focus {
   color: var(--primary-dark);
   text-decoration: none;
   /* 确保悬停时也不显示下划线 */
@@ -1376,3 +1376,38 @@ footer a,
   --text-primary: var(--color-text);
   --btn-primary-color: var(--btn-primary);
 }
+
+/* 图片上传 UI */
+.image-upload-preview { max-width: 100%; max-height: 210px; display:block; border-radius:8px; border:1px solid var(--card-border-color); }
+.image-upload-thumb { width: 56px; height: 56px; object-fit:cover; border-radius:6px; margin-right:8px; border:1px solid var(--card-border-color); }
+.image-upload-item { display:flex; align-items:center; gap:8px; padding:8px; background:var(--surface-color); border:1px solid var(--card-border-color); border-radius:8px; margin-bottom:8px; }
+.image-upload-markdown { flex:1; padding:6px 8px; border-radius:6px; border:1px solid var(--neutral-200); font-family:var(--font-family-monospace); font-size:0.9rem; }
+.image-upload-copy, .image-upload-insert { white-space: nowrap; }
+
+/* Ensure copy button is readable on light themes */
+.image-upload-copy {
+  color: var(--text-color);
+  background: transparent;
+  border: 1px solid var(--border-color);
+}
+
+@media (max-width: 768px) {
+  .image-upload-preview { max-height: 180px; }
+  .image-upload-thumb { width:48px;height:48px; }
+}
+
+/* Upload buttons should use semantic tokens and be accessible */
+.btn-primary, .btn-primary:hover, .btn-primary:focus {
+  background-color: var(--btn-primary);
+  color: var(--on-primary);
+  border-color: transparent;
+}
+.btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-color); }
+.btn-sm { padding: 0.25rem 0.5rem; font-size: 0.85rem; }
+
+.image-upload-item .image-upload-markdown { min-width: 120px; }
+.image-upload-item .image-upload-insert { margin-left: 6px; }
+.image-upload-item .image-upload-delete { margin-left: 6px; }
+
+/* Make settings sidebar link more prominent for image management */
+.settings-sidebar a[href*="images"] { font-weight: 700; }

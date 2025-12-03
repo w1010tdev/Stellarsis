@@ -8,6 +8,7 @@
         <h3>设置</h3>
         <a href="{{ url_for('settings_index') }}" class="active">总览</a>
         <a href="{{ url_for('profile') }}">修改个人资料</a>
+        <a href="{{ url_for('settings_images') }}">我的图片</a>
         <a href="{{ url_for('change_password') }}">修改密码</a>
         <a href="{{ url_for('settings_follows') }}">关注管理</a>
         <a href="{{ url_for('logout') }}" style="color:var(--danger-color);">退出登录</a>
@@ -20,13 +21,11 @@
             <label for="theme-select">主题模式：</label>
             <select id="theme-select" class="theme-select" onchange="setTheme(this.value)">
                 <option value="light">明亮 (Light)</option>
-                <option value="dark">暗色 (Dark)</option>
                 <option value="solarized">暖色 (Solarized)</option>
                 <option value="purple">紫色 (Purple)</option>
                 <option value="ocean">海洋 (Ocean)</option>
                 <option value="mint">薄荷 (Mint)</option>
                 <option value="sunset">落日 (Sunset)</option>
-                <option value="slate">石板 (Slate)</option>
             </select>
             <script>
                 (function(){

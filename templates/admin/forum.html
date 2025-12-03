@@ -41,6 +41,7 @@
                     <td class="action-buttons">
                         {% if section.id != 1 %}
                             <button class="btn btn-edit" onclick="editSection({{ section.id }}, {{ section.name|tojson }}, {{ (section.description or '')|tojson }})">编辑</button>
+                            <button class="btn btn-secondary" onclick='openSectionUsers({{ section.id }}, {{ section.name|tojson }})'>管理分区用户</button>
                             <button class="btn delete-btn" onclick="deleteSection({{ section.id }}, {{ section.name|tojson }})">删除</button>
                         {% else %}
                             <span class="default-info">默认分区</span>
@@ -76,6 +77,39 @@
                 <button class="btn btn-primary" onclick="submitEditSectionForm()">保存</button>
             </div>
         </div>
+            <!-- 分区用户管理模态框 -->
+            <div class="modal-backdrop" id="sectionUsersModal">
+                <div class="modal-content modal-wide">
+                    <div class="modal-header">
+                        <h3 class="modal-title">管理分区用户 - <span id="sectionUsersTitle"></span></h3>
+                        <button class="modal-close" onclick="closeSectionUsersModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p>点击用户可将其添加到对应权限表，已添加的用户会显示在对应列。再次点击可移除该用户的该权限。</p>
+                        <div style="display:flex;gap:12px;">
+                            <div style="flex:1;">
+                                <h4>SU</h4>
+                                <div id="perm-su" class="perm-column" style="min-height:200px;border:1px solid #eee;padding:8px;border-radius:6px;overflow:auto;"></div>
+                            </div>
+                            <div style="flex:1;">
+                                <h4>777</h4>
+                                <div id="perm-777" class="perm-column" style="min-height:200px;border:1px solid #eee;padding:8px;border-radius:6px;overflow:auto;"></div>
+                            </div>
+                            <div style="flex:1;">
+                                <h4>444</h4>
+                                <div id="perm-444" class="perm-column" style="min-height:200px;border:1px solid #eee;padding:8px;border-radius:6px;overflow:auto;"></div>
+                            </div>
+                            <div style="flex:1;">
+                                <h4>Null</h4>
+                                <div id="perm-null" class="perm-column" style="min-height:200px;border:1px dashed #ddd;padding:8px;border-radius:6px;overflow:auto;color:#666;">未设置权限的用户</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="closeSectionUsersModal()">关闭</button>
+                    </div>
+                </div>
+            </div>
     </div>
     <!-- 创建分区模态框 -->
     <div class="modal-backdrop" id="createSectionModal">
@@ -388,5 +422,79 @@
                 closeDeletePostModal();
             }
         });
+
+        // Section users management
+        var currentSectionId = null;
+        function openSectionUsers(sectionId, sectionName) {
+            currentSectionId = sectionId;
+            document.getElementById('sectionUsersTitle').textContent = sectionName || sectionId;
+                document.getElementById('perm-su').innerHTML = '加载中...';
+            document.getElementById('perm-777').innerHTML = '加载中...';
+            document.getElementById('perm-444').innerHTML = '加载中...';
+            document.getElementById('perm-null').innerHTML = '加载中...';
+            showModal('sectionUsersModal');
+            fetch(`/api/admin/forum/section-users/${sectionId}`)
+                .then(r => r.json())
+                .then(d => {
+                    if (!d || !d.success) {
+                        document.getElementById('perm-su').textContent = '加载失败';
+                        document.getElementById('perm-777').textContent = '加载失败';
+                        document.getElementById('perm-444').textContent = '加载失败';
+                        return;
+                    }
+                    const su = document.getElementById('perm-su');
+                    const s777 = document.getElementById('perm-777');
+                    const s444 = document.getElementById('perm-444');
+                    const snull = document.getElementById('perm-null');
+                    su.innerHTML = ''; s777.innerHTML = ''; s444.innerHTML = ''; snull.innerHTML = '';
+                    d.users.forEach(u => {
+                        const item = document.createElement('div');
+                        item.className = 'perm-user';
+                        item.style.padding = '6px';
+                        item.style.borderBottom = '1px solid #f0f0f0';
+                        item.style.display = 'flex';
+                        item.style.alignItems = 'center';
+                        item.style.justifyContent = 'space-between';
+                        const label = document.createElement('span');
+                        label.textContent = `${u.id} - ${u.nickname || u.username}`;
+                        label.style.marginRight = '8px';
+                        const sel = document.createElement('select');
+                        ['su','777','444','Null'].forEach(opt => {
+                            const o = document.createElement('option');
+                            o.value = opt;
+                            o.textContent = opt === 'Null' ? '无权限' : opt;
+                            if ((u.perm || 'Null') === opt) o.selected = true;
+                            sel.appendChild(o);
+                        });
+                        sel.addEventListener('change', function () {
+                            const t = this.value;
+                            fetch(`/api/admin/users/${u.id}/permissions`, {
+                                method: 'PUT',
+                                headers: {'Content-Type':'application/json'},
+                                body: JSON.stringify({scope: 'forum', target_id: currentSectionId, perm: t})
+                            }).then(r=>r.json()).then(res=>{
+                                if (res && res.success) {
+                                    openSectionUsers(currentSectionId, document.getElementById('sectionUsersTitle').textContent);
+                                } else {
+                                    alert('更新失败: ' + (res && res.message || ''));
+                                }
+                            }).catch(e=>{ alert('请求失败'); });
+                        });
+                        item.appendChild(label);
+                        item.appendChild(sel);
+
+                        if (u.perm === 'su') su.appendChild(item);
+                        else if (u.perm === '777') s777.appendChild(item);
+                        else if (u.perm === '444') s444.appendChild(item);
+                        else snull.appendChild(item);
+                    });
+                }).catch(e=>{
+                    document.getElementById('perm-su').textContent = '加载失败';
+                    document.getElementById('perm-777').textContent = '加载失败';
+                    document.getElementById('perm-444').textContent = '加载失败';
+                });
+        }
+
+        function closeSectionUsersModal() { hideModal('sectionUsersModal'); }
     </script>
 {% endblock %}

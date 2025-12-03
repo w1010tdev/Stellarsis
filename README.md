@@ -71,6 +71,15 @@ Stellarsis is a feature-rich real-time chat and forum system that combines chat 
 - **前端**: HTML/CSS/JavaScript
 - **实时消息**: WebSocket (降级到轮询)
 
+## 管理与维护 / Admin & Maintenance
+
+- 管理面板新增：
+   - 一键下载项目根目录压缩包（`/down`，管理员）。
+   - 下载 SQLite 数据库文件（`/downdb`，当使用 SQLite 时，管理员可下载）。
+   - 管理员可触发按文件重新统计上传大小（按钮调用 `/api/admin/recount-file-size`）。
+
+- 开发者调试：前端提供一个控制台入口用于模拟 WebSocket 不可用并启用轮询降级（在浏览器控制台调用开发函数以切换）。
+
 ## 安装与部署 / Installation and Deployment
 
 1. 安装依赖：
@@ -93,3 +102,14 @@ Stellarsis is a feature-rich real-time chat and forum system that combines chat 
 ## 许可证 / License
 
 MIT License
+
+## 上传图片 / Image Upload
+系统默认启用了用户图片上传功能，配置可通过 `config.py` 修改：
+
+- `UPLOAD_FOLDER`：文件保存目录，默认 `static/uploads`。
+- `ALLOWED_IMAGE_EXTENSIONS`：允许的图片扩展名列表，默认 `{'png', 'jpg', 'jpeg', 'gif', 'webp'}`。
+- `IMAGE_MAX_SIZE`：单张图片最大大小（字节），默认值为 5MB。
+
+前端上传接口： `POST /api/upload/image`（multipart/form-data, 字段 `file`），返回 JSON 包含 `url` 和 `markdown` 字段，便于复制与插入。
+
+注意：为支持内存受限的部署（例如 2GB 内存）且用户可能上传非常大的图片集合，服务端已实现流式写入：上传文件直接保存到磁盘后再做文件头检测与入库，避免将整个文件读入内存。

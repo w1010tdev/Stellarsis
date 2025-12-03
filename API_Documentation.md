@@ -1,362 +1,127 @@
-# Stellarsis API 文档 / API Documentation
+# Stellarsis API 文档（根据 `app.py` 自动生成）
 
-## 概述 / Overview
+下面列出应用在 `app.py` 中实现的主要 HTTP REST 接口与 WebSocket 事件。大多数接口需要登录（基于 session），管理员接口需要 `current_user.is_admin()`。
 
-本文档描述了Stellarsis系统的API接口，包括REST API和WebSocket事件。
+注意：此文档为简明参考，示例响应仅展示关键字段。
 
-This document describes the API interfaces of the Stellarsis system, including REST APIs and WebSocket events.
+## 认证
+- 登录页面（表单）: `GET /login` 以及 `POST /login`（表单字段：`username`,`password`）。
+- 登出: `GET /logout`。
 
-## 认证 / Authentication
+## 用户与设置
+- 修改密码: `GET/POST /change_password`（表单）。
+- 个人资料: `GET/POST /profile`（表单，字段示例：`nickname`,`color`,`badge`）。
 
-大部分API需要用户认证，通过session进行验证。
+## 聊天（HTTP API）
+- 获取聊天室历史（按时间升序，返回原始 Markdown）
+  - `GET /api/chat/<room_id>/history`
+  - 查询参数：`limit`（默认50，最大100），`offset`（偏移）
+  - 返回：`{ messages: [{id, content, timestamp, user_id, username, nickname, color, badge}, ...] }
 
-Most APIs require user authentication via session.
+- 发送消息（HTTP POST 备用）
+  - `POST /api/chat/send`（支持 JSON 或表单）
+  - 请求示例 JSON：`{ "room_id": 1, "message": "..." }`
+  - 返回：`{ success: true }` 或错误码（403/400）
 
-## REST API
+- 删除消息（HTTP）
+  - `DELETE /api/chat/<room_id>/messages/<message_id>`
+  - 说明：管理员或具有相应权限的用户可删除；777 可删除自己的消息。
 
-### 用户相关 / User Related
+- 全局在线计数：`GET /api/online_count`
 
-#### 登录 / Login
-- **POST** `/login`
-- **描述**: 用户登录
-- **请求体**:
-  ```json
-  {
-    "username": "string",
-    "password": "string"
-  }
-  ```
-- **响应**:
-  ```json
-  {
-    "success": true,
-    "redirect": "/chat"
-  }
-  ```
+- 未读计数：`GET /api/last_views/unread_counts`（返回当前用户在可访问聊天室与分区上的未读数映射）
 
-#### 登出 / Logout
-- **GET** `/logout`
-- **描述**: 用户登出
-- **响应**: 重定向到登录页
+## 论坛（HTTP API）
+- 列表/页面：`GET /forum`, `GET /forum/section/<section_id>`, `GET /forum/thread/<thread_id>`（页面视图）
+- 发布主题：`POST /forum/new/<section_id>`（表单）
+- 回复：`POST /api/forum/reply`（表单，字段 `thread_id`,`content`）
+- 删除主题或回复（管理员权限或分区权限）：
+  - 删除主题: `DELETE /api/forum/thread/<thread_id>`
+  - 删除回复: `DELETE /api/forum/reply/<reply_id>`
 
-#### 修改密码 / Change Password
-- **POST** `/change_password`
-- **描述**: 修改用户密码
-- **请求体**:
-  ```json
-  {
-    "old_password": "string",
-    "new_password": "string",
-    "confirm_password": "string"
-  }
-  ```
-- **响应**:
-  ```json
-  {
-    "success": true,
-    "message": "密码修改成功"
-  }
-  ```
+## 上传图片
+- 上传图片（登录）
+  - `POST /api/upload/image`（multipart/form-data, 字段名 `file`）
+  - 行为：文件流式写入磁盘 -> 读取头部判断类型 -> 如果合法，写入 `user_images` 并返回 URL 和 Markdown。
+  - 返回示例：`{ success: true, url: "/static/..., markdown: "![alt](url)", id: <image_id>, filename: "..." }`
 
-#### 更新个人资料 / Update Profile
-- **POST** `/profile`
-- **描述**: 更新用户个人资料
-- **请求体**:
-  ```json
-  {
-    "nickname": "string",
-    "color": "string",
-    "badge": "string"
-  }
-  ```
+- 列出当前用户图片：`GET /api/upload/images` 返回 `images: [{id, filename, url, markdown, uploaded}, ...]`
+- 删除图片：`DELETE /api/upload/image/<image_id>`（图片所有者或管理员）
 
-### 聊天室相关 / Chat Room Related
+## 管理员 REST API（需管理员权限）
+（列出常用管理接口，均以 JSON 返回）
 
-#### 获取聊天室历史消息 / Get Chat Room History
-- **GET** `/api/chat/{room_id}/history`
-- **描述**: 获取指定聊天室的历史消息
-- **参数**:
-  - `room_id`: 聊天室ID
-  - `page`: 页码 (可选, 默认1)
-  - `limit`: 每页数量 (可选, 默认50)
-- **响应**:
-  ```json
-  {
-    "messages": [
-      {
-        "id": 1,
-        "content": "消息内容",
-        "timestamp": "2023-01-01T00:00:00Z",
-        "user_id": 1,
-        "username": "用户名",
-        "nickname": "昵称",
-        "color": "#颜色",
-        "badge": "徽章"
-      }
-    ],
-    "has_more": true,
-    "page": 1
-  }
-  ```
+- 管理界面页面：
+  - `GET /admin/index`（渲染 admin 页面）
+  - `GET /admin/chat`, `GET /admin/forum`, `GET /admin/users`, `GET /admin/db/`
 
-#### 发送消息 / Send Message
-- **POST** `/api/chat/send`
-- **描述**: 发送聊天消息
-- **请求体**:
-  ```json
-  {
-    "room_id": 1,
-    "message": "消息内容"
-  }
-  ```
-- **响应**:
-  ```json
-  {
-    "success": true,
-    "message": {
-      "id": 1,
-      "content": "消息内容",
-      "timestamp": "2023-01-01T00:00:00Z",
-      "user_id": 1,
-      "username": "用户名",
-      "nickname": "昵称"
-    }
-  }
-  ```
+- 聊天室管理：
+  - 列表: `GET /api/admin/chat/rooms` -> `{ success: true, rooms: [{id,name,description}, ...] }`
+  - 创建: `POST /api/admin/chat/rooms`（JSON `{name,description}`）
+  - 更新: `PUT /api/admin/chat/rooms/<room_id>`（JSON `{name,description}`）
+  - 删除: `DELETE /api/admin/chat/rooms/<room_id>`（注意：默认聊天室ID=1 受保护，无法删除）
+  - 删除消息批量: `DELETE /api/admin/chat/messages` 可带 `room_id` 与 `before` 参数
+  - 房间用户列表（两种可用路径，文档推荐使用 section-users 以保持与论坛一致）：
+    - `GET /api/admin/chat/room-users/<room_id>`
+    - `GET /api/admin/chat/section-users/<room_id>` (别名，返回相同数据结构：`{ success:true, users: [{id,username,nickname,perm}, ...] }`)
 
-#### 删除消息 / Delete Message
-- **DELETE** `/api/chat/{room_id}/messages/{message_id}`
-- **描述**: 删除指定消息
-- **参数**:
-  - `room_id`: 聊天室ID
-  - `message_id`: 消息ID
-- **响应**:
-  ```json
-  {
-    "success": true,
-    "message": "消息已删除"
-  }
-  ```
+- 论坛管理：
+  - 列表: `GET /api/admin/forum/sections` -> `{ success:true, sections: [{id,name,description}, ...] }`
+  - 创建: `POST /api/admin/forum/sections`（JSON `{name,description}`）
+  - 更新: `PUT /api/admin/forum/sections/<section_id>`
+  - 删除: `DELETE /api/admin/forum/sections/<section_id>`（默认分区ID=1 受保护）
+  - 分区用户列表: `GET /api/admin/forum/section-users/<section_id>` -> `{ success:true, users: [{id,username,nickname,perm}, ...] }`
 
-### 论坛相关 / Forum Related
+- 用户管理与权限：
+  - 获取用户权限详情: `GET /api/admin/users/<user_id>/permissions` -> 返回该用户在所有聊天室与分区的权限
+  - 更新用户权限: `PUT /api/admin/users/<user_id>/permissions`（JSON `{scope:'chat'|'forum', target_id:<id>, perm:'su'|'777'|'444'|'Null'}`）
+  - 更新用户信息: `PUT /api/admin/users/<user_id>`（JSON 可含 username,nickname,color,badge）
+  - 删除用户: `DELETE /api/admin/users/<user_id>`（注意：ID=1 的超级管理员受保护）
+  - 创建用户: `POST /api/admin/users`（JSON `{username,password,nickname,color,badge,role}`）
+  - 修改角色: `PUT /api/admin/users/<user_id>/role`（JSON `{role:'user'|'admin'}`）
 
-#### 发布帖子 / Create Post
-- **POST** `/forum/new/{section_id}`
-- **描述**: 在指定分区发布新帖子
-- **参数**:
-  - `section_id`: 分区ID
-- **请求体**:
-  ```json
-  {
-    "title": "帖子标题",
-    "content": "帖子内容"
-  }
-  ```
+- 系统与维护：
+  - 获取系统信息: `GET /api/admin/system-info`（内存/时间等）
+  - 清除缓存: `POST /api/admin/clear-cache`
+  - 优化数据库(VACUUM): `POST /api/admin/optimize-database`
+  - 备份数据库（创建备份文件）: `POST /api/admin/backup-database`
+  - 重启服务器: `POST /api/admin/restart`
+  - 关机: `POST /api/admin/shutdown`（JSON `{reason: '...'}'`）
 
-#### 删除帖子 / Delete Post
-- **DELETE** `/api/forum/thread/{thread_id}`
-- **描述**: 删除指定帖子
-- **参数**:
-  - `thread_id`: 帖子ID
+- 管理员文件/下载：
+  - 下载 uploads 压缩包: `GET /admin/download-images-zip`（返回 uploads.zip）
+  - 打包项目根目录下载（排除大目录）: `GET /down` 或者另一路径 `/down`（根据部署两个路由均存在）
+  - 下载数据库文件 (SQLite): `GET /downdb`
 
-#### 发布回复 / Create Reply
-- **POST** `/api/forum/reply`
-- **描述**: 对帖子发布回复
-- **请求体**:
-  ```json
-  {
-    "thread_id": 1,
-    "content": "回复内容"
-  }
-  ```
+- 上传统计/校正：
+  - 通过记录统计：`POST /api/admin/recalculate-upload-sizes`（返回每用户上传总和）
+  - 按文件扫描并更新文件大小字段：`POST /api/admin/recount-file-size`（返回 `totals`, `updated_users`, `total_files`）
 
-#### 删除回复 / Delete Reply
-- **DELETE** `/api/forum/reply/{reply_id}`
-- **描述**: 删除指定回复
-- **参数**:
-  - `reply_id`: 回复ID
+## WebSocket 事件（Socket.IO）
+- 连接/断开：`connect` / `disconnect`（认证后连接会为用户更新时间戳）
+- 加入/离开房间：`join`（数据 `{room: <id>}`） / `leave`
+- 发送消息（实时）：`send_message`（数据 `{room_id, message, client_id?}`）
+  - 服务器会将消息保存到数据库并在房间内 emit `message`（包含服务器分配的 `id`）
+- 在线用户列表请求：`get_online_users`（返回 `online_users` 事件）
+- 全局在线数请求：`get_global_online_count` -> `global_online_count`
+- 用户加入/离开广播：`user_join` / `user_leave`
+- 删除消息广播：`message_deleted`（当服务器删除一条消息后广播）
 
-### 关注系统 / Following System
+## 权限说明
+- 权限值：`su`（超级）、`777`（发送）、`444`（只读）、`Null`（无权限）
 
-#### 获取关注列表 / Get Following List
-- **GET** `/api/follow/following`
-- **描述**: 获取当前用户关注的用户列表
-- **响应**:
-  ```json
-  {
-    "success": true,
-    "following": [
-      {
-        "id": 1,
-        "username": "用户名",
-        "nickname": "昵称",
-        "color": "#颜色",
-        "badge": "徽章"
-      }
-    ]
-  }
-  ```
+## 错误码
+- `200` 成功
+- `400` 请求参数错误
+- `401` 未认证（页面重定向到登录）
+- `403` 权限不足
+- `404` 未找到资源
+- `413` 请求实体过大（上传）
+- `500` 服务器错误
 
-#### 切换关注 / Toggle Follow
-- **POST** `/api/follow/toggle`
-- **描述**: 关注或取消关注用户
-- **请求体**:
-  ```json
-  {
-    "user_id": 1
-  }
-  ```
-- **响应**:
-  ```json
-  {
-    "success": true,
-    "action": "follow" // 或 "unfollow"
-  }
-  ```
+---
 
-#### 搜索用户 / Search Users
-- **GET** `/api/search_users?q={query}`
-- **描述**: 搜索用户
-- **参数**:
-  - `q`: 搜索关键词
-- **响应**:
-  ```json
-  {
-    "users": [
-      {
-        "id": 1,
-        "username": "用户名",
-        "nickname": "昵称"
-      }
-    ]
-  }
-  ```
-
-### 在线状态 / Online Status
-
-#### 获取在线人数 / Get Online Count
-- **GET** `/api/online_count`
-- **描述**: 获取全局在线用户数
-- **响应**:
-  ```json
-  {
-    "count": 5
-  }
-  ```
-
-#### 获取未读计数 / Get Unread Counts
-- **GET** `/api/last_views/unread_counts`
-- **描述**: 获取聊天室和论坛的未读消息数
-- **响应**:
-  ```json
-  {
-    "chat_unreads": {
-      "1": 3,
-      "2": 1
-    },
-    "forum_unreads": {
-      "1": 2,
-      "3": 5
-    }
-  }
-  ```
-
-### 管理员相关 / Admin Related
-
-#### 管理员面板 / Admin Panel
-- **GET** `/admin`
-- **描述**: 获取管理员面板数据
-
-#### 管理员聊天室管理 / Admin Chat Room Management
-- **GET** `/api/admin/chat/rooms`: 获取聊天室列表
-- **POST** `/api/admin/chat/rooms`: 创建聊天室
-- **PUT** `/api/admin/chat/rooms/{room_id}`: 更新聊天室
-- **DELETE** `/api/admin/chat/rooms/{room_id}`: 删除聊天室
-
-#### 管理员论坛管理 / Admin Forum Management
-- **POST** `/api/admin/forum/sections`: 创建论坛分区
-- **PUT** `/api/admin/forum/sections/{section_id}`: 更新论坛分区
-- **DELETE** `/api/admin/forum/sections/{section_id}`: 删除论坛分区
-
-## WebSocket 事件 / WebSocket Events
-
-### 连接事件 / Connection Events
-
-#### 连接 / Connect
-- **事件**: `connect`
-- **描述**: 客户端连接到服务器
-- **触发**: 客户端连接时自动触发
-
-#### 断开连接 / Disconnect
-- **事件**: `disconnect`
-- **描述**: 客户端断开连接
-- **触发**: 客户端断开连接时触发
-
-### 聊天事件 / Chat Events
-
-#### 加入房间 / Join Room
-- **事件**: `join`
-- **发送**: 客户端 → 服务器
-- **数据**:
-  ```json
-  {
-    "room": 1
-  }
-  ```
-
-#### 离开房间 / Leave Room
-- **事件**: `leave`
-- **发送**: 客户端 → 服务器
-- **数据**:
-  ```json
-  {
-    "room": 1
-  }
-  ```
-
-#### 发送消息 / Send Message
-- **事件**: `send_message`
-- **发送**: 客户端 → 服务器
-- **数据**:
-  ```json
-  {
-    "room_id": 1,
-    "message": "消息内容",
-    "client_id": "客户端ID"
-  }
-  ```
-
-#### 接收消息 / Receive Message
-- **事件**: `message`
-- **发送**: 服务器 → 客户端
-- **数据**:
-  ```json
-  {
-    "id": 1,
-    "content": "消息内容",
-    "timestamp": "2023-01-01T00:00:00Z",
-    "user_id": 1,
-    "username": "用户名",
-    "nickname": "昵称",
-    "color": "#颜色",
-    "badge": "徽章",
-    "client_id": "客户端ID" // 可选
-  }
-  ```
-
-#### 用户加入 / User Join
-- **事件**: `user_join`
-- **发送**: 服务器 → 所有客户端
-- **数据**:
-  ```json
-  {
-    "user_id": 1,
-    "username": "用户名",
-    "nickname": "昵称",
-    "room_id": 1
-  }
-  ```
-- **描述**: 当用户加入聊天室时广播，用于关注系统
+如果你希望我把这份文档进一步导出为 OpenAPI/Swagger 规范（yaml/json），或将其插入到站点的 `/admin/api` 页面，我可以继续生成对应的文件并修改模板。
 
 #### 用户离开 / User Leave
 - **事件**: `user_leave`
@@ -448,3 +213,38 @@ Most APIs require user authentication via session.
 
 - **API 版本**: 1.0
 - **最后更新**: 2023年
+
+## 额外事件 / Additional WebSocket Events
+
+### 请求删除消息 / delete_message (客户端 -> 服务器)
+- **事件**: `delete_message`
+- **描述**: 客户端请求服务器删除指定消息（优先使用 WebSocket，当不可用时可使用 HTTP DELETE）
+- **数据**:
+  ```json
+  {
+    "room_id": 1,
+    "message_id": 123
+  }
+  ```
+
+### 消息已删除广播 / message_deleted (服务器 -> 客户端)
+- **事件**: `message_deleted`
+- **描述**: 服务器在删除数据库中的消息后，广播该事件以便各客户端更新 UI
+- **数据**:
+  ```json
+  {
+    "id": 123,
+    "room_id": 1,
+    "deleted_by": 2,
+    "timestamp": "2025-12-02T12:00:00Z"
+  }
+  ```
+
+客户端实现说明:
+- 推荐在具备 WebSocket 的情况下优先向服务器发送 `delete_message`，服务器验证并删除后广播 `message_deleted`，客户端收到后应把对应消息替换为“该消息已被删除”的占位元素；如果使用轮询/AJAX 的降级方案，轮询到服务器历史列表不包含某条消息时也应把该消息标记为已删除。
+
+## 管理面板 - 直接浏览数据库
+
+如果服务器安装了 `Flask-Admin`，系统会在 `/admin/db` 下开放一个只对管理员可见的数据库浏览和编辑界面（基于模型视图）。该界面允许通过浏览器直接查看、搜索和编辑数据表（用户、消息、分区、权限等）。
+
+注意: 在生产环境中启用该界面时请确保仅允许受信任的管理员访问，并使用 HTTPS + 强密码以及 IP 白名单/额外多因素认证以降低风险。

@@ -34,11 +34,13 @@
                     <td>{{ room.name }}</td>
                     <td>{{ room.description or '无描述' }}</td>
                     <td class="action-buttons">
+                        <!-- 默认聊天室仍显示编辑与用户管理，但不显示删除按钮 -->
+                        <button class="btn btn-edit" onclick="editRoom({{ room.id }}, '{{ room.name|e }}', '{{ room.description|e }}')">编辑</button>
+                        <button class="btn btn-secondary" onclick='openRoomUsers({{ room.id }}, {{ room.name|tojson }})'>管理聊天室用户</button>
                         {% if room.id != 1 %}
-                            <button class="btn btn-edit" onclick="editRoom({{ room.id }}, '{{ room.name|e }}', '{{ room.description|e }}')">编辑</button>
                             <button class="btn delete-btn" onclick="deleteRoom({{ room.id }}, '{{ room.name|e }}')">删除</button>
                         {% else %}
-                            <span class="default-info">默认聊天室</span>
+                            <span class="default-info">默认聊天室（不可删除）</span>
                         {% endif %}
                     </td>
                 </tr>
@@ -68,6 +70,40 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeCreateModal()">取消</button>
                 <button class="btn btn-primary" onclick="submitCreateRoomForm()">创建</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 聊天室用户管理模态框（独立于其他模态，避免嵌套导致透明/层叠问题） -->
+    <div class="modal-backdrop" id="roomUsersModal">
+        <div class="modal-content modal-wide">
+            <div class="modal-header">
+                <h3 class="modal-title">管理聊天室用户 - <span id="roomUsersTitle"></span></h3>
+                <button class="modal-close" onclick="closeRoomUsersModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>点击用户可将其添加到对应权限（su/777/444），再次点击可移除该权限。</p>
+                <div style="display:flex;gap:12px;">
+                    <div style="flex:1;">
+                        <h4>SU</h4>
+                        <div id="room-perm-su" class="perm-column" style="min-height:200px;border:1px solid #eee;padding:8px;border-radius:6px;overflow:auto;"></div>
+                    </div>
+                    <div style="flex:1;">
+                        <h4>777</h4>
+                        <div id="room-perm-777" class="perm-column" style="min-height:200px;border:1px solid #eee;padding:8px;border-radius:6px;overflow:auto;"></div>
+                    </div>
+                    <div style="flex:1;">
+                        <h4>444</h4>
+                        <div id="room-perm-444" class="perm-column" style="min-height:200px;border:1px solid #eee;padding:8px;border-radius:6px;overflow:auto;"></div>
+                    </div>
+                    <div style="flex:1;">
+                        <h4>Null</h4>
+                        <div id="room-perm-null" class="perm-column" style="min-height:200px;border:1px dashed #ddd;padding:8px;border-radius:6px;overflow:auto;color:#666;">未设置权限的用户</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeRoomUsersModal()">关闭</button>
             </div>
         </div>
     </div>
@@ -378,5 +414,71 @@
                 closeClearRoomModal();
             }
         });
+
+        // Room users management
+        var currentRoomId = null;
+        function openRoomUsers(roomId, roomName) {
+            currentRoomId = roomId;
+            document.getElementById('roomUsersTitle').textContent = roomName || roomId;
+            document.getElementById('room-perm-su').innerHTML = '加载中...';
+            document.getElementById('room-perm-777').innerHTML = '加载中...';
+            document.getElementById('room-perm-444').innerHTML = '加载中...';
+            document.getElementById('room-perm-null').innerHTML = '加载中...';
+            showModal('roomUsersModal');
+            // Prefer chat-specific section-users endpoint for clarity
+            fetch(`/api/admin/chat/section-users/${roomId}`)
+                .then(r => r.json())
+                .then(d => {
+                    if (!d || !d.success) {
+                        document.getElementById('room-perm-su').textContent = '加载失败';
+                        document.getElementById('room-perm-777').textContent = '加载失败';
+                        document.getElementById('room-perm-444').textContent = '加载失败';
+                        return;
+                    }
+                    const su = document.getElementById('room-perm-su');
+                    const s777 = document.getElementById('room-perm-777');
+                    const s444 = document.getElementById('room-perm-444');
+                    const snull = document.getElementById('room-perm-null');
+                    su.innerHTML = ''; s777.innerHTML = ''; s444.innerHTML = ''; snull.innerHTML = '';
+                    d.users.forEach(u => {
+                        const item = document.createElement('div');
+                        item.className = 'perm-user';
+                        item.style.padding = '6px';
+                        item.style.borderBottom = '1px solid #f0f0f0';
+                        item.style.display = 'flex';
+                        item.style.alignItems = 'center';
+                        item.style.justifyContent = 'space-between';
+                        const label = document.createElement('span');
+                        label.textContent = `${u.id} - ${u.nickname || u.username}`;
+                        label.style.marginRight = '8px';
+                        const sel = document.createElement('select');
+                        ['su','777','444','Null'].forEach(opt => {
+                            const o = document.createElement('option');
+                            o.value = opt;
+                            o.textContent = opt === 'Null' ? '无权限' : opt;
+                            if ((u.perm || 'Null') === opt) o.selected = true;
+                            sel.appendChild(o);
+                        });
+                        sel.addEventListener('change', function () {
+                            const t = this.value;
+                            fetch(`/api/admin/users/${u.id}/permissions`, {
+                                method: 'PUT', headers: {'Content-Type':'application/json'},
+                                body: JSON.stringify({scope:'chat', target_id: currentRoomId, perm: t})
+                            }).then(r=>r.json()).then(res=>{
+                                if (res && res.success) openRoomUsers(currentRoomId, document.getElementById('roomUsersTitle').textContent);
+                                else alert('更新失败: ' + (res && res.message || ''));
+                            }).catch(e=>{ alert('请求失败'); });
+                        });
+                        item.appendChild(label);
+                        item.appendChild(sel);
+                        if (u.perm === 'su') su.appendChild(item);
+                        else if (u.perm === '777') s777.appendChild(item);
+                        else if (u.perm === '444') s444.appendChild(item);
+                        else snull.appendChild(item);
+                    });
+                }).catch(e=>{ document.getElementById('room-perm-su').textContent = '加载失败'; document.getElementById('room-perm-777').textContent = '加载失败'; document.getElementById('room-perm-444').textContent = '加载失败'; });
+        }
+
+        function closeRoomUsersModal() { hideModal('roomUsersModal'); }
     </script>
 {% endblock %}

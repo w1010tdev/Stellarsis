@@ -78,6 +78,21 @@
             </div>
             <div class="modal-body">
                 <p id="permissionRoleTip" class="permission-tip"></p>
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+                    <label style="margin:0 4px 0 0;">快速添加权限:</label>
+                    <select id="perm-scope" class="form-control" style="width:120px;">
+                        <option value="chat">聊天室</option>
+                        <option value="forum">贴吧分区</option>
+                    </select>
+                    <select id="perm-target" class="form-control" style="width:280px;"></select>
+                    <select id="perm-value" class="form-control" style="width:140px;">
+                        <option value="su">su</option>
+                        <option value="777">777</option>
+                        <option value="444">444</option>
+                        <option value="Null">Null</option>
+                    </select>
+                    <button id="perm-apply-btn" class="btn btn-primary">应用</button>
+                </div>
                 <div class="permission-section">
                     <h4>聊天室权限</h4>
                     <table class="permission-table">
@@ -472,6 +487,26 @@
                     if (data.success) {
                         renderPermissionTable('chatPermissionBody', data.chat, 'chat');
                         renderPermissionTable('forumPermissionBody', data.forum, 'forum');
+                        // populate quick-permission targets
+                        fetch('/api/admin/chat/rooms').then(r=>r.json()).then(rr=>{
+                            if (rr && rr.success) {
+                                const sel = document.getElementById('perm-target');
+                                sel.innerHTML = '';
+                                rr.rooms.forEach(room => { var opt = document.createElement('option'); opt.value = room.id; opt.textContent = `聊天室: ${room.name}`; sel.appendChild(opt); });
+                            }
+                        }).catch(()=>{});
+                        fetch('/api/admin/forum/sections').then(r=>r.json()).then(rr=>{
+                            if (rr && rr.success) {
+                                const sel = document.getElementById('perm-target');
+                                rr.sections.forEach(sec => { var opt = document.createElement('option'); opt.value = sec.id; opt.textContent = `分区: ${sec.name}`; sel.appendChild(opt); });
+                            }
+                        }).catch(()=>{});
+                        document.getElementById('perm-apply-btn').onclick = function(){
+                            const scope = document.getElementById('perm-scope').value;
+                            const target = document.getElementById('perm-target').value;
+                            const value = document.getElementById('perm-value').value;
+                            fetch(`/api/admin/users/${userId}/permissions`, { method:'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({scope: scope, target_id: Number(target), perm: value}) }).then(r=>r.json()).then(res=>{ if (res && res.success) { showToast('success','权限已更新'); openPermissionModal(userId, username, role); } else showToast('error', '更新失败'); }).catch(e=>showToast('error','请求失败'));
+                        };
                     } else {
                         throw new Error(data.message || '加载权限失败');
                     }

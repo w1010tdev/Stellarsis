@@ -9,6 +9,7 @@
         <h3>设置</h3>
         <a href="{{ url_for('settings_index') }}">总览</a>
         <a href="{{ url_for('profile') }}" class="active">修改个人资料</a>
+            <a href="{{ url_for('settings_images') }}">我的图片</a>
         <a href="{{ url_for('change_password') }}">修改密码</a>
         <a href="{{ url_for('settings_follows') }}">关注管理</a>
         <a href="{{ url_for('logout') }}" style="color:var(--danger-color);">退出登录</a>
@@ -59,9 +60,20 @@
                 </div>
                 <div style="display:flex;gap:12px;align-items:center;margin-top:8px">
                     <button type="submit" class="btn btn-primary">保存设置</button>
-                    <a href="{{ url_for('change_password') }}" class="btn btn-secondary">修改密码</a>
                 </div>
             </form>
+            <div style="margin-top:18px;">
+                <h3>上传图片（仅支持图片）</h3>
+                <div class="form-group">
+                    <input id="profile-image-input" type="file" accept="image/*" class="form-control" style="display:none;" />
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <button id="profile-upload-btn" class="btn btn-primary">上传图片</button>
+                        <button id="profile-open-list" class="btn btn-outline">我的图片</button>
+                    </div>
+                    <div id="profile-image-preview" style="margin-top:8px"></div>
+                </div>
+                <!-- 移除个人资料页面的图片列表，避免占用视觉空间 -->
+            </div>
         </div>
     </section>
 </div>
@@ -124,5 +136,15 @@
 
         refreshPreview();
     });
+</script>
+<script src="{{ url_for('static', filename='js/uploads.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('profile-upload-btn');
+    var input = document.getElementById('profile-image-input');
+    var openBtn = document.getElementById('profile-open-list');
+    if (btn && input) btn.addEventListener('click', function () { input.click(); });
+    if (openBtn) openBtn.addEventListener('click', function () { window.location.href = "{{ url_for('settings_images') }}"; });
+});
 </script>
 {% endblock %}

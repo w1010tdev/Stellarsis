@@ -35,7 +35,7 @@
   --site-logo-text-gradient: linear-gradient(135deg, var(--primary-color), var(--accent-start));
   --site-logo-icon-bg: linear-gradient(135deg, var(--primary-color), var(--accent-end));
   --nav-underline-gradient: linear-gradient(90deg, var(--primary-color), var(--accent-start));
-  --settings-sidebar-bg: linear-gradient(180deg, rgba(12,6,30,0.88), rgba(30,12,50,0.9));
+  --settings-sidebar-bg: linear-gradient(180deg, rgba(12,6,30,0.88), rgba(30,12,50,0.9)) !important;
   --settings-sidebar-border: rgba(60,40,100,0.08);
   /* surface/card contrast for purple nocturne */
   --surface-color: #1a0f3a;
@@ -81,4 +81,38 @@ body {
   background-image: var(--background-image) !important;
   background-color: var(--neutral-50) !important;
   color: var(--text-color) !important;
+}
+
+/* Improve code block contrast for purple theme */
+.markdown pre, pre, code, .chat-message pre, .chat-message code {
+  background-color: #1b1230 !important; /* darker purple background */
+  color: #f3f0ff !important; /* high-contrast light text */
+  border-radius: 6px;
+  padding: 0.6rem 0.9rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Courier New', monospace;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  box-shadow: none;
+  overflow: auto;
+}
+
+.markdown code, .chat-message code {
+  background-color: rgba(255,255,255,0.03);
+  color: #f3f0ff !important;
+  padding: 0.12em 0.32em;
+  border-radius: 4px;
+}
+
+/* Ensure fenced code blocks have clear borders and spacing */
+.markdown pre.code-block, pre.fenced, pre {
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+/* Improve token contrast for highlighted languages if present */
+.markdown pre .token, pre .token {
+  color: #f3f0ff !important;
+}
+
+.menu-toggle{
+  color: var(--primary-400) !important;
 }

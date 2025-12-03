@@ -3,162 +3,225 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 {% endblock %}
 {% block head %}
-    <title>管理面板 - 社交平台</title>
+<title>管理面板 - 社交平台</title>
 {% endblock %}
 {% block content %}
-    <div class="admin-container">
-        <h1>管理面板</h1>
-        <div class="admin-dashboard">
-            <div class="dashboard-card">
-                <h2>用户管理</h2>
-                <p>管理平台用户，包括创建、删除和修改用户权限</p>
-                <a href="{{ url_for('user_management') }}" class="btn btn-primary">进入用户管理</a>
-            </div>
-            <div class="dashboard-card">
-                <h2>聊天管理</h2>
-                <p>管理聊天室和聊天消息</p>
-                <a href="{{ url_for('chat_management') }}" class="btn btn-primary">进入聊天管理</a>
-            </div>
-            <div class="dashboard-card">
-                <h2>帖子管理</h2>
-                <p>管理贴吧分区和帖子内容</p>
-                <a href="{{ url_for('forum_management') }}" class="btn btn-primary">进入帖子管理</a>
-            </div>
-            <div class="dashboard-card">
-                <h2>文件管理</h2>
-                <p class="warning-text">警告：仅用于开发环境</p>
-                <a href="{{ url_for('file_manager_view') }}" class="btn btn-primary">进入文件管理</a>
-            </div>
+<div class="admin-container">
+    <h1>管理面板</h1>
+    <div class="admin-dashboard">
+        <div class="dashboard-card">
+            <h2>用户管理</h2>
+            <p>管理平台用户，包括创建、删除和修改用户权限</p>
+            <a href="{{ url_for('user_management') }}" class="btn btn-primary">进入用户管理</a>
         </div>
-        <!-- 管理工具区域 -->
-        <div class="admin-tools" style="margin-top:20px;">
-            <h2>系统管理工具</h2>
-            <div class="admin-actions">
-                <button id="btn-system-info" class="btn btn">系统信息</button>
-                <button id="btn-clear-cache" class="btn btn">清除缓存</button>
-                <button id="btn-backup-db" class="btn btn">备份数据库</button>
-                <button id="btn-optimize-db" class="btn btn">优化数据库</button>
-                <button id="btn-restart" class="btn delete-btn">重启服务器</button>
-                <button id="btn-shutdown" class="btn delete-btn">关停服务器</button>
-                <a href="#" id="btn-view-logs" class="btn btn">查看系统日志</a>
-            </div>
-
-            <div id="admin-tool-result" style="margin-top:12px; display:none; padding:12px; border-radius:6px; background:#fff; box-shadow:var(--shadow-sm);">
-                <pre id="admin-tool-output" style="white-space:pre-wrap; word-break:break-word; margin:0; font-size:0.95rem;"> </pre>
-            </div>
+        <div class="dashboard-card">
+            <h2>聊天管理</h2>
+            <p>管理聊天室和聊天消息</p>
+            <a href="{{ url_for('chat_management') }}" class="btn btn-primary">进入聊天管理</a>
+        </div>
+        <div class="dashboard-card">
+            <h2>帖子管理</h2>
+            <p>管理贴吧分区和帖子内容</p>
+            <a href="{{ url_for('forum_management') }}" class="btn btn-primary">进入帖子管理</a>
+        </div>
+        <div class="dashboard-card">
+            <h2>文件管理</h2>
+            <p class="warning-text">警告：仅用于开发环境</p>
+            <a href="{{ url_for('file_manager_view') }}" class="btn btn-primary">进入文件管理</a>
         </div>
     </div>
+    <!-- 管理工具区域 -->
+    <div class="admin-tools" style="margin-top:20px;">
+        <h2>系统管理工具</h2>
+        <button id="btn-db-admin" class="btn btn">数据库管理</button>
+        <div class="admin-actions">
+            <button id="btn-system-info" class="btn btn">系统信息</button>
+            <button id="btn-clear-cache" class="btn btn">清除缓存</button>
+            <button id="btn-backup-db" class="btn btn">备份数据库</button>
+            <button id="btn-optimize-db" class="btn btn">优化数据库</button>
+            <button id="btn-restart" class="btn delete-btn">重启服务器</button>
+            <button id="btn-shutdown" class="btn delete-btn">关停服务器</button>
+            <button id="btn-recalc-uploads" class="btn btn">重新统计图片大小</button>
+            <button id="btn-recount-files" class="btn btn">重新按文件统计大小</button>
+            <button id="btn-download-root" class="btn btn">下载项目根目录(zip)</button>
+            <button id="btn-download-dbfile" class="btn btn">下载数据库文件</button>
+            <button id="btn-download-images" class="btn btn">下载图片压缩包</button>
+            <a href="#" id="btn-view-logs" class="btn btn">查看系统日志</a>
+        </div>
+
+        <div id="admin-tool-result"
+            style="margin-top:12px; display:none; padding:12px; border-radius:6px; background:#fff; box-shadow:var(--shadow-sm);">
+            <pre id="admin-tool-output"
+                style="white-space:pre-wrap; word-break:break-word; margin:0; font-size:0.95rem;"> </pre>
+        </div>
+    </div>
+</div>
 {% endblock %}
 {% block scripts %}
-    {{ super() }}
-    <script>
-        // 简单助手：显示结果区域
-        function showAdminResult(text, isError) {
-            const container = document.getElementById('admin-tool-result');
-            const output = document.getElementById('admin-tool-output');
-            container.style.display = 'block';
-            container.style.border = isError ? '1px solid #f5c6cb' : '1px solid #c3e6cb';
-            container.style.background = isError ? '#fff5f5' : '#fbfff9';
-            output.textContent = text;
-            // 手机上滚动到结果
-            if (window.innerWidth <= 768) {
-                container.scrollIntoView({behavior: 'smooth', block: 'center'});
-            }
+{{ super() }}
+<script>
+    // 简单助手：显示结果区域
+    function showAdminResult(text, isError) {
+        const container = document.getElementById('admin-tool-result');
+        const output = document.getElementById('admin-tool-output');
+        container.style.display = 'block';
+        container.style.border = isError ? '1px solid #f5c6cb' : '1px solid #c3e6cb';
+        container.style.background = isError ? '#fff5f5' : '#fbfff9';
+        output.textContent = text;
+        // 手机上滚动到结果
+        if (window.innerWidth <= 768) {
+            container.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
+    }
 
-        document.getElementById('btn-system-info').addEventListener('click', function() {
-            fetch('/api/admin/system-info')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        showAdminResult('内存: ' + data.memory_usage + '\n时间: ' + data.server_time + '\nPython: ' + data.python_version + '\nFlask: ' + data.flask_version, false);
-                    } else {
-                        showAdminResult('错误: ' + (data.message || JSON.stringify(data)), true);
-                    }
-                })
-                .catch(err => showAdminResult('请求失败: ' + err.message, true));
-        });
-
-        document.getElementById('btn-clear-cache').addEventListener('click', async function() {
-            const ok = await showConfirm('确认要清除服务器缓存？此操作不会重启服务。', {title: '清除缓存'});
-            if (!ok) return;
-            fetch('/api/admin/clear-cache', {method: 'POST'})
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) showAdminResult('清除缓存成功: ' + (data.message || ''), false);
-                    else showAdminResult('清除缓存失败: ' + (data.message || JSON.stringify(data)), true);
-                })
-                .catch(err => showAdminResult('请求失败: ' + err.message, true));
-        });
-
-        document.getElementById('btn-backup-db').addEventListener('click', async function() {
-            const ok = await showConfirm('是否创建数据库备份？请确认为管理员操作。', {title: '备份数据库'});
-            if (!ok) return;
-            fetch('/api/admin/backup-database', {method: 'POST'})
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) showAdminResult('备份成功: ' + (data.backup_path || data.message || '已创建'), false);
-                    else showAdminResult('备份失败: ' + (data.message || JSON.stringify(data)), true);
-                })
-                .catch(err => showAdminResult('请求失败: ' + err.message, true));
-        });
-
-        document.getElementById('btn-optimize-db').addEventListener('click', async function() {
-            const ok = await showConfirm('确认执行数据库优化（VACUUM）？此操作可能会阻塞数据库短时间。', {title: '数据库优化'});
-            if (!ok) return;
-            fetch('/api/admin/optimize-database', {method: 'POST'})
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) showAdminResult('优化成功: ' + (data.message || ''), false);
-                    else showAdminResult('优化失败: ' + (data.message || JSON.stringify(data)), true);
-                })
-                .catch(err => showAdminResult('请求失败: ' + err.message, true));
-        });
-
-        document.getElementById('btn-restart').addEventListener('click', async function() {
-            const ok = await showConfirm('确认要重启服务器？所有用户连接将中断。', {title: '重启服务器'});
-            if (!ok) return;
-            fetch('/api/admin/restart', {method: 'POST'})
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) showAdminResult('服务器正在重启: ' + (data.message || ''), false);
-                    else showAdminResult('重启失败: ' + (data.message || JSON.stringify(data)), true);
-                })
-                .catch(err => showAdminResult('请求失败: ' + err.message, true));
-        });
-
-        document.getElementById('btn-shutdown').addEventListener('click', async function() {
-            // 先输入原因（可选），showConfirm 在 input 模式下返回字符串或 false
-            const reason = await showConfirm('请输入关停原因（可选）:', {title: '关停服务器', input: true});
-            if (reason === false) return; // 取消
-            const ok = await showConfirm('确认关停服务器？此操作会关闭进程。', {title: '确认'});
-            if (!ok) return;
-            fetch('/api/admin/shutdown', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({reason: (reason || '由管理员触发')})
+    document.getElementById('btn-system-info').addEventListener('click', function () {
+        fetch('/api/admin/system-info')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showAdminResult('内存: ' + data.memory_usage + '\n时间: ' + data.server_time + '\nPython: ' + data.python_version + '\nFlask: ' + data.flask_version, false);
+                } else {
+                    showAdminResult('错误: ' + (data.message || JSON.stringify(data)), true);
+                }
             })
+            .catch(err => showAdminResult('请求失败: ' + err.message, true));
+    });
+
+    document.getElementById('btn-clear-cache').addEventListener('click', async function () {
+        const ok = await showConfirm('确认要清除服务器缓存？此操作不会重启服务。', { title: '清除缓存' });
+        if (!ok) return;
+        fetch('/api/admin/clear-cache', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) showAdminResult('清除缓存成功: ' + (data.message || ''), false);
+                else showAdminResult('清除缓存失败: ' + (data.message || JSON.stringify(data)), true);
+            })
+            .catch(err => showAdminResult('请求失败: ' + err.message, true));
+    });
+
+    document.getElementById('btn-backup-db').addEventListener('click', async function () {
+        const ok = await showConfirm('是否创建数据库备份？请确认为管理员操作。', { title: '备份数据库' });
+        if (!ok) return;
+        fetch('/api/admin/backup-database', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) showAdminResult('备份成功: ' + (data.backup_path || data.message || '已创建'), false);
+                else showAdminResult('备份失败: ' + (data.message || JSON.stringify(data)), true);
+            })
+            .catch(err => showAdminResult('请求失败: ' + err.message, true));
+    });
+
+    document.getElementById('btn-optimize-db').addEventListener('click', async function () {
+        const ok = await showConfirm('确认执行数据库优化（VACUUM）？此操作可能会阻塞数据库短时间。', { title: '数据库优化' });
+        if (!ok) return;
+        fetch('/api/admin/optimize-database', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) showAdminResult('优化成功: ' + (data.message || ''), false);
+                else showAdminResult('优化失败: ' + (data.message || JSON.stringify(data)), true);
+            })
+            .catch(err => showAdminResult('请求失败: ' + err.message, true));
+    });
+
+    document.getElementById('btn-restart').addEventListener('click', async function () {
+        const ok = await showConfirm('确认要重启服务器？所有用户连接将中断。', { title: '重启服务器' });
+        if (!ok) return;
+        fetch('/api/admin/restart', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) showAdminResult('服务器正在重启: ' + (data.message || ''), false);
+                else showAdminResult('重启失败: ' + (data.message || JSON.stringify(data)), true);
+            })
+            .catch(err => showAdminResult('请求失败: ' + err.message, true));
+    });
+
+    document.getElementById('btn-shutdown').addEventListener('click', async function () {
+        // 先输入原因（可选），showConfirm 在 input 模式下返回字符串或 false
+        const reason = await showConfirm('请输入关停原因（可选）:', { title: '关停服务器', input: true });
+        if (reason === false) return; // 取消
+        const ok = await showConfirm('确认关停服务器？此操作会关闭进程。', { title: '确认' });
+        if (!ok) return;
+        fetch('/api/admin/shutdown', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: (reason || '由管理员触发') })
+        })
             .then(res => res.json())
             .then(data => {
                 if (data.success) showAdminResult('关停已触发: ' + (data.message || '') + '\n原因: ' + (data.reason || ''), false);
                 else showAdminResult('关停失败: ' + (data.message || JSON.stringify(data)), true);
             })
             .catch(err => showAdminResult('请求失败: ' + err.message, true));
-        });
+    });
 
-        document.getElementById('btn-view-logs').addEventListener('click', function(e) {
-            e.preventDefault();
-            fetch('/api/admin/system-log')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        const logs = data.logs.map(l => `[${l.timestamp}] ${l.message}`).join('\n\n');
-                        showAdminResult(logs || '无日志', false);
-                    } else {
-                        showAdminResult('获取日志失败: ' + (data.message || JSON.stringify(data)), true);
-                    }
-                })
-                .catch(err => showAdminResult('请求失败: ' + err.message, true));
-        });
-    </script>
+    document.getElementById('btn-view-logs').addEventListener('click', function (e) {
+        e.preventDefault();
+        fetch('/api/admin/system-log')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const logs = data.logs.map(l => `[${l.timestamp}] ${l.message}`).join('\n\n');
+                    showAdminResult(logs || '无日志', false);
+                } else {
+                    showAdminResult('获取日志失败: ' + (data.message || JSON.stringify(data)), true);
+                }
+            })
+            .catch(err => showAdminResult('请求失败: ' + err.message, true));
+    });
+
+    var btnDb = document.getElementById('btn-db-admin');
+    if (btnDb) btnDb.addEventListener('click', function () { window.location.href = '{{ url_for('db_admin') }}'; });
+
+    var btnRecalc = document.getElementById('btn-recalc-uploads');
+    if (btnRecalc) btnRecalc.addEventListener('click', async function () {
+        const ok = await showConfirm('是否重新统计所有用户的上传图片大小？此操作仅统计并返回JSON。', { title: '重新统计图片大小' });
+        if (!ok) return;
+        fetch('/api/admin/recalculate-upload-sizes', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const totals = data.totals || {};
+                    const lines = Object.keys(totals).map(uid => `用户ID ${uid}: ${totals[uid]} 字节`);
+                    showAdminResult('统计结果:\n' + lines.join('\n'));
+                } else {
+                    showAdminResult('执行失败: ' + (data.message || JSON.stringify(data)), true);
+                }
+            })
+            .catch(err => showAdminResult('请求失败: ' + err.message, true));
+    });
+
+    var btnRecountFiles = document.getElementById('btn-recount-files');
+    if (btnRecountFiles) btnRecountFiles.addEventListener('click', async function () {
+        const ok = await showConfirm('将通过扫描磁盘重新统计每个用户上传的文件大小并更新数据库，可能需要一些时间，是否继续？', { title: '重新按文件统计大小' });
+        if (!ok) return;
+        fetch('/api/admin/recount-file-size', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) showAdminResult('完成，更新用户数: ' + (data.updated_users || 0) + '\n总文件数: ' + (data.total_files || 0));
+                else showAdminResult('失败: ' + (data.message || JSON.stringify(data)), true);
+            }).catch(err => showAdminResult('请求失败: ' + err.message, true));
+    });
+
+    var btnDownloadImages = document.getElementById('btn-download-images');
+    if (btnDownloadImages) btnDownloadImages.addEventListener('click', async function () {
+        const ok = await showConfirm('将创建一个静态图片压缩包并下载，可能会占用较多磁盘空间。是否继续？', { title: '下载静态图片压缩包' });
+        if (!ok) return;
+        // Start download by navigating to the admin route; this is a GET that returns a zip
+        window.location.href = '/admin/download-images-zip';
+    });
+
+    var btnDownloadRoot = document.getElementById('btn-download-root');
+    if (btnDownloadRoot) btnDownloadRoot.addEventListener('click', async function () {
+        const ok = await showConfirm('将创建项目根目录压缩包（会排除 uploads/logs 等大文件夹），是否继续？', { title: '下载项目根目录' });
+        if (!ok) return;
+        window.location.href = '/down';
+    });
+
+    var btnDownloadDb = document.getElementById('btn-download-dbfile');
+    if (btnDownloadDb) btnDownloadDb.addEventListener('click', async function () {
+        const ok = await showConfirm('下载数据库文件，仅支持 SQLite，确认吗？', { title: '下载数据库' });
+        if (!ok) return;
+        window.location.href = '/downdb';
+    });
+</script>
 {% endblock %}
