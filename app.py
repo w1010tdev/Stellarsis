@@ -92,6 +92,13 @@ app.teardown_appcontext(lambda exc: db_session.remove())
 # 初始化Socket.IO
 socketio = SocketIO(app, async_mode=app.config['SOCKETIO_ASYNC_MODE'], cors_allowed_origins='*')
 
+# 简单的内存结构用于跟踪用户发送速度与验证码
+# 键：captcha_id -> {'answer': int, 'expires': float, 'user_id': int, 'pending': dict}
+captcha_store = {}
+# 键：user_id -> last_send_time (float seconds)
+last_send_times = {}
+captcha_lock = threading.Lock()
+
 # 初始化登录管理
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -1778,10 +1785,15 @@ def admin_import_users():
                 failed.append({'username': username, 'reason': '用户名已存在'})
                 continue
             try:
+                # 保证批量导入的用户默认处于离线状态：将 last_seen 设置为比 ONLINE_TIMEOUT 更早的时间
+                cutoff_seconds = app.config.get('ONLINE_TIMEOUT', 300)
+                default_last_seen = datetime.utcnow() - timedelta(seconds=(cutoff_seconds + 1))
+
                 new_user = User(
                     username=username,
                     nickname=nickname,
-                    role=role
+                    role=role,
+                    last_seen=default_last_seen
                 )
                 new_user.set_password(password)
                 db_session.add(new_user)
@@ -3032,10 +3044,117 @@ def handle_message(data):
     
     # XSS基础防护
     content = sanitize_content(content)
+    # 检查发送速度：如果两次发送间隔小于725ms，则触发验证码流程
+    now_ts = time.time()
+    with captcha_lock:
+        last_ts = last_send_times.get(current_user.id)
+        # 如果前一次发送时间存在且间隔短，并且本次没有携带 captcha_id，则要求验证码
+        if last_ts and (now_ts - last_ts) < 0.725 and not data.get('captcha_id'):
+            # 生成一个简单的算术验证码
+            import secrets
+            import random
+
+            a = random.randint(1, 9)
+            b = random.randint(1, 9)
+            op = random.choice(['+', '-'])
+            answer = a + b if op == '+' else a - b
+            captcha_id = secrets.token_urlsafe(8)
+            captcha_store[captcha_id] = {
+                'answer': answer,
+                'expires': now_ts + 300,
+                'user_id': current_user.id,
+                'pending': {
+                    'room_id': room_id,
+                    'content': content,
+                    'client_id': data.get('client_id')
+                }
+            }
+            # 只发送给当前连接的客户端，要求输入验证码
+            emit('require_captcha', {
+                'captcha_id': captcha_id,
+                'question': f'{a}{op}{b} = ?'
+            }, room=request.sid)
+            return
+
+    # 如果本次请求携带了 captcha_id 与 captcha_answer，进行验证（并允许通过）
+    captcha_id = data.get('captcha_id')
+    captcha_answer = data.get('captcha_answer')
+    if captcha_id:
+        with captcha_lock:
+            info = captcha_store.get(captcha_id)
+            # 验证存在性、过期以及归属
+            if not info or info.get('user_id') != current_user.id:
+                emit('error', {'message': '验证码无效或已过期'})
+                return
+            if time.time() > info.get('expires', 0):
+                captcha_store.pop(captcha_id, None)
+                emit('error', {'message': '验证码已过期'})
+                return
+            try:
+                provided = int(captcha_answer)
+            except Exception:
+                emit('error', {'message': '验证码输入错误'})
+                return
+            if provided != info['answer']:
+                emit('error', {'message': '验证码错误'})
+                return
+            # 验证通过：将待发送消息替换为存储的 pending（以服务器端为准）
+            pending = info.get('pending', {})
+            room_id = pending.get('room_id', room_id)
+            content = pending.get('content', content)
+            client_id = pending.get('client_id') or data.get('client_id')
+            # 清理验证码条目
+            captcha_store.pop(captcha_id, None)
+
+    # 更新最后发送时间（通过验证或正常发送）
+    with captcha_lock:
+        last_send_times[current_user.id] = now_ts
     
-    # 保存到数据库
+    # 重复消息合并：如果上一条来自同一用户在同一房间且内容相同，则在上一条末尾增加 *2/*3...
+    try:
+        last_msg = db_session.query(ChatMessage).filter_by(
+            user_id=current_user.id, room_id=room_id
+        ).order_by(ChatMessage.id.desc()).first()
+    except Exception:
+        last_msg = None
+
+    if last_msg and last_msg.content:
+        # 提取可能的尾部乘数，例如 "hello*3"
+        m = re.search(r"\*(\d+)$", last_msg.content)
+        base = last_msg.content
+        if m:
+            base = last_msg.content[:m.start()]
+        # 如果基础文本与当前内容相同，则合并计数
+        if base == content:
+            if m:
+                try:
+                    count = int(m.group(1)) + 1
+                except Exception:
+                    count = 2
+            else:
+                count = 2
+            last_msg.content = f"{content}*{count}"
+            db_session.add(last_msg)
+            db_session.commit()
+
+            payload = {
+                'id': last_msg.id,
+                'content': last_msg.content,
+                'timestamp': last_msg.timestamp.isoformat(),
+                'user_id': current_user.id,
+                'username': current_user.username,
+                'nickname': current_user.nickname or current_user.username,
+                'color': current_user.color,
+                'badge': current_user.badge
+            }
+            if client_id:
+                payload['client_id'] = client_id
+            emit('message_updated', payload, room=f'room_{room_id}', include_self=True)
+            return
+
+    # 保存到数据库（非重复的常规消息）
     message = ChatMessage(
-        content=content,  # 存储原始Markdown
+        content=content,
         user_id=current_user.id,
         room_id=room_id
     )

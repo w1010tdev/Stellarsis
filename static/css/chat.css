@@ -398,6 +398,45 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
+
+/* 验证码模态风格 - 与已有模态一致且移动端友好 */
+#captcha-modal .modal-content.small {
+  max-width: 420px;
+  width: 92%;
+  padding: 0.75rem 1rem;
+}
+
+#captcha-modal .modal-body {
+  padding: 8px 4px 12px 4px;
+}
+
+#captcha-modal #captcha-question {
+  font-size: 1.05rem;
+  color: var(--text-color);
+}
+
+#captcha-modal .form-control {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--neutral-200);
+  margin-top: 6px;
+  font-size: var(--text-base);
+}
+
+/* 手机适配：模态在小屏时靠底部弹出更自然 */
+@media (max-width: 640px) {
+  #captcha-modal .modal-content.small {
+    width: 100%;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+  }
+}
   transition: background-color 0.2s ease;
 }
 

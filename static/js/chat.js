@@ -60,6 +60,77 @@ function setupOnlineListModal() {
     });
     console.log('在线名单模态框已设置');
 }
+// 验证码模态相关初始化和事件处理
+function setupCaptchaModal(socket) {
+    const modal = document.getElementById('captcha-modal');
+    if (!modal) return;
+    const closeBtn = modal.querySelector('.modal-close');
+    const cancelBtn = document.getElementById('captcha-cancel');
+    const submitBtn = document.getElementById('captcha-submit');
+    const questionEl = document.getElementById('captcha-question');
+    const answerInput = document.getElementById('captcha-answer');
+
+    function hide() {
+        modal.classList.remove('show');
+        answerInput.value = '';
+        questionEl.textContent = '';
+    }
+
+    function show(question) {
+        questionEl.textContent = question || '';
+        modal.classList.add('show');
+        setTimeout(() => answerInput.focus(), 250);
+    }
+
+    closeBtn && closeBtn.addEventListener('click', hide);
+    cancelBtn && cancelBtn.addEventListener('click', hide);
+
+    submitBtn && submitBtn.addEventListener('click', function () {
+        const captchaId = modal.dataset.captchaId;
+        const answer = answerInput.value && answerInput.value.trim();
+        if (!captchaId) return hide();
+
+        // 尝试找到与此客户端 pending 的 client_id
+        // 我们优先使用与当前输入最接近的 pending entry
+        let clientId = null;
+        if (pendingMessages.size > 0) {
+            // choose the most recent pending by sentTime
+            let latest = null;
+            for (const [cid, p] of pendingMessages.entries()) {
+                if (!latest || (p.sentTime || 0) > (latest.sentTime || 0)) latest = p;
+                if (!clientId) clientId = cid;
+            }
+            if (latest && !clientId) clientId = latest.client_id || null;
+        }
+
+        // 发送带有 captcha_id 的 send_message（服务器会以 pending 为准）
+        const payload = {
+            room_id: roomId,
+            message: '',
+            captcha_id: captchaId,
+            captcha_answer: answer
+        };
+        if (clientId) payload.client_id = clientId;
+        socket.emit('send_message', payload);
+        hide();
+    });
+
+    // 接收服务器要求显示验证码
+    socket.on('require_captcha', function (data) {
+        // data: { captcha_id, question }
+        if (!data || !data.captcha_id) return;
+        modal.dataset.captchaId = data.captcha_id;
+        show(data.question || '请输入验证码');
+    });
+
+    // 当用户回车也提交
+    answerInput && answerInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            submitBtn.click();
+        }
+    });
+}
 function updateConnectionStatus(status, message) {
     const statusElement = document.getElementById('connection-status');
     if (!statusElement) return;
@@ -119,6 +190,30 @@ function initializeRenderingSystem() {
     document.dispatchEvent(new Event('renderReady'));
     isRenderingReady = true;
     console.log('渲染系统已初始化');
+}
+
+// 处理 message_updated 事件：用服务器的新内容替换现有消息显示
+function setupMessageUpdatedHandler(socket) {
+    socket.on('message_updated', function (msg) {
+        try {
+            if (!msg || !msg.id) return;
+            // 尝试查找元素：使用 data-message-id 属性
+            const selector = '[data-message-id="' + msg.id + '"]';
+            const el = document.querySelector(selector);
+            if (el) {
+                const contentEl = el.querySelector('.message-content');
+                if (contentEl) {
+                    // 使用渲染系统更新内容
+                    contentEl.innerHTML = window.renderContent(msg.content || '');
+                }
+            } else {
+                // 如果未找到对应元素，按需追加到消息区
+                addMessageToUI(msg, 0, 1);
+            }
+        } catch (e) {
+            console.error('message_updated handler error', e);
+        }
+    });
 }
 
 // 安全的HTML转义
@@ -1405,6 +1500,17 @@ window.initChat = function () {
 
         // 2. 然后连接WebSocket
         setupWebSocket();
+        // Setup captcha modal and message update handlers once websocket is available
+        setTimeout(function () {
+            if (chatSocket) {
+                try {
+                    setupCaptchaModal(chatSocket);
+                    setupMessageUpdatedHandler(chatSocket);
+                } catch (e) {
+                    console.error('初始化验证码/更新处理器失败', e);
+                }
+            }
+        }, 600);
 
         // 3. 最后加载历史消息（确保WebSocket已设置好）
         setTimeout(() => {

@@ -20,6 +20,23 @@
     </div>
   </div>
 </div>
+<!-- 验证码模态框（由服务端触发 require_captcha 事件显示） -->
+<div id="captcha-modal" class="modal-backdrop">
+  <div class="modal-content small">
+    <div class="modal-header">
+      <h3 class="modal-title">请输入验证码</h3>
+      <button class="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="captcha-question" style="font-weight:600;margin-bottom:8px;"></div>
+      <input id="captcha-answer" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="请输入答案" class="form-control" />
+      <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end;">
+        <button id="captcha-cancel" class="btn btn-outline">取消</button>
+        <button id="captcha-submit" class="btn btn-primary">提交</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div id="chat-container" data-permission="{{ room_permission }}">
   <div class="online-users">
     在线人数: <span id="online-count">加载中...</span>
