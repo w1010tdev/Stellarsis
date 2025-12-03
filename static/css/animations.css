@@ -1,0 +1,252 @@
+/* 全新动画系统 - 丝滑、自然、不干扰 */
+:root {
+  --ease-in: cubic-bezier(0.33, 1, 0.68, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 0.2s;
+  --duration-normal: 0.3s;
+  --duration-slow: 0.4s;
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+  
+  --blur-sm: 4px;
+  --blur-md: 8px;
+  --blur-lg: 12px;
+}
+
+/* 无障碍：用户偏好减少动画时关闭所有过渡 */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* 全局过渡定义 */
+.transition-all {
+  transition: all var(--duration-normal) var(--ease-in-out);
+}
+
+.transition-colors {
+  transition: color var(--duration-normal) var(--ease-in-out),
+              background-color var(--duration-normal) var(--ease-in-out),
+              border-color var(--duration-normal) var(--ease-in-out),
+              fill var(--duration-normal) var(--ease-in-out),
+              stroke var(--duration-normal) var(--ease-in-out);
+}
+
+.transition-opacity {
+  transition: opacity var(--duration-normal) var(--ease-in-out);
+}
+
+.transition-transform {
+  transition: transform var(--duration-normal) var(--ease-in-out);
+}
+
+/* 常用元素的平滑过渡 */
+a, button, input, textarea, select, .btn, .card, .modal, .toast, .alert {
+  transition: all var(--duration-normal) var(--ease-in-out);
+}
+
+/* 按钮交互效果 */
+.btn, button {
+  transform: translate3d(0, 0, 0);
+  will-change: transform, box-shadow;
+}
+
+.btn:hover, button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn:active, button:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 输入控件 */
+input, textarea, select {
+  transition: all var(--duration-fast) var(--ease-in-out);
+  color: var(--input-text-color);
+  background: var(--surface-color);
+  border: 1px solid var(--card-border-color);
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+  border-color: var(--primary-500);
+}
+
+/* 卡片悬停效果 */
+.card {
+  transition: all var(--duration-normal) var(--ease-in-out);
+  transform: translate3d(0, 0, 0);
+  will-change: transform, box-shadow;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* 页面过渡 */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-enter.page-ready {
+  opacity: 1;
+  transform: none;
+  transition: opacity var(--duration-normal) var(--ease-out),
+              transform var(--duration-normal) var(--ease-out);
+}
+
+/* 小组件动画 */
+.fade-in {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.fade-in.visible {
+  opacity: 1;
+  transform: none;
+  transition: opacity var(--duration-normal) var(--ease-out),
+              transform var(--duration-normal) var(--ease-out);
+}
+
+.slide-up {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.slide-up.visible {
+  opacity: 1;
+  transform: none;
+  transition: opacity var(--duration-normal) var(--ease-out),
+              transform var(--duration-normal) var(--ease-out);
+}
+
+/* 按钮涟漪效果 */
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ripple:after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: var(--overlay-medium);
+  opacity: 0;
+  border-radius: 100%;
+  transform: scale(1, 1) translate(-50%);
+  transform-origin: 50% 50%;
+}
+
+.btn-ripple:active:after {
+  animation: ripple 1s ease-out;
+  opacity: 0.3;
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0, 0);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(100, 100);
+    opacity: 0;
+  }
+}
+
+/* 模态过渡 */
+.modal-backdrop {
+  opacity: 0;
+  transition: opacity var(--duration-normal) var(--ease-in-out);
+}
+
+.modal-backdrop.show {
+  opacity: 1;
+}
+
+.modal-content {
+  transform: scale(0.95);
+  opacity: 0;
+  transition: all var(--duration-slow) var(--ease-out);
+}
+
+.modal-backdrop.show .modal-content {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* 加载动画 */
+.loader {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--neutral-100);
+  border-top-color: var(--primary-600);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 脉冲动画 */
+.pulse {
+  animation: pulse-animation var(--duration-slow) ease-in-out infinite;
+}
+
+@keyframes pulse-animation {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+/* 悬浮动画 */
+.float {
+  animation: float var(--duration-slow) ease-in-out infinite alternate;
+}
+
+@keyframes float {
+  from { transform: translateY(0px); }
+  to { transform: translateY(-8px); }
+}
+
+/* 渐入动画 */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 滑动动画 */
+@keyframes slideIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* 弹跳动画 */
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-15px); }
+  60% { transform: translateY(-10px); }
+}

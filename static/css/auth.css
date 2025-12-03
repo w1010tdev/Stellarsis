@@ -1,0 +1,158 @@
+.auth-container {
+  max-width: 450px;
+  margin: 40px auto;
+  padding: 30px;
+  background-color: var(--surface-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.auth-container h2 {
+  text-align: center;
+  margin-bottom: 25px;
+  color: var(--text-color);
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-control {
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  font-size: 1rem;
+  transition: var(--transition-fast);
+}
+
+.form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 12px;
+  background-color: var(--primary-color);
+  color: var(--on-surface);
+  border: none;
+  border-radius: var(--border-radius-sm);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  margin-top: 10px;
+}
+
+.submit-btn:hover {
+  background-color: var(--primary-dark);
+}
+
+.register-link {
+  text-align: center;
+  margin-top: 20px;
+  color: var(--neutral-500);
+}
+
+.register-link a {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.register-link a:hover {
+  text-decoration: underline;
+}
+
+/* 个人资料设置页 */
+.profile-container {
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 30px;
+  background-color: var(--surface-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.profile-container h2 {
+  margin-bottom: 25px;
+  color: var(--profile-title-color);
+}
+
+.current-settings {
+  background-color: var(--neutral-50);
+  padding: 20px;
+  border-radius: var(--border-radius-sm);
+  margin-bottom: 30px;
+  border-left: 4px solid var(--primary-color);
+}
+
+  .sample-text {
+  margin-top: 10px;
+  padding: 15px;
+  background-color: var(--surface-color);
+  border-radius: var(--border-radius-sm);
+  font-size: 1.1rem;
+}
+
+.color-preview {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-left: 15px;
+  border: 2px solid var(--neutral-200);
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* 修改密码页面 */
+.password-container {
+  max-width: 500px;
+  margin: 50px auto;
+  padding: 30px;
+  background-color: var(--surface-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.password-container h2 {
+  text-align: center;
+  margin-bottom: 25px;
+  color: var(--text-color);
+}
+
+.requirements {
+  background-color: var(--neutral-50);
+  padding: 15px;
+  border-radius: var(--border-radius-sm);
+  margin-bottom: 25px;
+  border-left: 4px solid var(--secondary-color);
+}
+
+.requirements ul {
+  margin-left: 20px;
+  margin-top: 8px;
+}
+
+.requirements li {
+  margin-bottom: 5px;
+}
+
+@media (max-width: 576px) {
+  .auth-container,
+  .profile-container,
+  .password-container {
+    margin: 20px 15px;
+    padding: 25px 20px;
+  }
+  
+  .auth-container h2,
+  .password-container h2 {
+    font-size: 1.5rem;
+  }
+  
+  .current-settings, 
+  .sample-text {
+    font-size: 0.95rem;
+  }
+}

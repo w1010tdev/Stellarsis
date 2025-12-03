@@ -1,0 +1,64 @@
+/* Ocean theme */
+:root {
+  --surface-color: #e9f6ff;
+  --text-color: #022c43;
+  /* neutral */
+  --neutral-50: #e9f6ff;
+  --neutral-100: #dff3fb;
+  --neutral-200: #cfe9f6;
+  --neutral-300: #b7e0f0;
+  --neutral-400: #9bd0e6;
+  --neutral-500: #73bcd6;
+  --neutral-600: #4fa6c6;
+  --neutral-700: #2f8aa8;
+  --neutral-800: #1f6b86;
+  --neutral-900: #022c43;
+  /* primary (ocean blue) */
+  --primary-50: #f0fbff;
+  --primary-100: #e0f7ff;
+  --primary-200: #c8efff;
+  --primary-300: #a7e3ff;
+  --primary-400: #6fd0ff;
+  --primary-500: #2fb6f2;
+  --primary-600: #0ea5e9;
+  --primary-700: #0b86c2;
+  --primary-800: #07648f;
+  --primary-900: #04405b;
+  --primary-color: var(--primary-600);
+  --background-image: linear-gradient(135deg,#e9f6ff 0%,#d0eefc 100%);
+  --header-bg: linear-gradient(135deg, rgba(233,246,255,0.95), rgba(208,238,252,0.98));
+  --header-border-color: rgba(200,230,245,0.4);
+  --site-logo-text-gradient: linear-gradient(135deg, var(--primary-color), var(--accent-start));
+  --site-logo-icon-bg: linear-gradient(135deg, var(--primary-color), var(--accent-end));
+  --nav-underline-gradient: linear-gradient(90deg, var(--primary-color), var(--accent-start));
+  --settings-sidebar-bg: linear-gradient(180deg, rgba(233,246,255,0.95), rgba(220,242,252,0.9));
+  --settings-sidebar-border: rgba(160,200,220,0.06);
+  --settings-accent-gradient: linear-gradient(180deg, var(--primary-400), var(--primary-700));
+  --settings-accent-shadow: rgba(20,120,160,0.06);
+  --settings-hover-gradient: linear-gradient(90deg, rgba(14,165,233,0.06), rgba(6,120,180,0.03));
+  --settings-active-gradient: linear-gradient(90deg, var(--primary-color), var(--accent-start));
+  --settings-active-shadow: rgba(6,120,180,0.12);
+  --mobile-nav-bg: linear-gradient(135deg, rgba(233,246,255,0.95), rgba(208,238,252,0.9));
+  --avatar-bg: var(--site-logo-icon-bg);
+  --mobile-nav-shadow: rgba(0,0,0,0.06);
+}
+body { background-image: var(--background-image) !important; color: var(--text-color) !important; }
+
+/* Theme semantic extensions added for consistency */
+:root {
+  --muted-text-color: var(--neutral-600);
+  --input-text-color: var(--text-color);
+  --chat-username-bg: var(--primary-100);
+  --profile-title-color: var(--primary-700);
+  --danger-700: var(--danger-500);
+  --success-50: var(--accent-teal-50);
+  --success-100: var(--accent-teal-100);
+  --success-200: var(--accent-teal-200);
+  --success-300: var(--accent-teal-300);
+  --success-400: var(--accent-teal-400);
+  --success-500: var(--accent-teal-500);
+  --success-600: var(--accent-teal-600);
+  --success-700: var(--accent-teal-700);
+  --success-800: var(--accent-teal-800);
+  --success-900: var(--accent-teal-900);
+}

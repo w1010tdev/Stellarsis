@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block additional_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+{% endblock %}
+{% block content %}
+<div class="settings-layout">
+    <aside class="settings-sidebar">
+        <h3>设置</h3>
+        <a href="{{ url_for('settings_index') }}" class="active">总览</a>
+        <a href="{{ url_for('profile') }}">修改个人资料</a>
+        <a href="{{ url_for('settings_images') }}">我的图片</a>
+        <a href="{{ url_for('change_password') }}">修改密码</a>
+        <a href="{{ url_for('settings_follows') }}">关注管理</a>
+        <a href="{{ url_for('logout') }}" style="color:var(--danger-color);">退出登录</a>
+    </aside>
+    <section class="settings-main">
+        <h2>账户设置</h2>
+        <p>在这里可以快速访问与账号相关的设置：修改个人资料、修改密码、管理关注列表与登出。</p>
+        <div style="margin-top:20px;padding:16px;border-radius:8px;background:var(--surface-color);border:1px solid var(--border-color);">
+            <h3>外观</h3>
+            <label for="theme-select">主题模式：</label>
+            <select id="theme-select" class="theme-select" onchange="setTheme(this.value)">
+                <option value="light">明亮 (Light)</option>
+                <option value="solarized">暖色 (Solarized)</option>
+                <option value="purple">紫色 (Purple)</option>
+                <option value="ocean">海洋 (Ocean)</option>
+                <option value="mint">薄荷 (Mint)</option>
+                <option value="sunset">落日 (Sunset)</option>
+            </select>
+            <script>
+                (function(){
+                    function getCookie(name){var m=document.cookie.match(new RegExp('(^| )'+name+'=([^;]+)'));return m?decodeURIComponent(m[2]):null}
+                    var sel = document.getElementById('theme-select');
+                    try{ var t = localStorage.getItem('theme'); if(!t) t = getCookie('theme'); if(t) sel.value = t;}catch(e){}
+                })();
+            </script>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;">
+            <a class="btn" href="{{ url_for('profile') }}">修改个人资料</a>
+            <a class="btn btn-secondary" href="{{ url_for('change_password') }}">修改密码</a>
+            <a class="btn" href="{{ url_for('settings_follows') }}">管理关注列表</a>
+            <a class="btn btn-danger" href="{{ url_for('logout') }}">退出登录</a>
+        </div>
+    </section>
+</div>
+{% endblock %}

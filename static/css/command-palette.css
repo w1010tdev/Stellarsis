@@ -1,0 +1,36 @@
+/* Command palette styles */
+#command-palette-overlay {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 640px;
+  max-width: calc(100% - 40px);
+  background: rgba(8,8,8,0.95);
+  color: var(--neutral-200);
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  z-index: 20000;
+  padding: 18px;
+  display: none;
+  flex-direction: column;
+}
+#command-palette-overlay.show { display: flex; }
+#command-palette-overlay .cp-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 6px;
+  border: none;
+  font-size: 16px;
+  background: var(--neutral-900);
+  color: var(--surface-color);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+}
+#command-palette-overlay .cp-suggestions {
+  margin-top: 12px;
+  max-height: 240px;
+  overflow: auto;
+}
+#command-palette-overlay .cp-suggestion { padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+#command-palette-overlay .cp-suggestion:hover { background: rgba(255,255,255,0.03); }
+#command-palette-overlay .cp-help { font-size: 13px; color: var(--neutral-300); margin-top:8px }

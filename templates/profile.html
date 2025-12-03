@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block additional_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+{% endblock %}
+{% block content %}
+    <div class="profile-container">
+        <h2>个人资料设置</h2>
+        <div class="current-settings">
+            <h3>当前设置预览</h3>
+            <p>在聊天中，您的消息会显示为:</p>
+            <div class="sample-text">
+                <span id="preview-wrap">
+                    <span id="preview-badge" class="message-badge" style="display: inline-block; background-color: {{ current_user.color }}; color: white; {% if not current_user.badge %}display:none;{% endif %}">
+                        {% if current_user.badge %}{{ current_user.badge }}{% endif %}
+                    </span>
+                    <span id="preview-name" style="color: {{ current_user.color }}; font-weight:600; margin-left:6px;">
+                        {% if current_user.nickname %}{{ current_user.nickname }}{% else %}{{ current_user.username }}{% endif %}
+                    </span>:
+                </span>
+                <span id="preview-sample-content">Ciallo～(∠・ω< )⌒☆</span>
+            </div>
+        </div>
+        <form method="POST" action="{{ url_for('profile') }}">
+            {{ form.hidden_tag() }}
+            <div class="form-group">
+                {{ form.nickname.label }}
+                {{ form.nickname(class="form-control", id="nickname-input", placeholder="留空使用用户名") }}
+                {% for error in form.nickname.errors %}
+                    <div class="error">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="form-group">
+                {{ form.color.label }} (如 #FF0000)
+                <div style="display: flex; align-items: center; gap:8px;">
+                    {{ form.color(class="form-control", type="text", id="color-input", placeholder="#000000") }}
+                    <input id="color-picker" type="color" value="{{ current_user.color }}" style="width:40px;height:40px;padding:0;border-radius:6px;border:1px solid var(--border-color);" />
+                </div>
+                {% for error in form.color.errors %}
+                    <div class="error">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="form-group">
+                {{ form.badge.label }} (如 "VIP", 留空则不显示)
+                {{ form.badge(class="form-control", id="badge-input", placeholder="如: VIP, MOD") }}
+                {% for error in form.badge.errors %}
+                    <div class="error">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;margin-top:8px">
+                <button type="submit" class="btn btn-primary">保存设置</button>
+                <a href="{{ url_for('change_password') }}" class="btn btn-secondary">修改密码</a>
+            </div>
+        </form>
+    </div>
+    <script>
+        // 实时预览颜色选择
+        document.addEventListener('DOMContentLoaded', function() {
+            const colorInput = document.getElementById('color-input');
+            const nicknameInput = document.getElementById('nickname-input') || document.querySelector('input[name="nickname"]');
+            const badgeInput = document.getElementById('badge-input') || document.querySelector('input[name="badge"]');
+            const previewName = document.getElementById('preview-name');
+            const previewBadge = document.getElementById('preview-badge');
+            const originalUsername = {{ current_user.username|tojson }};
+
+            function sanitizeColor(val) {
+                if (!val) return '';
+                // 简单校验：以#开头且为7或4位，或为CSS颜色关键字（不严格校验）
+                if (/^#([0-9a-fA-F]{3}){1,2}$/.test(val.trim())) return val.trim();
+                return val.trim();
+            }
+
+            const colorPicker = document.getElementById('color-picker');
+
+            function refreshPreview() {
+                // 名称预览
+                let name = originalUsername;
+                if (nicknameInput && nicknameInput.value.trim()) {
+                    name = nicknameInput.value.trim();
+                }
+                if (previewName) previewName.textContent = name;
+
+                // 徽章预览
+                if (badgeInput && badgeInput.value.trim()) {
+                    if (previewBadge) {
+                        previewBadge.style.display = 'inline-block';
+                        previewBadge.textContent = badgeInput.value.trim();
+                    }
+                } else {
+                    if (previewBadge) previewBadge.style.display = 'none';
+                }
+
+                // 颜色预览
+                const colorVal = sanitizeColor(colorInput && colorInput.value ? colorInput.value : '{{ current_user.color }}');
+                if (previewName) previewName.style.color = colorVal;
+                if (previewBadge) previewBadge.style.backgroundColor = colorVal;
+                // 同步 color picker（如果存在且值不同）
+                try {
+                    if (colorPicker && colorVal && /^#([0-9a-fA-F]{3}){1,2}$/.test(colorVal)) {
+                        if (colorPicker.value.toLowerCase() !== colorVal.toLowerCase()) {
+                            colorPicker.value = colorVal;
+                        }
+                    }
+                } catch (e) { /* ignore */ }
+            }
+
+            // 监听输入变化
+            if (colorInput) colorInput.addEventListener('input', function () {
+                // 如果用户输入有效的 hex 色值，同步到 color picker
+                const val = sanitizeColor(colorInput.value || '');
+                if (colorPicker && /^#([0-9a-fA-F]{3}){1,2}$/.test(val)) {
+                    try { colorPicker.value = val; } catch (e) { }
+                }
+                refreshPreview();
+            });
+            if (colorPicker) colorPicker.addEventListener('input', function () {
+                // 将选择器的值写回到文本输入并刷新预览
+                if (colorInput) colorInput.value = colorPicker.value;
+                refreshPreview();
+            });
+
+            if (nicknameInput) nicknameInput.addEventListener('input', refreshPreview);
+            if (badgeInput) badgeInput.addEventListener('input', refreshPreview);
+
+            // 立即初始化预览
+            refreshPreview();
+        });
+    </script>
+{% endblock %}

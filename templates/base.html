@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>群星议会</title>
+    <!-- Theme preloader: apply critical vars quickly and load full theme CSS -->
+    <script>
+        (function () {
+            try {
+                var themeBase = "{{ url_for('static', filename='css/themes/') }}";
+                var theme = null;
+                try { theme = localStorage.getItem('theme'); } catch (e) { }
+                // cookie fallback
+                function getCookie(name) {
+                    var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+                    if (match) return decodeURIComponent(match[2]);
+                    return null;
+                }
+                if (!theme) theme = getCookie('theme');
+                // small set of critical variables to reduce flash
+                var critical = {
+                    light: {
+                        '--surface-color': '#ffffff',
+                        '--text-color': '#0f172a',
+                        '--neutral-50': '#f8fafc',
+                        '--background-image': 'linear-gradient(135deg,#f0f4ff 0%,#e6e9ff 100%)'
+                    },
+                    solarized: {
+                        '--surface-color': '#fdf6e3',
+                        '--text-color': '#073642',
+                        '--neutral-50': '#fdf6e3',
+                        '--background-image': 'linear-gradient(135deg,#fff8e6 0%,#f6ecd0 100%)'
+                    },
+                    purple: {
+                        '--surface-color': '#0f0826',
+                        '--text-color': '#efe6ff',
+                        '--neutral-50': '#0b0716',
+                        '--background-image': 'linear-gradient(135deg,#120427 0%,#2b0f4a 100%)'
+                    }
+                };
+                if (theme && critical[theme]) {
+                    var vars = critical[theme];
+                    Object.keys(vars).forEach(function (k) {
+                        document.documentElement.style.setProperty(k, vars[k]);
+                    });
+                    // attach full theme CSS (overrides all variables) for full styling
+                    var link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.id = 'theme-full-css';
+                    link.href = themeBase + theme + '.css';
+                    document.head.appendChild(link);
+                }
+            } catch (e) {
+                console.error('theme preloader error', e);
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/alerts.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/command-palette.css') }}">
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css"
+        crossorigin="anonymous">
+    {% block additional_css %}{% endblock %}
+    {% block head %}{% endblock %}
+</head>
+
+<body class="page-enter">
+    <header>
+        <div class="container">
+            <h1><a href="/">群星议会</a></h1>
+            <button class="menu-toggle" id="menu-toggle">
+                <span></span>
+            </button>
+            <nav id="main-nav">
+                <ul id="main-menu">
+                    <li><a href="{{ url_for('chat_index') }}">即时聊天</a></li>
+                    <li><a href="{{ url_for('forum_index') }}">贴吧</a></li>
+                    {% if current_user.is_authenticated %}
+                    <li><a href="{{ url_for('settings_index') }}">设置</a></li>
+                    {% else %}
+                    <li><a href="{{ url_for('login') }}">登录</a></li>
+                    {% endif %}
+                    {% if current_user.is_authenticated and current_user.is_admin() %}
+                    <li><a href="{{ url_for('admin_index') }}">管理面板</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <!-- backdrop should be a body-level overlay so it can catch clicks outside header/nav reliably -->
+    <div class="nav-backdrop" id="nav-backdrop"></div>
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+    <footer>
+        <div class="container">
+            <p>群星议会 &copy; 2025 | 在线人数: <span id="global-online-count">加载中...</span></p>
+        </div>
+    </footer>
+    {% block scripts %}
+        <script src="{{ url_for('static', filename='js/theme-switcher.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/command-palette.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+    <!-- 汉堡菜单JS交互 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const menuToggle = document.getElementById('menu-toggle');
+            const mainNav = document.getElementById('main-nav');
+            const navBackdrop = document.getElementById('nav-backdrop');
+            const mainMenu = document.getElementById('main-menu');
+
+            if (menuToggle && mainNav && navBackdrop) {
+                const toggleMenu = () => {
+                    const isOpen = mainNav.classList.contains('show');
+                    mainNav.classList.toggle('show', !isOpen);
+                    navBackdrop.classList.toggle('show', !isOpen);
+                    menuToggle.classList.toggle('open', !isOpen);
+                    document.body.style.overflow = !isOpen ? 'hidden' : '';
+                };
+
+                menuToggle.addEventListener('click', toggleMenu);
+                navBackdrop.addEventListener('click', toggleMenu);
+
+                // 菜单项点击后关闭菜单(移动端)
+                const menuLinks = mainMenu.querySelectorAll('a');
+                menuLinks.forEach(link => {
+                    link.addEventListener('click', function () {
+                        if (window.innerWidth <= 768) {
+                            mainNav.classList.remove('show');
+                            navBackdrop.classList.remove('show');
+                            menuToggle.classList.remove('open');
+                            document.body.style.overflow = '';
+                        }
+                    });
+                });
+
+                // 窗口大小变化时关闭菜单
+                window.addEventListener('resize', function () {
+                    if (window.innerWidth > 768 && mainNav.classList.contains('show')) {
+                        mainNav.classList.remove('show');
+                        navBackdrop.classList.remove('show');
+                        menuToggle.classList.remove('open');
+                        document.body.style.overflow = '';
+                    }
+                });
+            }
+        });
+    </script>
+
+    <!-- 兼容性垫片 -->
+    <script>
+        // 基础ES5垫片
+        if (!Array.prototype.includes) {
+            Array.prototype.includes = function (searchElement) {
+                return this.indexOf(searchElement) !== -1;
+            };
+        }
+        // 确保Promise存在
+        if (typeof Promise === 'undefined') {
+            window.Promise = function (executor) {
+                // 简单的Promise实现，仅用于兼容
+                var callbacks = [];
+                var value;
+                var isResolved = false;
+                function resolve(val) {
+                    if (isResolved) return;
+                    isResolved = true;
+                    value = val;
+                    callbacks.forEach(function (cb) { cb(val); });
+                }
+                try {
+                    executor(resolve, function (reason) {
+                        console.error("简易Promise拒绝:", reason);
+                    });
+                } catch (e) {
+                    console.error("简易Promise执行错误:", e);
+                }
+                this.then = function (onFulfilled) {
+                    return new Promise(function (resolve) {
+                        function handleValue(val) {
+                            var result = onFulfilled ? onFulfilled(val) : val;
+                            resolve(result);
+                        }
+                        if (isResolved) {
+                            setTimeout(function () { handleValue(value); }, 0);
+                        } else {
+                            callbacks.push(handleValue);
+                        }
+                    });
+                };
+            };
+        }
+        // 确保fetch存在
+        if (typeof window.fetch === 'undefined') {
+            window.fetch = function (url, options) {
+                return new Promise(function (resolve, reject) {
+                    var xhr = new XMLHttpRequest();
+                    xhr.open(options && options.method ? options.method : 'GET', url, true);
+                    xhr.onload = function () {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            resolve({
+                                ok: true,
+                                status: xhr.status,
+                                statusText: xhr.statusText,
+                                text: function () { return Promise.resolve(xhr.responseText); },
+                                json: function () {
+                                    try {
+                                        return Promise.resolve(JSON.parse(xhr.responseText));
+                                    } catch (e) {
+                                        return Promise.reject(e);
+                                    }
+                                }
+                            });
+                        } else {
+                            reject({
+                                status: xhr.status,
+                                statusText: xhr.statusText
+                            });
+                        }
+                    };
+                    xhr.onerror = function () {
+                        reject({ status: 0, statusText: '网络错误' });
+                    };
+                    if (options && options.headers) {
+                        for (var header in options.headers) {
+                            xhr.setRequestHeader(header, options.headers[header]);
+                        }
+                    }
+                    xhr.send(options && options.body ? options.body : null);
+                });
+            };
+        }
+    </script>
+    <!-- 动态加载库的函数 -->
+    <script>
+        function loadScript(src, callback) {
+            var script = document.createElement('script');
+            script.src = src;
+            script.async = false;  // 保持加载顺序
+            script.onload = function () {
+                console.log('已加载:', src);
+                if (callback) callback();
+            };
+            script.onerror = function () {
+                console.error('加载失败:', src);
+                if (callback) callback(new Error('加载失败: ' + src));
+            };
+            document.head.appendChild(script);
+        }
+        function loadStylesheet(href) {
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = href;
+            document.head.appendChild(link);
+        }
+        // 加载渲染库
+        function loadRenderLibs(callback) {
+            // 首先加载marked
+            loadScript('https://fastly.jsdelivr.net/npm/marked@4.0.0/marked.min.js', function (err) {
+                if (err) return callback(err);
+                // 然后加载KaTeX JS
+                loadScript('https://fastly.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js', callback);
+            });
+        }
+        // HTML转义函数
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+        // 全局渲染函数
+        window.renderContent = function (content) {
+            try {
+                // 1. 先用marked渲染Markdown
+                let html = marked.parse(content);
+                // 2. 处理行内LaTeX: $...$
+                html = html.replace(/\$([^\$]+)\$/g, function (match, p1) {
+                    try {
+                        return katex.renderToString(p1, {
+                            throwOnError: false,
+                            displayMode: false
+                        });
+                    } catch (e) {
+                        console.warn('KaTeX渲染失败:', e.message);
+                        return '<span class="katex-error">$' + escapeHtml(p1) + '$</span>';
+                    }
+                });
+                // 3. 处理块级LaTeX: $$...$$
+                html = html.replace(/\$\$([^\$]+)\$\$/g, function (match, p1) {
+                    try {
+                        return '<div class="katex-block">' +
+                            katex.renderToString(p1, {
+                                throwOnError: false,
+                                displayMode: true
+                            }) +
+                            '</div>';
+                    } catch (e) {
+                        console.warn('KaTeX块级渲染失败:', e.message);
+                        return '<div class="katex-block katex-error">$$' + escapeHtml(p1) + '$$</div>';
+                    }
+                });
+                // 4. 处理行内LaTeX: \(...\)
+                html = html.replace(/\\\((.*?)\\\)/g, function (match, p1) {
+                    try {
+                        return katex.renderToString(p1, {
+                            throwOnError: false,
+                            displayMode: false
+                        });
+                    } catch (e) {
+                        console.warn('KaTeX渲染失败:', e.message);
+                        return '<span class="katex-error">\\(' + escapeHtml(p1) + '\\)</span>';
+                    }
+                });
+                // 5. 处理块级LaTeX: \[...\]
+                html = html.replace(/\\\[(.*?)\\\]/g, function (match, p1) {
+                    try {
+                        return '<div class="katex-block">' +
+                            katex.renderToString(p1, {
+                                throwOnError: false,
+                                displayMode: true
+                            }) +
+                            '</div>';
+                    } catch (e) {
+                        console.warn('KaTeX块级渲染失败:', e.message);
+                        return '<div class="katex-block katex-error">\\[' + escapeHtml(p1) + '\\]</div>';
+                    }
+                });
+                return html;
+            } catch (e) {
+                console.error('内容渲染失败:', e);
+                // 降级：显示原始内容，但进行HTML转义
+                return '<div class="render-error">' +
+                    escapeHtml(content) +
+                    '</div>';
+            }
+        };
+        // 尝试加载渲染库
+        loadRenderLibs(function (err) {
+            if (err) {
+                console.error('渲染库加载失败，将使用纯文本模式:', err);
+                // 定义安全的纯文本渲染函数
+                window.renderContent = function (content) {
+                    return '<pre class="plaintext-render">' +
+                        escapeHtml(content) +
+                        '</pre>';
+                };
+            }
+            // 触发自定义事件，通知页面渲染库已就绪
+            var event = new Event('renderReady');
+            document.dispatchEvent(event);
+        });
+    </script>
+    <!-- 全局在线人数更新 -->
+    <script>
+        // 添加socket.io加载状态跟踪
+        document.globalSocketIoLoaded = false;
+        document.globalSocketIoCallbacks = [];
+        function onGlobalSocketIoLoaded() {
+            document.globalSocketIoLoaded = true;
+            document.globalSocketIoCallbacks.forEach(cb => cb());
+            document.globalSocketIoCallbacks = [];
+        }
+        function waitForGlobalSocketIo(callback) {
+            if (document.globalSocketIoLoaded) {
+                callback();
+            } else {
+                document.globalSocketIoCallbacks.push(callback);
+            }
+        }
+        // 确保socket.io加载
+        if (typeof io === 'undefined') {
+            var script = document.createElement('script');
+            script.src = "{{ url_for('static', filename='js/vendor/socket.io.min.js') }}";
+            script.onload = function () {
+                onGlobalSocketIoLoaded();
+            };
+            script.onerror = function () {
+                console.error('socket.io 加载失败');
+                onGlobalSocketIoLoaded(); // 继续执行降级方案
+            };
+            document.head.appendChild(script);
+        } else {
+            onGlobalSocketIoLoaded();
+        }
+        // 全局变量
+        let globalSocket = null;
+        let globalOnlineCountInitialized = false;
+        // 更新全局在线人数显示
+        function updateGlobalOnlineCountDisplay(count) {
+            const globalOnlineCountElement = document.getElementById('global-online-count');
+            if (globalOnlineCountElement) {
+                globalOnlineCountElement.textContent = count || '0';
+            }
+        }
+        // 获取全局在线人数（WebSocket或fetch）
+        function getGlobalOnlineCount() {
+            if (globalSocket && globalSocket.connected) {
+                // WebSocket可用
+                globalSocket.emit('get_global_online_count', {});
+            } else {
+                // WebSocket不可用，使用fetch降级方案
+                fetch('/api/online_count')
+                    .then(response => response.json())
+                    .then(data => {
+                        updateGlobalOnlineCountDisplay(data.count);
+                    })
+                    .catch(error => {
+                        console.error('获取全局在线人数失败:', error);
+                        updateGlobalOnlineCountDisplay('错误');
+                    });
+            }
+        }
+        // 初始化全局在线人数更新
+        function initializeGlobalOnlineCount() {
+            if (globalOnlineCountInitialized) return; // 防止重复初始化
+            globalOnlineCountInitialized = true;
+            // 先获取一次全局在线人数
+            getGlobalOnlineCount();
+            // 设置定时器定期更新（当WebSocket不可用时）
+            setInterval(() => {
+                if (!globalSocket || !globalSocket.connected) {
+                    getGlobalOnlineCount();
+                }
+            }, 60000); // 每分钟更新一次
+        }
+        // 设置WebSocket连接
+        function setupGlobalSocket() {
+            waitForGlobalSocketIo(function () {
+                if (typeof io === 'undefined') {
+                    console.log('socket.io 未加载，使用fetch降级方案');
+                    initializeGlobalOnlineCount();
+                    return;
+                }
+                try {
+                    globalSocket = io('/', {
+                        path: '/socket.io',
+                        reconnection: true,
+                        reconnectionAttempts: 5,
+                        reconnectionDelay: 1000,
+                        timeout: 20000,
+                        transports: ['websocket', 'polling']
+                    });
+                    globalSocket.on('connect', () => {
+                        console.log('全局WebSocket连接已建立');
+                        // 连接建立后，获取一次全局在线人数
+                        getGlobalOnlineCount();
+                    });
+                    globalSocket.on('disconnect', (reason) => {
+                        console.log('全局WebSocket断开连接:', reason);
+                        updateGlobalOnlineCountDisplay('连接中...');
+                    });
+                    globalSocket.on('connect_error', (error) => {
+                        console.error('全局WebSocket连接错误:', error);
+                        updateGlobalOnlineCountDisplay('连接错误');
+                    });
+                    globalSocket.on('global_online_count', (data) => {
+                        updateGlobalOnlineCountDisplay(data.count);
+                    });
+                } catch (e) {
+                    console.error('全局WebSocket初始化失败:', e);
+                    initializeGlobalOnlineCount(); // 使用降级方案
+                }
+            });
+        }
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function () {
+            setupGlobalSocket();
+        });
+    </script>
+
+    <script>
+        // 页面入场：在 DOMContentLoaded 后触发 page-ready，产生约 0.45s 的平滑入场
+        document.addEventListener('DOMContentLoaded', function () {
+            // 使用 requestAnimationFrame 确保初始样式已应用
+            requestAnimationFrame(function () {
+                document.body.classList.add('page-ready');
+            });
+        });
+    </script>
+    {% endblock %}
+</body>
+
+</html>

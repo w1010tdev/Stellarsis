@@ -1,0 +1,64 @@
+/* Mint theme */
+:root {
+  --surface-color: #f0fff6;
+  --text-color: #093120;
+  /* neutral */
+  --neutral-50: #f0fff6;
+  --neutral-100: #e7fff0;
+  --neutral-200: #dfffe6;
+  --neutral-300: #d2ffdd;
+  --neutral-400: #bfffd0;
+  --neutral-500: #9ef1b8;
+  --neutral-600: #6ed598;
+  --neutral-700: #47b37a;
+  --neutral-800: #2a8b58;
+  --neutral-900: #093120;
+  /* primary mint/green */
+  --primary-50: #f6fffb;
+  --primary-100: #eefff6;
+  --primary-200: #dbfff0;
+  --primary-300: #bfffdf;
+  --primary-400: #8ff0c0;
+  --primary-500: #57e1a1;
+  --primary-600: #34d399;
+  --primary-700: #2aa87a;
+  --primary-800: #1f805b;
+  --primary-900: #16543a;
+  --primary-color: var(--primary-600);
+  --background-image: linear-gradient(135deg,#f0fff6 0%,#e6fff0 100%);
+  --header-bg: linear-gradient(135deg, rgba(240,255,246,0.95), rgba(230,255,240,0.98));
+  --header-border-color: rgba(210,245,230,0.4);
+  --site-logo-text-gradient: linear-gradient(135deg, var(--primary-color), var(--accent-start));
+  --site-logo-icon-bg: linear-gradient(135deg, var(--primary-color), var(--accent-end));
+  --nav-underline-gradient: linear-gradient(90deg, var(--primary-color), var(--accent-start));
+  --settings-sidebar-bg: linear-gradient(180deg, rgba(240,255,246,0.95), rgba(230,255,240,0.9));
+  --settings-sidebar-border: rgba(160,220,200,0.06);
+  --settings-accent-gradient: linear-gradient(180deg, var(--primary-400), var(--primary-700));
+  --settings-accent-shadow: rgba(20,80,60,0.06);
+  --settings-hover-gradient: linear-gradient(90deg, rgba(52,211,153,0.06), rgba(16,185,129,0.03));
+  --settings-active-gradient: linear-gradient(90deg, var(--primary-color), var(--accent-start));
+  --settings-active-shadow: rgba(20,120,80,0.12);
+  --mobile-nav-bg: linear-gradient(135deg, rgba(240,255,246,0.95), rgba(230,255,240,0.9));
+  --avatar-bg: var(--site-logo-icon-bg);
+  --mobile-nav-shadow: rgba(0,0,0,0.06);
+}
+body { background-image: var(--background-image) !important; color: var(--text-color) !important; }
+
+/* Theme semantic extensions added for consistency */
+:root {
+  --muted-text-color: var(--neutral-600);
+  --input-text-color: var(--text-color);
+  --chat-username-bg: var(--primary-100);
+  --profile-title-color: var(--primary-700);
+  --danger-700: var(--danger-500);
+  --success-50: var(--accent-teal-50);
+  --success-100: var(--accent-teal-100);
+  --success-200: var(--accent-teal-200);
+  --success-300: var(--accent-teal-300);
+  --success-400: var(--accent-teal-400);
+  --success-500: var(--accent-teal-500);
+  --success-600: var(--accent-teal-600);
+  --success-700: var(--accent-teal-700);
+  --success-800: var(--accent-teal-800);
+  --success-900: var(--accent-teal-900);
+}
