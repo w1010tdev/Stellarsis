@@ -33,6 +33,11 @@
     </div>
     <div class="replies">
         <h2>回复 ({{ replies|length }})</h2>
+        {% if forum_thread_total_pages and forum_thread_total_pages > 1 %}
+        <div class="load-more-wrap" style="text-align:center;margin:8px 0;">
+            <button id="load-more-btn" class="btn" data-current-page="{{ forum_thread_current_page }}" data-total-pages="{{ forum_thread_total_pages }}">加载更多</button>
+        </div>
+        {% endif %}
         {% for reply in replies %}
         <div class="reply" id="reply-{{ reply.id }}">
             <div class="reply-user">
@@ -96,6 +101,7 @@
                 if (typeof window.renderContent === 'function') {
                     try {
                         container.innerHTML = window.renderContent(raw || '');
+                        if (typeof window.postProcessRendered === 'function') window.postProcessRendered(container);
                         return;
                     } catch (e) {
                         console.error('渲染失败:', e);
@@ -181,6 +187,65 @@
                     });
                 });
             }
+
+            // 加载更多回复（向上翻页）
+            const loadMoreBtn = document.getElementById('load-more-btn');
+            if (loadMoreBtn) {
+                loadMoreBtn.addEventListener('click', function() {
+                    const btn = this;
+                    let cur = parseInt(btn.dataset.currentPage || '0', 10);
+                    const total = parseInt(btn.dataset.totalPages || '1', 10);
+                    if (cur >= total - 1) {
+                        btn.style.display = 'none';
+                        return;
+                    }
+                    const nextPage = cur + 1;
+                    btn.disabled = true;
+                    btn.textContent = '加载中...';
+                    fetch(`/api/forum/thread/{{ thread.id }}/replies?page=${nextPage}`)
+                    .then(r => { if (!r.ok) throw new Error('加载失败'); return r.json(); })
+                    .then(data => {
+                        if (data && data.success && Array.isArray(data.replies)) {
+                            const container = document.querySelector('.replies');
+                            const beforeEl = btn.parentNode;
+                            data.replies.forEach(function(r) {
+                                try {
+                                    const div = document.createElement('div');
+                                    div.className = 'reply';
+                                    div.id = 'reply-' + r.id;
+                                    let userHtml = '<div class="reply-user">';
+                                    if (r.nickname || r.username) {
+                                        userHtml += `<span class="user-name user-color-${r.color ? r.color.replace('#', '') : 'default'}">${escapeHtml(r.nickname||r.username||'')}</span>`;
+                                    }
+                                    userHtml += `<span class="reply-time">${escapeHtml(r.timestamp||'')}</span>`;
+                                    userHtml += '</div>';
+                                    const contentHtml = `<div class="reply-content"><script type="application/json" class="raw-content">${JSON.stringify(r.content||'')}<` + `/script><div class="rendered-content"></div></div>`;
+                                    div.innerHTML = userHtml + contentHtml;
+                                    container.insertBefore(div, beforeEl);
+                                    try {
+                                        const containerContent = div.querySelector('.rendered-content');
+                                        if (typeof window.renderContent === 'function') {
+                                            containerContent.innerHTML = window.renderContent(r.content || '');
+                                            if (typeof window.postProcessRendered === 'function') window.postProcessRendered(containerContent);
+                                        } else {
+                                            containerContent.textContent = r.content || '';
+                                        }
+                                    } catch (e) { console.error('渲染新回复失败', e); }
+                                } catch (e) { console.error('插入回复失败', e); }
+                            });
+                            btn.dataset.currentPage = nextPage;
+                            if (nextPage >= total - 1) btn.style.display = 'none';
+                        } else {
+                            showToast('error', '加载失败');
+                        }
+                    })
+                    .catch(err => { console.error('加载更多失败', err); showToast('error', '加载更多失败'); })
+                    .finally(() => { btn.disabled = false; btn.textContent = '加载更多'; });
+                });
+            }
+
+            // (forum intentionally does not auto-scroll on load)
+
             // 删除回复
             window.deleteReply = function(replyId, username) {
                 if (!replyId) return;

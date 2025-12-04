@@ -21,7 +21,7 @@
             </div>
             <p class="section-description">{{ section.description }}</p>
             <ul class="threads-list">
-                {% set latest = section.threads|first %}
+                {% set latest = section.threads|last %}
                 {% if latest %}
                 <li class="thread-item">
                     <h3 class="thread-title"><a href="{{ url_for('forum_thread', thread_id=latest.id) }}">{{ latest.title }}</a></h3>

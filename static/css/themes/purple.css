@@ -57,6 +57,8 @@
   --overlay-subtle: rgba(0,0,0,0.12);
   --overlay-xsubtle: rgba(0,0,0,0.06);
   --overlay-xxsubtle: rgba(0,0,0,0.03);
+  --mobile-nav-bg: var(--surface-color) !important;
+  --header-bg: var(--surface-color) !important;
 }
 
 /* Theme semantic extensions added for consistency */
@@ -76,6 +78,18 @@
   --success-700: var(--accent-teal-700);
   --success-800: var(--accent-teal-800);
   --success-900: var(--accent-teal-900);
+  /* accent-teal scale */
+  --accent-teal-50: #ecfdf5;
+  --accent-teal-100: #d1fae5;
+  --accent-teal-200: #a7f3d0;
+  --accent-teal-300: #6ee7b7;
+  --accent-teal-400: #34d399;
+  --accent-teal-500: #10b981;
+  --accent-teal-600: #059669;
+  --accent-teal-700: #047857;
+  --accent-teal-800: #065f46;
+  --accent-teal-900: #064e3b;
+  --cp-surface-color: var(--text-color) !important;
 }
 body {
   background-image: var(--background-image) !important;
@@ -115,4 +129,44 @@ body {
 
 .menu-toggle{
   color: var(--primary-400) !important;
+}
+
+.quote-content{
+  color: var(--surface-color) !important;
+}
+
+/* Header container dark mode adaptations */
+header .container {
+  background: var(--surface-color) !important;
+  color: var(--text-color) !important;
+}
+
+header nav ul li a {
+  color: var(--text-color) !important;
+}
+
+header nav ul li a:hover,
+header nav ul li a.active {
+  color: var(--primary-300) !important;
+}
+
+.user-profile:hover {
+  background-color: var(--neutral-700) !important;
+}
+
+.follow-btn {
+  background: var(--neutral-300) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--neutral-500) !important;
+}
+
+.follow-btn:hover {
+  background: var(--neutral-400) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+.follow-btn.following {
+  background: linear-gradient(90deg, var(--primary-600), var(--primary-500)) !important;
+  color: var(--on-primary) !important;
+  border-color: transparent !important;
 }

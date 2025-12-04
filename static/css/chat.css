@@ -199,6 +199,74 @@
   margin: 0.5rem 0;
 }
 
+/* 引用块样式 */
+.quote-block {
+  background-color: var(--neutral-100);
+  border-left: 4px solid var(--primary-500);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 12px 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  border: 1px solid var(--neutral-200);
+}
+
+.quote-block:hover {
+  background-color: var(--neutral-200);
+  transform: translateX(2px);
+}
+
+.quote-header {
+  color: var(--primary-700);
+  font-weight: bold;
+  margin-bottom: 8px;
+  font-size: 1.05rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quote-header::before {
+  content: "「";
+  font-size: 1.3em;
+  color: var(--primary-500);
+  line-height: 0.8;
+}
+
+.quote-header::after {
+  content: "」";
+  font-size: 1.3em;
+  color: var(--primary-500);
+  line-height: 0.8;
+  margin-left: 6px;
+}
+
+.quote-content {
+  color: var(--text-color); /* 主题内统一定义该变量 */
+  line-height: 1.6;
+}
+
+/* 确保引用块内的Markdown元素正确显示 */
+.quote-content p {
+  margin: 8px 0;
+}
+
+.quote-content pre {
+  background-color: var(--neutral-100);
+  border-radius: 6px;
+  padding: 10px;
+  margin: 8px 0;
+  overflow-x: auto;
+  font-size: 0.95rem;
+}
+.quote-content img {
+  max-width: 100%;
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
 /* 代码和数学公式 */
 .message-content pre {
   background-color: var(--neutral-100);
@@ -209,7 +277,8 @@
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   border: 1px solid var(--neutral-200);
-  color: var(--on-surface) !important; /* ensure high-contrast text */
+  color: var(--on-surface) !important;
+  /* ensure high-contrast text */
 }
 
 .message-content code {
@@ -218,7 +287,8 @@
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  color: var(--on-surface) !important; /* ensure inline code is readable */
+  color: var(--on-surface) !important;
+  /* ensure inline code is readable */
 }
 
 /* KaTeX样式 */
@@ -399,44 +469,45 @@
   align-items: center;
   gap: var(--spacing-md);
 
-/* 验证码模态风格 - 与已有模态一致且移动端友好 */
-#captcha-modal .modal-content.small {
-  max-width: 420px;
-  width: 92%;
-  padding: 0.75rem 1rem;
-}
-
-#captcha-modal .modal-body {
-  padding: 8px 4px 12px 4px;
-}
-
-#captcha-modal #captcha-question {
-  font-size: 1.05rem;
-  color: var(--text-color);
-}
-
-#captcha-modal .form-control {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--neutral-200);
-  margin-top: 6px;
-  font-size: var(--text-base);
-}
-
-/* 手机适配：模态在小屏时靠底部弹出更自然 */
-@media (max-width: 640px) {
+  /* 验证码模态风格 - 与已有模态一致且移动端友好 */
   #captcha-modal .modal-content.small {
-    width: 100%;
-    border-bottom-left-radius: 12px;
-    border-bottom-right-radius: 12px;
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    margin: 0;
+    max-width: 420px;
+    width: 92%;
+    padding: 0.75rem 1rem;
   }
-}
+
+  #captcha-modal .modal-body {
+    padding: 8px 4px 12px 4px;
+  }
+
+  #captcha-modal #captcha-question {
+    font-size: 1.05rem;
+    color: var(--text-color);
+  }
+
+  #captcha-modal .form-control {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--neutral-200);
+    margin-top: 6px;
+    font-size: var(--text-base);
+  }
+
+  /* 手机适配：模态在小屏时靠底部弹出更自然 */
+  @media (max-width: 640px) {
+    #captcha-modal .modal-content.small {
+      width: 100%;
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      margin: 0;
+    }
+  }
+
   transition: background-color 0.2s ease;
 }
 
@@ -704,21 +775,6 @@
   box-shadow: var(--shadow-md);
   transform: translateY(-1px);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-/* Badge shown next to online username */
-.user-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.25rem 0.5rem;
-  border-radius: 8px;
-  color: var(--on-surface);
-  font-weight: 700;
-  font-size: 0.8rem;
-  min-width: 36px;
-  text-align: center;
-  background: var(--chat-username-bg);
 }
 
 /* Ensure user-name is visible inside the online list (avoid global .user-name conflicts) */

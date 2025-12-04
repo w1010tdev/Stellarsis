@@ -57,6 +57,17 @@
   --success-700: var(--accent-teal-700);
   --success-800: var(--accent-teal-800);
   --success-900: var(--accent-teal-900);
+  /* accent-teal scale */
+  --accent-teal-50: #ecfdf5;
+  --accent-teal-100: #d1fae5;
+  --accent-teal-200: #a7f3d0;
+  --accent-teal-300: #6ee7b7;
+  --accent-teal-400: #34d399;
+  --accent-teal-500: #10b981;
+  --accent-teal-600: #059669;
+  --accent-teal-700: #047857;
+  --accent-teal-800: #065f46;
+  --accent-teal-900: #064e3b;
 }
 body {
   background-image: var(--background-image) !important;

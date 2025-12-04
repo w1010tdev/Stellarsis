@@ -58,6 +58,7 @@
                     if (typeof window.renderContent === 'function') {
                         try {
                             previewElement.innerHTML = window.renderContent(content);
+                            if (typeof window.postProcessRendered === 'function') window.postProcessRendered(previewElement);
                         } catch (e) {
                             console.error('预览渲染失败:', e);
                             previewElement.textContent = content;

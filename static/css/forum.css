@@ -111,7 +111,7 @@
 
 .section-header {
   padding: var(--spacing-lg);
-  background: linear-gradient(135deg, var(--neutral-50), var(--neutral-200));
+  background: var(--surface-color);
   border-bottom: 1px solid var(--neutral-200);
   display: flex;
   align-items: center;
@@ -295,7 +295,11 @@
   align-items: center;
   gap: var(--spacing-xs);
 }
-
+.user-name {
+  display: block !important;
+  font-weight: 600;
+  color: var(--text-color);
+}
 .thread-content-preview {
   color: var(--muted-text-color);
   line-height: 1.6;
