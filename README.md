@@ -82,6 +82,12 @@ Stellarsis is a feature-rich real-time chat and forum system that combines chat 
 
 ## 安装与部署 / Installation and Deployment
 
+请从[Release页面](https://github.com/w1010tdev/Stellarsis/releases/latest)下载最新稳定版本用于开发部署。
+
+Main Branch也可以使用，但是不保证Bug解决
+
+Dev Branch是修改了一半的。。。
+
 1. 安装依赖：
    ```bash
    pip install -r requirements.txt
