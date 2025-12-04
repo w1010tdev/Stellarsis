@@ -1455,50 +1455,125 @@ function createMessageElement(msg, isLocal = false) {
         messageElement.dataset.messageId = msg.client_id;
     }
 
-    // 添加删除按钮（根据权限）
+    // 添加操作菜单按钮（...）（根据权限）
     try {
         const canDeleteAll = (typeof roomPermission !== 'undefined' && roomPermission === 'su');
         const canDeleteOwn = (typeof roomPermission !== 'undefined' && roomPermission === '777' && Number(msg.user_id) === Number(currentUserId));
-        if (msg.id && (canDeleteAll || canDeleteOwn)) {
-            const delBtn = document.createElement('button');
-            delBtn.className = 'btn delete-btn message-delete-btn';
-            delBtn.title = '删除消息';
-            delBtn.textContent = '删除';
-            delBtn.style.marginLeft = '8px';
-            delBtn.addEventListener('click', function (e) {
+        const canQuote = msg.id && canSendMessages();
+        
+        if (msg.id && ((canDeleteAll || canDeleteOwn) || canQuote)) {
+            const menuBtn = document.createElement('button');
+            menuBtn.className = 'btn btn-outline message-menu-btn';
+            menuBtn.title = '消息操作';
+            menuBtn.innerHTML = '<i class="fas fa-ellipsis-h"></i>';
+            menuBtn.style.marginLeft = '8px';
+            menuBtn.style.width = '32px';
+            menuBtn.style.height = '32px';
+            menuBtn.style.padding = '4px';
+            menuBtn.style.display = 'flex';
+            menuBtn.style.alignItems = 'center';
+            menuBtn.style.justifyContent = 'center';
+            
+            // 创建操作菜单
+            const menu = document.createElement('div');
+            menu.className = 'message-action-menu';
+            menu.style.display = 'none';
+            menu.style.position = 'absolute';
+            menu.style.backgroundColor = 'var(--surface-color)';
+            menu.style.border = '1px solid var(--border-color)';
+            menu.style.borderRadius = 'var(--radius-md)';
+            menu.style.boxShadow = 'var(--shadow-lg)';
+            menu.style.zIndex = '100';
+            menu.style.padding = '4px 0';
+            menu.style.minWidth = '120px';
+            menu.innerHTML = '';
+            
+            // 添加菜单到页面
+            document.body.appendChild(menu);
+            
+            // 删除按钮
+            if (canDeleteAll || canDeleteOwn) {
+                const delBtn = document.createElement('button');
+                delBtn.className = 'btn btn-sm delete-btn message-menu-item';
+                delBtn.textContent = '删除';
+                delBtn.style.display = 'block';
+                delBtn.style.width = '100%';
+                delBtn.style.textAlign = 'left';
+                delBtn.style.padding = '8px 12px';
+                delBtn.style.border = 'none';
+                delBtn.style.background = 'none';
+                delBtn.style.cursor = 'pointer';
+                delBtn.style.color = 'var(--danger-500)';
+                delBtn.style.fontSize = '0.875rem';
+                delBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    deleteChatMessage(msg.id, messageElement);
+                    menu.style.display = 'none';
+                });
+                menu.appendChild(delBtn);
+            }
+            
+            // 引用按钮
+            if (canQuote) {
+                const quoteBtn = document.createElement('button');
+                quoteBtn.className = 'btn btn-sm quote-btn message-menu-item';
+                quoteBtn.textContent = '引用';
+                quoteBtn.style.display = 'block';
+                quoteBtn.style.width = '100%';
+                quoteBtn.style.textAlign = 'left';
+                quoteBtn.style.padding = '8px 12px';
+                quoteBtn.style.border = 'none';
+                quoteBtn.style.background = 'none';
+                quoteBtn.style.cursor = 'pointer';
+                quoteBtn.style.color = 'var(--text-color)';
+                quoteBtn.style.fontSize = '0.875rem';
+                quoteBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    try {
+                        const ta = document.getElementById('message-text');
+                        if (!ta) return;
+                        const insert = `@quote{${msg.id}}\n`;
+                        ta.value = insert + ta.value;
+                        ta.focus();
+                        try { ta.setSelectionRange(insert.length, insert.length); } catch (err) {}
+                    } catch (err) { console.error('插入引用失败', err); }
+                    menu.style.display = 'none';
+                });
+                menu.appendChild(quoteBtn);
+            }
+            
+            // 显示/隐藏菜单
+            menuBtn.addEventListener('click', function (e) {
                 e.stopPropagation();
-                deleteChatMessage(msg.id, messageElement);
+                const rect = menuBtn.getBoundingClientRect();
+                const isMenuVisible = menu.style.display !== 'none';
+                
+                // 隐藏所有其他菜单
+                document.querySelectorAll('.message-action-menu').forEach(m => {
+                    m.style.display = 'none';
+                });
+                
+                if (!isMenuVisible) {
+                    menu.style.display = 'block';
+                    menu.style.top = rect.bottom + window.scrollY + 'px';
+                    menu.style.left = rect.left + window.scrollX - menu.offsetWidth + rect.width + 'px';
+                } else {
+                    menu.style.display = 'none';
+                }
             });
-            // 将删除按钮添加到用户Element末尾（更靠近用户名）
-            userElement.appendChild(delBtn);
+            
+            // 添加菜单按钮到用户Element
+            userElement.appendChild(menuBtn);
+            
+            // 点击其他地方隐藏菜单
+            document.addEventListener('click', function (e) {
+                if (!menu.contains(e.target) && e.target !== menuBtn) {
+                    menu.style.display = 'none';
+                }
+            });
         }
     } catch (e) {
-        console.error('添加删除按钮失败:', e);
-    }
-
-    // 添加引用按钮（如果允许发送消息）
-    try {
-        if (msg.id && canSendMessages()) {
-            const quoteBtn = document.createElement('button');
-            quoteBtn.className = 'btn quote-btn';
-            quoteBtn.title = '引用此消息';
-            quoteBtn.textContent = '引用';
-            quoteBtn.style.marginLeft = '6px';
-            quoteBtn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                try {
-                    const ta = document.getElementById('message-text');
-                    if (!ta) return;
-                    const insert = `@quote{${msg.id}}\n`;
-                    ta.value = insert + ta.value;
-                    ta.focus();
-                    try { ta.setSelectionRange(insert.length, insert.length); } catch (err) {}
-                } catch (err) { console.error('插入引用失败', err); }
-            });
-            userElement.appendChild(quoteBtn);
-        }
-    } catch (e) {
-        console.error('添加删除按钮失败:', e);
+        console.error('添加消息操作菜单失败:', e);
     }
 
     return messageElement;

@@ -1555,13 +1555,13 @@ def forum_thread(thread_id):
     section_permission = get_forum_permission_value(current_user, thread.section_id)
     if section_permission == 'Null':
         abort(403)
-    # 分页加载：每页 50 条，默认展示最后一页（最近的 50 条）
+    # 分页加载：每页 100 条，默认展示最后一页（最近的 100 条）
     try:
         total_count = thread.replies.count()
     except Exception:
         # 兼容非-dynamic 关系
         total_count = db_session.query(ForumReply).filter_by(thread_id=thread.id).count()
-    PAGE_SIZE = 50
+    PAGE_SIZE = 100
     total_pages = (total_count + PAGE_SIZE - 1) // PAGE_SIZE if total_count > 0 else 1
     # 页面使用 0-based page index，默认加载最后一页
     current_page = 0

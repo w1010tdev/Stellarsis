@@ -752,8 +752,8 @@ footer {
   justify-content: center;
   gap: var(--spacing-xs);
   padding: 0.625rem 1.25rem;
-  background-color: var(--primary-600) !important;
-  color: var(--on-primary) !important;
+  background-color: var(--primary-600);
+  color: var(--on-primary);
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -775,6 +775,40 @@ footer {
 .btn:active {
   transform: translateY(0);
   box-shadow: 0 2px 4px -1px rgba(99, 102, 241, 0.15);
+}
+
+/* 紧急程度按钮样式 */
+.btn-critical {
+  background-color: var(--danger-700);
+}
+
+.btn-critical:hover {
+  background-color: var(--danger-800);
+}
+
+.btn-high {
+  background-color: var(--danger-500);
+}
+
+.btn-high:hover {
+  background-color: var(--danger-600);
+}
+
+.btn-medium {
+  background-color: var(--warning-500);
+  color: var(--text-color);
+}
+
+.btn-medium:hover {
+  background-color: var(--warning-600);
+}
+
+.btn-low {
+  background-color: var(--success-500);
+}
+
+.btn-low:hover {
+  background-color: var(--success-600);
 }
 
 .btn:disabled {
