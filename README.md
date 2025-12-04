@@ -86,19 +86,18 @@ Stellarsis is a feature-rich real-time chat and forum system that combines chat 
 
 Main Branch也可以使用，但是不保证Bug解决
 
-Dev Branch是修改了一半的。。。
-
 1. 安装依赖：
    ```bash
    pip install -r requirements.txt
    ```
+2. 请根据需要，修改`app.py`的密码加密方式和`config.py`
 
-2. 运行应用：
+3. 运行应用：
    ```bash
    python app.py
    ```
 
-3. 访问 `http://localhost:5000`
+4. 访问 `http://localhost:5000`， 如果您需要分享，请访问：`http://YOUR-IP:5000`
 
 ## 默认账户 / Default Account
 
