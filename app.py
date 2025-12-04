@@ -14,6 +14,7 @@ from flask import (
     flash, session, send_from_directory, send_file, jsonify, abort,
     make_response
 )
+from flask import __version__ as flask_version
 from werkzeug.utils import secure_filename
 try:
     from PIL import Image
@@ -45,7 +46,6 @@ from config import Config
 # 初始化应用
 app = Flask(__name__)
 app.config.from_object(Config)
-
 # 创建logs目录
 log_dir = Path(app.root_path) / 'logs'
 log_dir.mkdir(exist_ok=True)
@@ -1767,7 +1767,6 @@ def admin_index():
     
     # 获取系统信息
     python_version = sys.version.split()[0]
-    flask_version = '2.3.0'  # 假设使用 Flask 2.3.0
     database_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
     
     # 获取最近日志
@@ -2033,7 +2032,7 @@ def get_system_info():
             'memory_usage': memory_usage,
             'server_time': datetime.now().isoformat(),
             'python_version': sys.version,
-            'flask_version': '2.3.2'
+            'flask_version': flask_version
         })
     except Exception as e:
         log_admin_action(f"获取系统信息失败: {str(e)}")
