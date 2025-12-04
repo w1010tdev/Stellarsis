@@ -88,7 +88,7 @@ Main Branch也可以使用，但是不保证Bug解决
 
 1. 安装依赖：
    ```bash
-   pip install -r requirements.txt
+   pip install -r requirements.txt -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
    ```
 2. 请根据需要，修改`app.py`的密码加密方式和`config.py`
 
