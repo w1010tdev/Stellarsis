@@ -74,7 +74,7 @@
   --transition-fast: 0.15s;
   --border-radius-sm: var(--radius-sm);
   --border-radius-md: var(--radius-md);
-
+  --cp-surface-color: var(--surface-color);
   /* 布局和间距 */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
@@ -200,7 +200,20 @@ header .container {
   /* needed for absolutely positioning the centered nav on desktop */
   position: relative;
 }
-
+/* Badge shown next to online username */
+.user-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  color: var(--on-surface);
+  font-weight: 700;
+  font-size: 0.8rem;
+  min-width: 36px;
+  text-align: center;
+  background: var(--chat-username-bg);
+}
 .site-logo {
   display: flex;
   align-items: center;
@@ -353,7 +366,6 @@ header nav ul li a.active::after {
   font-size: var(--text-sm);
   color: var(--muted-text-color);
   font-weight: 500;
-  display: none;
 }
 
 /* 汉堡菜单按钮 - 仅在移动设备显示 */
@@ -428,8 +440,8 @@ header nav ul li a.active::after {
   right: 0;
   bottom: 0;
   width: 280px;
-  background: var(--surface-color);
-  box-shadow: -5px 0 15px -5px rgba(0, 0, 0, 0.05);
+  background: var(--mobile-nav-bg);
+  box-shadow: var(--mobile-nav-shadow);
   padding: var(--spacing-md);
   transform: translateX(100%);
   transition: transform 0.3s ease;
@@ -1342,10 +1354,6 @@ footer a,
 
   .user-profile {
     padding: 0;
-  }
-
-  .user-name {
-    display: none;
   }
 }
 

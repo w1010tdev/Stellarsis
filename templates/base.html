@@ -111,9 +111,12 @@
         </div>
     </footer>
     {% block scripts %}
-        <script src="{{ url_for('static', filename='js/theme-switcher.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/command-palette.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/theme-switcher.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/command-palette.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+    <!-- highlight.js CSS & JS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
     <!-- 汉堡菜单JS交互 -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -272,7 +275,20 @@
             loadScript('https://fastly.jsdelivr.net/npm/marked@4.0.0/marked.min.js', function (err) {
                 if (err) return callback(err);
                 // 然后加载KaTeX JS
-                loadScript('https://fastly.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js', callback);
+                loadScript('https://fastly.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js', function (err2) {
+                    if (err2) return callback(err2);
+                    // 也尝试提前加载 highlight.js（样式和脚本），以便 marked 能在渲染时高亮
+                    try {
+                        loadStylesheet('https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css');
+                        loadScript('https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js', function () {
+                            // 已加载所有渲染相关第三方库
+                            callback();
+                        });
+                    } catch (e) {
+                        // 若加载 highlight 失败也不阻塞渲染
+                        callback();
+                    }
+                });
             });
         }
         // HTML转义函数
@@ -289,7 +305,32 @@
         window.renderContent = function (content) {
             try {
                 // 1. 先用marked渲染Markdown
+                // Configure marked to use highlight.js if available
+                try {
+                    if (typeof marked !== 'undefined') {
+                        marked.setOptions({
+                            gfm: true,
+                            breaks: false,
+                            highlight: function (code, lang) {
+                                try {
+                                    if (typeof hljs !== 'undefined' && hljs) {
+                                        if (lang) {
+                                            try { return hljs.highlight(code, { language: lang }).value; } catch (e) { return hljs.highlightAuto(code).value; }
+                                        }
+                                        return hljs.highlightAuto(code).value;
+                                    }
+                                } catch (ee) { }
+                                return escapeHtml(code);
+                            }
+                        });
+                    }
+                } catch (e) { }
+
                 let html = marked.parse(content);
+                // 处理 @quote{123} 占位符为可被后处理识别的容器
+                html = html.replace(/@quote\{(\d+)\}/g, function (m, id) {
+                    return '<div class="quote" data-quote-id="' + id + '">引用的消息: #' + id + '（加载中）</div>';
+                });
                 // 2. 处理行内LaTeX: $...$
                 html = html.replace(/\$([^\$]+)\$/g, function (match, p1) {
                     try {
@@ -366,6 +407,67 @@
             var event = new Event('renderReady');
             document.dispatchEvent(event);
         });
+        // 在渲染后对插入到 DOM 的内容进行后处理（如代码高亮）
+        window.postProcessRendered = function (container) {
+            try {
+                if (!container || !(container instanceof Element)) return;
+                function applyHighlight() {
+                    try {
+                        if (typeof hljs !== 'undefined' && hljs && typeof hljs.highlightElement === 'function') {
+                            container.querySelectorAll('pre code').forEach(function (block) {
+                                try { hljs.highlightElement(block); } catch (e) { /* ignore per-block errors */ }
+                            });
+                        }
+                    } catch (e) {
+                        console.error('代码高亮应用失败:', e);
+                    }
+                }
+
+                // 如果 hljs 已经加载则直接应用，否则尝试动态加载（同时加载样式）
+                if (typeof hljs !== 'undefined' && hljs && typeof hljs.highlightElement === 'function') {
+                    applyHighlight();
+                } else {
+                    // 加载 highlight.js 样式与脚本（若尚未加载）
+                    try {
+                        loadStylesheet('https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css');
+                        loadScript('https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js', function () {
+                            // 有些高亮包需要注册语言，默认 core 包可以自动检测
+                            setTimeout(applyHighlight, 30);
+                        });
+                    } catch (e) {
+                        console.error('动态加载 highlight.js 失败:', e);
+                    }
+                }
+                // 处理引用占位符：尝试找到已加载的回复节点或通过接口拉取
+                try {
+                    container.querySelectorAll && container.querySelectorAll('.quote').forEach(function (qel) {
+                        try {
+                            const qid = qel.dataset && qel.dataset.quoteId;
+                            if (!qid) return;
+                            // 通过 API 拉取该回复（降级加载）
+                            let apiaddr = '/api/chat/message/';
+                            fetch(apiaddr + qid)
+                                .then(r => { if (!r.ok) throw new Error('加载引用失败'); return r.json(); })
+                                .then(data => {
+                                    if (data && data.success && data.message) {
+                                        const reply = data.message;
+                                        const uname = reply.nickname || reply.username || ('用户' + (reply.user_id || ''));
+                                        const rendered = (typeof window.renderContent === 'function') ? window.renderContent(reply.content || '') : escapeHtml(reply.content || '');
+                                        qel.innerHTML = '<div class="quote-block"><div class="quote-header">引用来自：' + escapeHtml(uname) + '</div><div class="quote-content">' + rendered + '</div></div>';
+                                        if (typeof window.postProcessRendered === 'function') window.postProcessRendered(qel);
+                                    } else {
+                                        qel.textContent = '引用的消息未知或已删除';
+                                    }
+                                })
+                                .catch(err => { qel.textContent = '引用加载失败'; });
+
+                        } catch (e) { console.error('处理引用失败', e); }
+                    });
+                } catch (e) { console.error('引用后处理错误', e); }
+            } catch (e) {
+                console.error('postProcessRendered 错误:', e);
+            }
+        };
     </script>
     <!-- 全局在线人数更新 -->
     <script>

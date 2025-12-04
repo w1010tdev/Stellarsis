@@ -128,7 +128,7 @@ class User(UserMixin, Base):
     def set_password(self, password):
         # 实际应用中应使用安全的哈希算法
         # 这里仅演示，实际应使用werkzeug.security.generate_password_hash
-        self.password_hash = password
+        self.password_hash = password #Need to change
     
     def check_password(self, password):
         return self.password_hash == password
@@ -751,25 +751,56 @@ def chat_history(room_id):
         return jsonify(success=False, message="权限不足"), 403
 
     limit = min(request.args.get('limit', 50, type=int), 100)
-    offset = request.args.get('offset', 0, type=int)
-    
-    # 按时间戳升序排列（最旧的在前），确保消息按时间顺序排列
-    messages = db_session.query(ChatMessage).filter_by(room_id=room_id)\
-        .order_by(ChatMessage.timestamp.asc()).limit(limit).offset(offset).all()
-    
-    # 转换为字典列表（只返回原始内容）
-    messages_data = [{
-        'id': msg.id,
-        'content': html.unescape(msg.content) if isinstance(msg.content, str) else msg.content,  # 原始Markdown内容（解码旧有实体）
-        'timestamp': msg.timestamp.isoformat(),
-        'user_id': msg.user_id,
-        'username': msg.user.username,
-        'nickname': msg.user.nickname or msg.user.username,
-        'color': msg.user.color,
-        'badge': msg.user.badge
-    } for msg in messages]  # 保持顺序，按时间升序
-    
-    return jsonify(messages=messages_data)
+    # 支持 page 参数（0-based）或特殊值 'last'
+    page_param = request.args.get('page')
+    if page_param is None:
+        # 使用 offset/limit 兼容旧客户端
+        offset = request.args.get('offset', 0, type=int)
+        # 按时间戳升序排列（最旧的在前），确保消息按时间顺序排列
+        messages = db_session.query(ChatMessage).filter_by(room_id=room_id)\
+            .order_by(ChatMessage.timestamp.asc()).limit(limit).offset(offset).all()
+        messages_data = [{
+            'id': msg.id,
+            'content': html.unescape(msg.content) if isinstance(msg.content, str) else msg.content,
+            'timestamp': msg.timestamp.isoformat(),
+            'user_id': msg.user_id,
+            'username': msg.user.username,
+            'nickname': msg.user.nickname or msg.user.username,
+            'color': msg.user.color,
+            'badge': msg.user.badge
+        } for msg in messages]
+        return jsonify(messages=messages_data)
+    else:
+        # 计算分页信息并返回指定页（支持 page='last'）
+        try:
+            total_count = db_session.query(ChatMessage).filter_by(room_id=room_id).count()
+        except Exception:
+            total_count = 0
+        total_pages = (total_count + limit - 1) // limit if total_count > 0 else 1
+        page = None
+        if isinstance(page_param, str) and page_param.lower() == 'last':
+            page = max(0, total_pages - 1)
+        else:
+            try:
+                page = int(page_param)
+            except Exception:
+                page = 0
+        if page < 0: page = 0
+        if page >= total_pages: page = total_pages - 1
+        offset = page * limit
+        messages = db_session.query(ChatMessage).filter_by(room_id=room_id)\
+            .order_by(ChatMessage.timestamp.asc()).limit(limit).offset(offset).all()
+        messages_data = [{
+            'id': msg.id,
+            'content': html.unescape(msg.content) if isinstance(msg.content, str) else msg.content,
+            'timestamp': msg.timestamp.isoformat(),
+            'user_id': msg.user_id,
+            'username': msg.user.username,
+            'nickname': msg.user.nickname or msg.user.username,
+            'color': msg.user.color,
+            'badge': msg.user.badge
+        } for msg in messages]
+        return jsonify(messages=messages_data, page=page, total_pages=total_pages)
 
 @app.route('/api/chat/send', methods=['POST'])
 @login_required
@@ -806,9 +837,17 @@ def send_chat_message():
         user_id=current_user.id,
         room_id=room_id
     )
-    db_session.add(message_obj)
-    db_session.commit()
-    
+    try:
+        db_session.add(message_obj)
+        db_session.commit()
+    except Exception as e:
+        try:
+            db_session.rollback()
+        except Exception:
+            pass
+        logger.exception('HTTP 保存聊天消息失败')
+        return jsonify(success=False, message='服务器保存消息失败'), 500
+
     # 返回成功响应
     return jsonify(success=True)
 
@@ -859,6 +898,25 @@ def api_delete_chat_message(room_id, message_id):
         db_session.rollback()
         logger.exception('删除聊天室消息时发生错误')
         return jsonify({'success': False, 'message': '服务器错误'}), 500
+
+
+@app.route('/api/chat/message/<int:message_id>', methods=['GET'])
+@login_required
+def api_get_chat_message(message_id):
+    msg = db_session.query(ChatMessage).filter_by(id=message_id).first()
+    if not msg:
+        return jsonify(success=False, message='消息不存在'), 404
+    user = msg.user
+    return jsonify(success=True, message={
+        'id': msg.id,
+        'content': html.unescape(msg.content) if isinstance(msg.content, str) else msg.content,
+        'timestamp': msg.timestamp.isoformat(),
+        'user_id': msg.user_id,
+        'username': user.username if user else None,
+        'nickname': user.nickname if user else None,
+        'color': user.color if user else None,
+        'badge': user.badge if user else None
+    })
 
 
 @app.route('/api/forum/reply/<int:reply_id>', methods=['DELETE'])
@@ -1497,7 +1555,18 @@ def forum_thread(thread_id):
     section_permission = get_forum_permission_value(current_user, thread.section_id)
     if section_permission == 'Null':
         abort(403)
-    replies = thread.replies.order_by(ForumReply.timestamp.asc()).all()
+    # 分页加载：每页 50 条，默认展示最后一页（最近的 50 条）
+    try:
+        total_count = thread.replies.count()
+    except Exception:
+        # 兼容非-dynamic 关系
+        total_count = db_session.query(ForumReply).filter_by(thread_id=thread.id).count()
+    PAGE_SIZE = 50
+    total_pages = (total_count + PAGE_SIZE - 1) // PAGE_SIZE if total_count > 0 else 1
+    # 页面使用 0-based page index，默认加载最后一页
+    current_page = 0
+    offset = current_page * PAGE_SIZE
+    replies = thread.replies.order_by(ForumReply.timestamp.asc()).offset(offset).limit(PAGE_SIZE).all()
     # 解码已存在的实体，保证客户端渲染时能正确还原 code block 内容
     try:
         if thread.content and isinstance(thread.content, str):
@@ -1515,7 +1584,10 @@ def forum_thread(thread_id):
         thread=thread,
         replies=replies,
         section_permission=section_permission,
-        can_reply=section_permission in FORUM_POST_PERMISSIONS
+        can_reply=section_permission in FORUM_POST_PERMISSIONS,
+        forum_thread_total_pages=total_pages,
+        forum_thread_current_page=current_page,
+        forum_thread_page_size=PAGE_SIZE
     )
 
 
@@ -1545,12 +1617,53 @@ def api_delete_thread(thread_id):
             log_admin_action(message)
             logger.info(f"用户 {current_user.id} 删除了主题帖 {thread.id}")
             return jsonify(success=True, message='删除成功', redirect=url_for('forum_section', section_id=thread.section_id))
+
         else:
             return jsonify(success=False, message='权限不足'), 403
     except Exception as e:
         db_session.rollback()
         logger.exception('删除主题帖时发生错误')
         return jsonify(success=False, message='服务器错误'), 500
+
+
+@app.route('/api/forum/thread/<int:thread_id>/replies', methods=['GET'])
+@login_required
+def api_get_thread_replies(thread_id):
+    """按页获取指定主题的回复，query 参数 page 可选（0-based），默认 0（最早一页）。"""
+    thread = db_session.query(ForumThread).get(thread_id)
+    if thread is None:
+        return jsonify(success=False, message='主题不存在'), 404
+    page = 0
+    try:
+        page = int(request.args.get('page', 0))
+    except Exception:
+        page = 0
+    PAGE_SIZE = 1145141919810 # 关闭分页，返回所有回复
+    try:
+        total_count = thread.replies.count()
+    except Exception:
+        total_count = db_session.query(ForumReply).filter_by(thread_id=thread.id).count()
+    total_pages = (total_count + PAGE_SIZE - 1) // PAGE_SIZE if total_count > 0 else 1
+    # 保证 page 合法
+    if page < 0:
+        page = 0
+    if page >= total_pages:
+        page = total_pages - 1
+    offset = page * PAGE_SIZE
+    replies = thread.replies.order_by(ForumReply.timestamp.asc()).offset(offset).limit(PAGE_SIZE).all()
+    result = []
+    for r in replies:
+        result.append({
+            'id': r.id,
+            'thread_id': r.thread_id,
+            'user_id': r.user_id,
+            'username': r.user.username if r.user else None,
+            'nickname': r.user.nickname if r.user else None,
+            'color': r.user.color if r.user else None,
+            'content': r.content,
+            'timestamp': r.timestamp.isoformat() if hasattr(r.timestamp, 'isoformat') else str(r.timestamp)
+        })
+    return jsonify(success=True, replies=result, page=page, total_pages=total_pages)
 
 @app.route('/forum/new/<int:section_id>', methods=['GET', 'POST'])
 @login_required
@@ -3017,6 +3130,10 @@ def on_leave(data):
 @socketio.on('send_message')
 def handle_message(data):
     """处理发送消息"""
+    try:
+        logger.info('socket send_message called by user %s: %s', getattr(current_user, 'id', None), repr(data))
+    except Exception:
+        pass
     if not current_user.is_authenticated:
         return
     
@@ -3158,8 +3275,17 @@ def handle_message(data):
         user_id=current_user.id,
         room_id=room_id
     )
-    db_session.add(message)
-    db_session.commit()
+    try:
+        db_session.add(message)
+        db_session.commit()
+    except Exception as e:
+        try:
+            db_session.rollback()
+        except Exception:
+            pass
+        logger.exception('保存聊天消息失败')
+        emit('error', {'message': '服务器保存消息失败'})
+        return
     
     # 发送消息给房间内所有人（包括发送者），并携带 client_id（如果客户端发送了），
     # 这样发送者可以收到带有服务器 id 的确认消息以更新本地 pending 消息
@@ -3415,6 +3541,89 @@ def init_db():
     
     db_session.commit()
     log_admin_action("数据库初始化完成")
+
+
+def create_test_data():
+    """创建测试数据：聊天室消息和论坛帖子，仅在调试模式下执行"""
+    if not app.config['DEBUG']:
+        return
+    
+    try:
+        # 1. 创建测试聊天室
+        test_room = db_session.query(ChatRoom).filter_by(name='test').first()
+        if not test_room:
+            test_room = ChatRoom(
+                name='test',
+                description='测试分页功能的聊天室'
+            )
+            db_session.add(test_room)
+            db_session.commit()
+            log_admin_action("创建了测试聊天室")
+        
+        # 2. 向测试聊天室发送100条消息
+        admin_user = db_session.query(User).filter_by(id=1).first()
+        if admin_user:
+            # 检查是否已有测试消息
+            existing_count = db_session.query(ChatMessage).filter_by(room_id=test_room.id).count()
+            if existing_count < 100:
+                # 生成从旧到新的时间戳
+                base_time = datetime.utcnow() - timedelta(minutes=100)
+                for i in range(1, 101):
+                    # 跳过已存在的消息
+                    if i <= existing_count:
+                        continue
+                    msg_time = base_time + timedelta(minutes=i)
+                    message = ChatMessage(
+                        content=f"测试消息 #{i}",
+                        user_id=admin_user.id,
+                        room_id=test_room.id,
+                        timestamp=msg_time
+                    )
+                    db_session.add(message)
+                db_session.commit()
+                log_admin_action(f"向测试聊天室添加了 {100-existing_count} 条测试消息")
+        
+        # 3. 创建测试论坛分区
+        test_section = db_session.query(ForumSection).filter_by(name='test').first()
+        if not test_section:
+            test_section = ForumSection(
+                name='test',
+                description='测试分页功能的论坛分区'
+            )
+            db_session.add(test_section)
+            db_session.commit()
+            log_admin_action("创建了测试论坛分区")
+        
+        # 4. 在测试分区创建一个主题帖
+        test_thread = db_session.query(ForumThread).filter_by(title='测试分页').first()
+        if not test_thread:
+            test_thread = ForumThread(
+                title='测试分页',
+                content='这个帖子用于测试分页功能',
+                user_id=admin_user.id,
+                section_id=test_section.id,
+                timestamp=datetime.utcnow() - timedelta(minutes=110)
+            )
+            db_session.add(test_thread)
+            db_session.commit()
+            
+            # 5. 为测试帖子添加505条回复
+            base_reply_time = datetime.utcnow() - timedelta(minutes=100)
+            for i in range(1, 505):
+                reply_time = base_reply_time + timedelta(minutes=i)
+                reply = ForumReply(
+                    content=f"测试回复 #{i}",
+                    user_id=admin_user.id,
+                    thread_id=test_thread.id,
+                    timestamp=reply_time
+                )
+                db_session.add(reply)
+            db_session.commit()
+            log_admin_action("创建了测试帖子和50条回复")
+            
+    except Exception as e:
+        logger.error(f"创建测试数据失败: {str(e)}")
+        db_session.rollback()
 
 # 主程序
 if __name__ == '__main__':

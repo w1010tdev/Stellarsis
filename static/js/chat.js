@@ -1,6 +1,8 @@
 // 全局变量
 let chatSocket = null;
 let chatHistoryLoaded = false;
+let chatCurrentPage = null;
+let chatTotalPages = null;
 let followedUserIds = new Set();  // 关注的用户ID集合
 let lastMessageId = 0;
 let onlineUsers = [];
@@ -205,6 +207,7 @@ function setupMessageUpdatedHandler(socket) {
                 if (contentEl) {
                     // 使用渲染系统更新内容
                     contentEl.innerHTML = window.renderContent(msg.content || '');
+                    if (typeof window.postProcessRendered === 'function') window.postProcessRendered(contentEl);
                 }
             } else {
                 // 如果未找到对应元素，按需追加到消息区
@@ -359,8 +362,9 @@ function waitForRenderSystem(callback) {
 // 加载聊天历史
 function loadChatHistory() {
     if (chatHistoryLoaded) return;
-
-    fetch(`/api/chat/${roomId}/history`)
+    // 请求最后一页以显示最新消息
+    const pageSize = 50;
+    fetch(`/api/chat/${roomId}/history?page=last&limit=${pageSize}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP错误! 状态: ${response.status}`);
@@ -387,6 +391,54 @@ function loadChatHistory() {
                 }
             });
 
+            // 如果服务端返回分页信息，初始化加载更多按钮
+            if (typeof data.page !== 'undefined' && typeof data.total_pages !== 'undefined') {
+                chatCurrentPage = data.page;
+                chatTotalPages = data.total_pages;
+                if (chatTotalPages > 1 && messagesContainer) {
+                    let wrap = document.getElementById('chat-load-more-wrap');
+                    if (!wrap) {
+                        wrap = document.createElement('div');
+                        wrap.id = 'chat-load-more-wrap';
+                        wrap.style.textAlign = 'center';
+                        wrap.style.margin = '6px 0';
+                        const btn = document.createElement('button');
+                        btn.id = 'chat-load-more-btn';
+                        btn.className = 'btn';
+                        btn.dataset.currentPage = chatCurrentPage;
+                        btn.dataset.totalPages = chatTotalPages;
+                        btn.textContent = '加载更多';
+                        wrap.appendChild(btn);
+                        messagesContainer.insertBefore(wrap, messagesContainer.firstChild);
+
+                        btn.addEventListener('click', function () {
+                            const cur = parseInt(btn.dataset.currentPage || '0', 10);
+                            if (cur <= 0) { btn.style.display = 'none'; return; }
+                            const nextPage = cur - 1;
+                            btn.disabled = true; btn.textContent = '加载中...';
+                            fetch(`/api/chat/${roomId}/history?page=${nextPage}&limit=${pageSize}`)
+                                .then(r => { if (!r.ok) throw new Error('加载失败'); return r.json(); })
+                                .then(d => {
+                                    if (d && Array.isArray(d.messages)) {
+                                        // 记录之前的滚动高度以便恢复视图位置
+                                        const prevScrollTop = messagesContainer.scrollTop;
+                                        prependMessages(d.messages);
+                                        // 恢复视图：保持之前顶部消息位置不变
+                                        const newScroll = messagesContainer.scrollHeight;
+                                        messagesContainer.scrollTop = prevScrollTop;
+                                        btn.dataset.currentPage = nextPage;
+                                        if (nextPage <= 0) btn.style.display = 'none';
+                                    } else {
+                                        console.error('加载更多返回格式错误');
+                                    }
+                                })
+                                .catch(err => { console.error('加载更多失败', err); })
+                                .finally(() => { btn.disabled = false; btn.textContent = '加载更多'; });
+                        });
+                    }
+                }
+            }
+
             // 更新最后一条消息ID
             if (data.messages.length > 0) {
                 lastMessageId = data.messages[data.messages.length - 1].id;
@@ -395,9 +447,8 @@ function loadChatHistory() {
             }
 
             // 如果之前滚动到底部，则滚动到底部
-            if (isScrolledToBottom) {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
+            // 加载最后一页默认滚动到底部
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
             chatHistoryLoaded = true;
         })
         .catch(error => {
@@ -1030,6 +1081,22 @@ function addMessageToUI(msg, isLocal = false, his = false) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
+// 将一组消息插入到消息容器顶部（按时间顺序：最旧在上）
+function prependMessages(messages) {
+    const messagesContainer = document.getElementById('chat-messages');
+    if (!messagesContainer || !Array.isArray(messages) || messages.length === 0) return;
+    // 创建文档片段以减少回流
+    const frag = document.createDocumentFragment();
+    messages.forEach(m => {
+        const isLocal = m.user_id && Number(m.user_id) === Number(userId);
+        const el = createMessageElement(m, isLocal);
+        frag.appendChild(el);
+        if (m.id) processedMessageIds.add(m.id);
+    });
+    // 将片段插入到容器开头
+    messagesContainer.insertBefore(frag, messagesContainer.firstChild);
+}
+
 
 
 // 添加状态消息
@@ -1196,6 +1263,7 @@ function updateExistingMessage(clientId, serverMessage) {
             try {
                 if (typeof window.renderContent === 'function') {
                     contentElement.innerHTML = window.renderContent(contentElement.dataset.originalContent);
+                    if (typeof window.postProcessRendered === 'function') window.postProcessRendered(contentElement);
                 } else {
                     contentElement.innerHTML = `<div class="render-fallback">${escapeHtml(contentElement.dataset.originalContent)}</div>`;
                 }
@@ -1408,6 +1476,31 @@ function createMessageElement(msg, isLocal = false) {
         console.error('添加删除按钮失败:', e);
     }
 
+    // 添加引用按钮（如果允许发送消息）
+    try {
+        if (msg.id && canSendMessages()) {
+            const quoteBtn = document.createElement('button');
+            quoteBtn.className = 'btn quote-btn';
+            quoteBtn.title = '引用此消息';
+            quoteBtn.textContent = '引用';
+            quoteBtn.style.marginLeft = '6px';
+            quoteBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                try {
+                    const ta = document.getElementById('message-text');
+                    if (!ta) return;
+                    const insert = `@quote{${msg.id}}\n`;
+                    ta.value = insert + ta.value;
+                    ta.focus();
+                    try { ta.setSelectionRange(insert.length, insert.length); } catch (err) {}
+                } catch (err) { console.error('插入引用失败', err); }
+            });
+            userElement.appendChild(quoteBtn);
+        }
+    } catch (e) {
+        console.error('添加删除按钮失败:', e);
+    }
+
     return messageElement;
 }
 
@@ -1416,6 +1509,7 @@ function processMessageQueue() {
     messageQueue.forEach(item => {
         try {
             item.element.innerHTML = window.renderContent(item.content);
+            if (typeof window.postProcessRendered === 'function') window.postProcessRendered(item.element);
         } catch (e) {
             console.error('队列消息渲染失败:', e);
             item.element.innerHTML = `<div class="render-error">${escapeHtml(item.content)}</div>`;
@@ -1429,6 +1523,7 @@ function tryRenderMessage(element, content) {
     if (typeof window.renderContent === 'function') {
         try {
             element.innerHTML = window.renderContent(content);
+            if (typeof window.postProcessRendered === 'function') window.postProcessRendered(element);
             return true;
         } catch (e) {
             console.error('消息渲染失败:', e);

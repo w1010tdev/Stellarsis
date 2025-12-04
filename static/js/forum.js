@@ -30,11 +30,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // 等待渲染系统就绪
         waitForRenderReady(function() {
             try {
-                element.innerHTML = window.renderContent(content);
-            } catch (e) {
-                console.error('内容渲染失败:', e);
-                element.innerHTML = '<div class="render-error">' + escapeHtml(content) + '</div>';
-            }
+                    element.innerHTML = window.renderContent(content);
+                    if (typeof window.postProcessRendered === 'function') window.postProcessRendered(element);
+                } catch (e) {
+                    console.error('内容渲染失败:', e);
+                    element.innerHTML = '<div class="render-error">' + escapeHtml(content) + '</div>';
+                }
         });
     }
     
@@ -139,6 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
         waitForRenderReady(function() {
             try {
                 contentElement.innerHTML = window.renderContent(replyData.content);
+                if (typeof window.postProcessRendered === 'function') window.postProcessRendered(contentElement);
             } catch (e) {
                 console.error('回复渲染失败:', e);
                 contentElement.innerHTML = '<div class="render-error">' + escapeHtml(replyData.content) + '</div>';
