@@ -1,9 +1,9 @@
 @echo off
-:: ÇÐ»»µ½ÖÐÎÄÏµÍ³Ä¬ÈÏ±àÂë£¨GBK£©£¬½â¾öÖÐÎÄÏÔÊ¾ÂÒÂë
-chcp 936 > nul 2>&1
+:: åˆ‡æ¢åˆ°UTF-8ï¼Œè§£å†³ä¸­æ–‡æ˜¾ç¤ºä¹±ç 
+chcp 65001
 setlocal enabledelayedexpansion
 
-:: ÅäÖÃPython°æ±¾¼°°²×°Ïà¹Ø²ÎÊý
+:: é…ç½®Pythonç‰ˆæœ¬åŠå®‰è£…ç›¸å…³å‚æ•°
 set PYTHON_VERSION=3.10.11
 set PYTHON_INSTALLER=python-%PYTHON_VERSION%-amd64.exe
 set PYTHON_DOWNLOAD_URL=https://mirrors.tuna.tsinghua.edu.cn/python/%PYTHON_VERSION%/%PYTHON_INSTALLER%
@@ -11,102 +11,104 @@ set REQUIREMENTS_FILE=requirements.txt
 set APP_FILE=app.py
 set SSLKEYLOGFILE=
 
-:: µÚÒ»²½£º¼ì²éPythonÊÇ·ñÒÑ°²×°
+:: ç¬¬ä¸€æ­¥ï¼šæ£€æŸ¥Pythonæ˜¯å¦å·²å®‰è£…
 echo ========================
-echo ¼ì²éPythonÊÇ·ñÒÑ°²×°...
+echo æ£€æŸ¥Pythonæ˜¯å¦å·²å®‰è£…...
 echo ========================
 
-:: ÏÈ³¢ÊÔÖ±½Óµ÷ÓÃ£¨ÒÑ°²×°ÇÒPATHÉúÐ§µÄÇé¿ö£©
-python --version > nul 2>&1
-if %errorlevel% equ 0 (
-    echo ¡Ì Python ÒÑ°²×°
-    python --version
+if exist "%ProgramFiles%\Python310\python.exe" (
+    echo âˆš Python å·²å®‰è£…
+    goto install_deps
+)
+:: å…¶æ¬¡æ£€æŸ¥ç”¨æˆ·çº§å®‰è£…è·¯å¾„ï¼ˆLocalAppDataï¼‰
+if exist "%LocalAppData%\Programs\Python\Python310\python.exe" (
+    echo âˆš Python å·²å®‰è£…
     goto install_deps
 )
 
-:: µÚ¶þ²½£ºÏÂÔØ²¢°²×°Python
+:: ç¬¬äºŒæ­¥ï¼šä¸‹è½½å¹¶å®‰è£…Python
 echo ========================
-echo ¿ªÊ¼°²×°Python...
+echo å¼€å§‹å®‰è£…Python...
 echo ========================
 
-:: Ê¹ÓÃbitsadminÏÂÔØ°²×°°ü£¨WindowsÄÚÖÃ¹¤¾ß£¬ÎÞÐècurl£©
-echo ÕýÔÚÏÂÔØPython°²×°°ü£º%PYTHON_DOWNLOAD_URL%
+:: ä½¿ç”¨bitsadminä¸‹è½½å®‰è£…åŒ…ï¼ˆWindowså†…ç½®å·¥å…·ï¼Œæ— éœ€curlï¼‰
+echo æ­£åœ¨ä¸‹è½½Pythonå®‰è£…åŒ…ï¼š%PYTHON_DOWNLOAD_URL%
 bitsadmin /transfer PythonInstaller /download /priority normal ^
     %PYTHON_DOWNLOAD_URL% ^
     %cd%\%PYTHON_INSTALLER%
 
-:: ¼ì²éÏÂÔØÊÇ·ñ³É¹¦
+:: æ£€æŸ¥ä¸‹è½½æ˜¯å¦æˆåŠŸ
 if not exist %PYTHON_INSTALLER% (
-    echo ¡Á Python°²×°°üÏÂÔØÊ§°Ü£¡ÏÂÔØµØÖ·£º%PYTHON_DOWNLOAD_URL%
+    echo Ã— Pythonå®‰è£…åŒ…ä¸‹è½½å¤±è´¥ï¼ä¸‹è½½åœ°å€ï¼š%PYTHON_DOWNLOAD_URL%
     pause
     exit /b 1
 )
 
-echo ÕýÔÚ°²×°Python£¬ÇëÉÔºò...
-:: ¾²Ä¬°²×°²ÎÊýËµÃ÷£º
-:: InstallAllUsers=1£ºÈ«¾Ö°²×°£¨ËùÓÐÓÃ»§£©
-:: PrependPath=1£º³¢ÊÔÌí¼Óµ½ÏµÍ³PATH£¨µ«µ±Ç°½ø³Ì²»ÉúÐ§£©
-:: Include_test=0£º²»°²×°²âÊÔ×é¼þ
-:: QuietInstall=1£º¾²Ä¬°²×°
+echo æ­£åœ¨å®‰è£…Pythonï¼Œè¯·ç¨å€™...
+:: é™é»˜å®‰è£…å‚æ•°è¯´æ˜Žï¼š
+:: InstallAllUsers=1ï¼šå…¨å±€å®‰è£…ï¼ˆæ‰€æœ‰ç”¨æˆ·ï¼‰
+:: PrependPath=1ï¼šå°è¯•æ·»åŠ åˆ°ç³»ç»ŸPATHï¼ˆä½†å½“å‰è¿›ç¨‹ä¸ç”Ÿæ•ˆï¼‰
+:: Include_test=0ï¼šä¸å®‰è£…æµ‹è¯•ç»„ä»¶
+:: QuietInstall=1ï¼šé™é»˜å®‰è£…
 %PYTHON_INSTALLER% /quiet InstallAllUsers=1 PrependPath=1 Include_test=0 QuietInstall=1
 
-:: °²×°Íê³Éºó£¬×Ô¶¯¼ì²âPython°²×°Â·¾¶£¨ÊÊÅäÏµÍ³/ÓÃ»§¼¶°²×°£©
+:: å®‰è£…å®ŒæˆåŽï¼Œè‡ªåŠ¨æ£€æµ‹Pythonå®‰è£…è·¯å¾„ï¼ˆé€‚é…ç³»ç»Ÿ/ç”¨æˆ·çº§å®‰è£…ï¼‰
 set "PYTHON_EXE="
-:: ÓÅÏÈ¼ì²éÏµÍ³¼¶°²×°Â·¾¶£¨Program Files£©
+:: ä¼˜å…ˆæ£€æŸ¥ç³»ç»Ÿçº§å®‰è£…è·¯å¾„ï¼ˆProgram Filesï¼‰
 if exist "%ProgramFiles%\Python310\python.exe" (
     set "PYTHON_EXE=%ProgramFiles%\Python310\python.exe"
 )
-:: Æä´Î¼ì²éÓÃ»§¼¶°²×°Â·¾¶£¨LocalAppData£©
+:: å…¶æ¬¡æ£€æŸ¥ç”¨æˆ·çº§å®‰è£…è·¯å¾„ï¼ˆLocalAppDataï¼‰
 if not defined PYTHON_EXE if exist "%LocalAppData%\Programs\Python\Python310\python.exe" (
     set "PYTHON_EXE=%LocalAppData%\Programs\Python\Python310\python.exe"
 )
 
-:: ¼ì²éÊÇ·ñÕÒµ½Python¿ÉÖ´ÐÐÎÄ¼þ
+:: æ£€æŸ¥æ˜¯å¦æ‰¾åˆ°Pythonå¯æ‰§è¡Œæ–‡ä»¶
 if not defined PYTHON_EXE (
-    echo ¡Á Python°²×°Ê§°Ü£¬Î´ÕÒµ½°²×°Â·¾¶£¡
+    echo Ã— Pythonå®‰è£…å¤±è´¥ï¼Œæœªæ‰¾åˆ°å®‰è£…è·¯å¾„ï¼
     pause
     exit /b 1
 )
 
-echo ¡Ì Python°²×°³É¹¦
-echo ¡Ì PythonÂ·¾¶£º%PYTHON_EXE%
+echo âˆš Pythonå®‰è£…æˆåŠŸ
+echo âˆš Pythonè·¯å¾„ï¼š%PYTHON_EXE%
 "%PYTHON_EXE%" --version
 
-:: µÚÈý²½£º°²×°ÒÀÀµ°ü
+:: ç¬¬ä¸‰æ­¥ï¼šå®‰è£…ä¾èµ–åŒ…
 :install_deps
 echo ========================
-echo ¿ªÊ¼°²×°ÏîÄ¿ÒÀÀµ...
+echo å¼€å§‹å®‰è£…é¡¹ç›®ä¾èµ–...
 echo ========================
 
-:: ¼ì²érequirements.txtÊÇ·ñ´æÔÚ
+:: æ£€æŸ¥requirements.txtæ˜¯å¦å­˜åœ¨
 if not exist %REQUIREMENTS_FILE% (
-    echo ¡Á Î´ÕÒµ½requirements.txtÎÄ¼þ£¡
+    echo Ã— æœªæ‰¾åˆ°requirements.txtæ–‡ä»¶ï¼
     pause
     exit /b 1
 )
 
-:: Éý¼¶pip£¨Ê¹ÓÃ¾ø¶ÔÂ·¾¶µ÷ÓÃPython£¬±ÜÃâPATHÎÊÌâ£©
-echo ÕýÔÚÉý¼¶pip...
+:: å‡çº§pipï¼ˆä½¿ç”¨ç»å¯¹è·¯å¾„è°ƒç”¨Pythonï¼Œé¿å…PATHé—®é¢˜ï¼‰
+echo æ­£åœ¨å‡çº§pip...
 "%PYTHON_EXE%" -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-:: °²×°ÒÀÀµ°ü£¨Ê¹ÓÃÇå»ªÔ´¼ÓËÙ£©
-echo ÕýÔÚ°²×°ÏîÄ¿ÒÀÀµ°ü...
+:: å®‰è£…ä¾èµ–åŒ…ï¼ˆä½¿ç”¨æ¸…åŽæºåŠ é€Ÿï¼‰
+echo æ­£åœ¨å®‰è£…é¡¹ç›®ä¾èµ–åŒ…...
 "%PYTHON_EXE%" -m pip install -r %REQUIREMENTS_FILE% -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 if %errorlevel% equ 0 (
-    echo ¡Ì ÒÀÀµ°ü°²×°³É¹¦
+    echo âˆš ä¾èµ–åŒ…å®‰è£…æˆåŠŸ
 ) else (
-    echo ¡Á ÒÀÀµ°ü°²×°Ê§°Ü£¡Çë¼ì²érequirements.txtÎÄ¼þÄÚÈÝ
+    echo Ã— ä¾èµ–åŒ…å®‰è£…å¤±è´¥ï¼è¯·æ£€æŸ¥requirements.txtæ–‡ä»¶å†…å®¹
     pause
     exit /b 1
 )
 
-:: µÚËÄ²½£ºÔËÐÐÓ¦ÓÃ³ÌÐò
+:: ç¬¬å››æ­¥ï¼šè¿è¡Œåº”ç”¨ç¨‹åº
 echo ========================
-echo ÕýÔÚÆô¶¯Ó¦ÓÃ³ÌÐò %APP_FILE%...
+echo æ­£åœ¨å¯åŠ¨åº”ç”¨ç¨‹åº %APP_FILE%...
 echo ========================
 "%PYTHON_EXE%" %APP_FILE%
 
-:: ·ÀÖ¹´°¿Ú×Ô¶¯¹Ø±Õ
+:: é˜²æ­¢çª—å£è‡ªåŠ¨å…³é—­
 pause
 endlocal
