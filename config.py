@@ -10,7 +10,7 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     DEBUG = True  # 用于热重载
     SOCKETIO_ASYNC_MODE = 'eventlet'
-    ONLINE_TIMEOUT = 300  # 5分钟无活动视为离线
+    ONLINE_TIMEOUT = 30  # 30秒无活动视为离线
     # 图片上传相关配置
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB 上传限制
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER') or os.path.join('static', 'uploads')
