@@ -71,7 +71,7 @@
 <body class="page-enter">
     <header>
         <div class="container">
-            <h1><a href="/">群星议会</a></h1>
+            <h1><a href="/" id="global_title">群星议会</a></h1>
             <button class="menu-toggle" id="menu-toggle">
                 <span></span>
             </button>
@@ -474,10 +474,23 @@
         // 添加socket.io加载状态跟踪
         document.globalSocketIoLoaded = false;
         document.globalSocketIoCallbacks = [];
+        let heartbeatInterval;
+        function startHeartbeat() {
+            // 清除可能已存在的定时器
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+
+            heartbeatInterval = setInterval(() => {
+                if (globalSocket && globalSocket.connected) {
+                    globalSocket.emit('heartbeat');
+                    console.log('已发送心跳');
+                }
+            }, 30000); // 30秒发送一次心跳
+        }
         function onGlobalSocketIoLoaded() {
             document.globalSocketIoLoaded = true;
             document.globalSocketIoCallbacks.forEach(cb => cb());
             document.globalSocketIoCallbacks = [];
+            startHeartbeat();
         }
         function waitForGlobalSocketIo(callback) {
             if (document.globalSocketIoLoaded) {
@@ -513,21 +526,18 @@
         }
         // 获取全局在线人数（WebSocket或fetch）
         function getGlobalOnlineCount() {
-            if (globalSocket && globalSocket.connected) {
-                // WebSocket可用
-                globalSocket.emit('get_global_online_count', {});
-            } else {
-                // WebSocket不可用，使用fetch降级方案
-                fetch('/api/online_count')
-                    .then(response => response.json())
-                    .then(data => {
-                        updateGlobalOnlineCountDisplay(data.count);
-                    })
-                    .catch(error => {
-                        console.error('获取全局在线人数失败:', error);
-                        updateGlobalOnlineCountDisplay('错误');
-                    });
-            }
+
+            // WebSocket不可用，使用fetch降级方案
+            fetch('/api/online_count')
+                .then(response => response.json())
+                .then(data => {
+                    updateGlobalOnlineCountDisplay(data.count);
+                })
+                .catch(error => {
+                    console.error('获取全局在线人数失败:', error);
+                    updateGlobalOnlineCountDisplay('错误');
+                });
+
         }
         // 初始化全局在线人数更新
         function initializeGlobalOnlineCount() {
@@ -537,10 +547,9 @@
             getGlobalOnlineCount();
             // 设置定时器定期更新（当WebSocket不可用时）
             setInterval(() => {
-                if (!globalSocket || !globalSocket.connected) {
-                    getGlobalOnlineCount();
-                }
-            }, 60000); // 每分钟更新一次
+                getGlobalOnlineCount();
+                console.log('定时更新全局在线人数');
+            }, 10000); // 每10s更新一次
         }
         // 设置WebSocket连接
         function setupGlobalSocket() {
@@ -559,22 +568,7 @@
                         timeout: 20000,
                         transports: ['websocket', 'polling']
                     });
-                    globalSocket.on('connect', () => {
-                        console.log('全局WebSocket连接已建立');
-                        // 连接建立后，获取一次全局在线人数
-                        getGlobalOnlineCount();
-                    });
-                    globalSocket.on('disconnect', (reason) => {
-                        console.log('全局WebSocket断开连接:', reason);
-                        updateGlobalOnlineCountDisplay('连接中...');
-                    });
-                    globalSocket.on('connect_error', (error) => {
-                        console.error('全局WebSocket连接错误:', error);
-                        updateGlobalOnlineCountDisplay('连接错误');
-                    });
-                    globalSocket.on('global_online_count', (data) => {
-                        updateGlobalOnlineCountDisplay(data.count);
-                    });
+                    initializeGlobalOnlineCount();
                 } catch (e) {
                     console.error('全局WebSocket初始化失败:', e);
                     initializeGlobalOnlineCount(); // 使用降级方案

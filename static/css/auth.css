@@ -34,7 +34,7 @@
   width: 100%;
   padding: 12px;
   background-color: var(--primary-color);
-  color: var(--on-surface);
+  color: var(--on-primary);
   border: none;
   border-radius: var(--border-radius-sm);
   font-size: 1rem;
@@ -126,7 +126,7 @@
   padding: 15px;
   border-radius: var(--border-radius-sm);
   margin-bottom: 25px;
-  border-left: 4px solid var(--secondary-color);
+  border-left: 4px solid var(--primary-color);
 }
 
 .requirements ul {

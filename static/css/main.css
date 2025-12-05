@@ -63,13 +63,13 @@
   /* 语义文本色，供组件使用，便于主题覆盖 */
   --muted-text-color: var(--neutral-600);
   --muted-weak: var(--neutral-500);
-    /* 语义前景色（on-xxx）: 用于在不同表面/主色上的前景文本颜色
+  /* 语义前景色（on-xxx）: 用于在不同表面/主色上的前景文本颜色
       方便在主题中覆盖：--on-surface 用于普通文本，--on-primary 用于主色按钮等 */
-    --on-surface: var(--text-color);
-    --on-primary: #ffffff;
-    --on-danger: #ffffff;
-    --on-success: #ffffff;
-    --on-warning: var(--neutral-900);
+  --on-surface: var(--text-color);
+  --on-primary: #ffffff;
+  --on-danger: #ffffff;
+  --on-success: #ffffff;
+  --on-warning: var(--neutral-900);
   --font-family-monospace: var(--font-mono);
   --transition-fast: 0.15s;
   --border-radius-sm: var(--radius-sm);
@@ -117,29 +117,29 @@
 
   /* settings panel tokens */
   --settings-sidebar-bg: linear-gradient(180deg, var(--overlay-high), var(--overlay-almost));
-  --settings-sidebar-border: rgba(99,102,241,0.06);
+  --settings-sidebar-border: rgba(99, 102, 241, 0.06);
   --settings-accent-gradient: linear-gradient(180deg, var(--primary-400), var(--primary-700));
-  --settings-accent-shadow: rgba(139,92,246,0.08);
-  --settings-hover-gradient: linear-gradient(90deg, rgba(139,92,246,0.08), rgba(37,99,235,0.03));
+  --settings-accent-shadow: rgba(139, 92, 246, 0.08);
+  --settings-hover-gradient: linear-gradient(90deg, rgba(139, 92, 246, 0.08), rgba(37, 99, 235, 0.03));
   --settings-active-gradient: linear-gradient(90deg, var(--primary-color), var(--accent-start));
-  --settings-active-shadow: rgba(99,102,241,0.12);
+  --settings-active-shadow: rgba(99, 102, 241, 0.12);
 
   /* mobile nav */
   --mobile-nav-bg: linear-gradient(135deg, var(--overlay-strong), var(--overlay-high));
-  --mobile-nav-shadow: rgba(0,0,0,0.08);
+  --mobile-nav-shadow: rgba(0, 0, 0, 0.08);
   --avatar-bg: linear-gradient(135deg, var(--primary-500), var(--primary-400));
   /* Card and surface tokens - themes should override these for contrast */
   --surface-color: #ffffff;
   --card-border-color: var(--neutral-200);
   --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
   /* Overlay tokens for semi-transparent white overlays; themes may override */
-  --overlay-strong: rgba(255,255,255,0.95);
-  --overlay-almost: rgba(250,252,255,0.98);
-  --overlay-high: rgba(250,250,255,0.9);
-  --overlay-medium: rgba(255,255,255,0.5);
-  --overlay-subtle: rgba(255,255,255,0.05);
-  --overlay-xsubtle: rgba(255,255,255,0.02);
-  --overlay-xxsubtle: rgba(255,255,255,0.03);
+  --overlay-strong: rgba(255, 255, 255, 0.95);
+  --overlay-almost: rgba(250, 252, 255, 0.98);
+  --overlay-high: rgba(250, 250, 255, 0.9);
+  --overlay-medium: rgba(255, 255, 255, 0.5);
+  --overlay-subtle: rgba(255, 255, 255, 0.05);
+  --overlay-xsubtle: rgba(255, 255, 255, 0.02);
+  --overlay-xxsubtle: rgba(255, 255, 255, 0.03);
 }
 
 /* 重置和基础样式 */
@@ -200,6 +200,7 @@ header .container {
   /* needed for absolutely positioning the centered nav on desktop */
   position: relative;
 }
+
 /* Badge shown next to online username */
 .user-badge {
   display: inline-flex;
@@ -214,6 +215,7 @@ header .container {
   text-align: center;
   background: var(--chat-username-bg);
 }
+
 .site-logo {
   display: flex;
   align-items: center;
@@ -221,12 +223,14 @@ header .container {
   text-decoration: none;
   color: var(--text-color);
 }
-.message-badge{
+
+.message-badge {
   color: var(--on-surface);
   border-radius: 10px;
   padding-left: 8px;
   padding-right: 8px;
 }
+
 .site-logo h1 {
   font-size: 1.85rem;
   font-weight: 800;
@@ -243,12 +247,14 @@ header .container {
 .site-logo h1:hover {
   transform: translateX(2px);
 }
-.settings-main{
+
+.settings-main {
   background-color: var(--surface-color);
   padding: 25px;
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-md);
 }
+
 .site-logo-icon {
   width: 36px;
   height: 36px;
@@ -271,6 +277,7 @@ header nav {
 /* Center the main menu in the header on larger screens while keeping
    the existing mobile behavior (fixed/right slide-in) intact. */
 @media (min-width: 769px) {
+
   /* place the nav in the horizontal center of the header */
   header nav#main-nav {
     position: absolute;
@@ -278,7 +285,8 @@ header nav {
     top: 50%;
     transform: translate(-50%, -50%);
     /* Ensure nav is above the backdrop so menu remains clickable */
-    z-index: 1000002; /* larger than .nav-backdrop (9998) */
+    z-index: 1000002;
+    /* larger than .nav-backdrop (9998) */
   }
 
   /* make sure the menu items stay centered within the nav */
@@ -506,7 +514,7 @@ main {
   border-radius: 14px;
   border: 1px solid var(--settings-sidebar-border);
   padding: 18px;
-  box-shadow: 0 6px 18px rgba(20,23,60,0.06), 0 1px 0 var(--overlay-medium) inset;
+  box-shadow: 0 6px 18px rgba(20, 23, 60, 0.06), 0 1px 0 var(--overlay-medium) inset;
   position: relative;
   min-height: 160px;
 }
@@ -527,7 +535,8 @@ main {
 
 .settings-sidebar h3 {
   font-size: 1.05rem;
-  margin-left: 12px; /* make room for accent */
+  margin-left: 12px;
+  /* make room for accent */
   color: var(--text-color);
   font-weight: 700;
   letter-spacing: -0.2px;
@@ -538,7 +547,8 @@ main {
   display: block;
   padding: 10px 12px;
   margin: 8px 6px;
-  margin-left: 12px; /* align under header */
+  margin-left: 12px;
+  /* align under header */
   color: var(--text-color);
   border-radius: 10px;
   text-decoration: none;
@@ -553,7 +563,7 @@ main {
 }
 
 .settings-sidebar a.active {
-  color: var(--on-surface) !important;
+  color: var(--on-primary);
   background: var(--settings-active-gradient);
   box-shadow: 0 6px 18px var(--settings-active-shadow);
 }
@@ -584,7 +594,8 @@ main {
     padding: 16px;
     min-height: 0;
     position: sticky;
-    top: 84px; /* leave room for header */
+    top: 84px;
+    /* leave room for header */
     max-height: calc(100vh - 100px);
     overflow: auto;
   }
@@ -595,9 +606,14 @@ main {
     bottom: 12px;
   }
 
-  .settings-sidebar h3 { margin-left: 12px; }
+  .settings-sidebar h3 {
+    margin-left: 12px;
+  }
 
-  .settings-sidebar a { margin-left: 12px; display: block; }
+  .settings-sidebar a {
+    margin-left: 12px;
+    display: block;
+  }
 }
 
 /* Small phones: stack sidebar on top as full-width section */
@@ -752,8 +768,8 @@ footer {
   justify-content: center;
   gap: var(--spacing-xs);
   padding: 0.625rem 1.25rem;
-  background-color: var(--primary-600) !important;
-  color: var(--on-primary) !important;
+  background-color: var(--primary-600);
+  color: var(--on-primary);
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -789,12 +805,12 @@ footer {
 }
 
 .btn-secondary {
-  background-color: var(--neutral-400);
+  background-color: var(--neutral-300);
   color: var(--text-color);
 }
 
 .btn-secondary:hover {
-  background-color: var(--neutral-500);
+  background-color: var(--neutral-400);
 }
 
 .btn-success {
@@ -1082,9 +1098,16 @@ header h1 a:visited {
 }
 
 /* 确保全局链接样式一致性：所有状态颜色一致，避免浏览器默认不同颜色 */
-a, a:visited, a:focus, a:active {
+
+a:visited,
+a:focus,
+a:active {
   color: var(--primary-color);
   text-decoration: none;
+}
+
+a{
+  color: var(--primary-color);
 }
 
 /* 修复按钮点击爆炸效果 */
@@ -1162,7 +1185,8 @@ a {
 }
 
 /* 链接悬停效果 - 用颜色变化替代下划线 */
-a:hover, a:focus {
+a:hover,
+a:focus {
   color: var(--primary-dark);
   text-decoration: none;
   /* 确保悬停时也不显示下划线 */
@@ -1221,17 +1245,18 @@ footer a,
 
   .site-logo-icon {
     width: 32px;
-  /* Theme selector styling (uses theme tokens) */
-  .theme-select {
-    margin-left: 8px;
-    padding: 6px;
-    border-radius: 6px;
-    background: var(--surface-color);
-    color: var(--text-color);
-    border: 1px solid var(--card-border-color);
-    box-shadow: var(--settings-accent-shadow);
-    transition: all 0.15s ease;
-  }
+
+    /* Theme selector styling (uses theme tokens) */
+    .theme-select {
+      margin-left: 8px;
+      padding: 6px;
+      border-radius: 6px;
+      background: var(--surface-color);
+      color: var(--text-color);
+      border: 1px solid var(--card-border-color);
+      box-shadow: var(--settings-accent-shadow);
+      transition: all 0.15s ease;
+    }
 
     height: 32px;
     font-size: 1rem;
@@ -1386,11 +1411,47 @@ footer a,
 }
 
 /* 图片上传 UI */
-.image-upload-preview { max-width: 100%; max-height: 210px; display:block; border-radius:8px; border:1px solid var(--card-border-color); }
-.image-upload-thumb { width: 56px; height: 56px; object-fit:cover; border-radius:6px; margin-right:8px; border:1px solid var(--card-border-color); }
-.image-upload-item { display:flex; align-items:center; gap:8px; padding:8px; background:var(--surface-color); border:1px solid var(--card-border-color); border-radius:8px; margin-bottom:8px; }
-.image-upload-markdown { flex:1; padding:6px 8px; border-radius:6px; border:1px solid var(--neutral-200); font-family:var(--font-family-monospace); font-size:0.9rem; }
-.image-upload-copy, .image-upload-insert { white-space: nowrap; }
+.image-upload-preview {
+  max-width: 100%;
+  max-height: 210px;
+  display: block;
+  border-radius: 8px;
+  border: 1px solid var(--card-border-color);
+}
+
+.image-upload-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-right: 8px;
+  border: 1px solid var(--card-border-color);
+}
+
+.image-upload-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: var(--surface-color);
+  border: 1px solid var(--card-border-color);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.image-upload-markdown {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--neutral-200);
+  font-family: var(--font-family-monospace);
+  font-size: 0.9rem;
+}
+
+.image-upload-copy,
+.image-upload-insert {
+  white-space: nowrap;
+}
 
 /* Ensure copy button is readable on light themes */
 .image-upload-copy {
@@ -1400,22 +1461,168 @@ footer a,
 }
 
 @media (max-width: 768px) {
-  .image-upload-preview { max-height: 180px; }
-  .image-upload-thumb { width:48px;height:48px; }
+  .image-upload-preview {
+    max-height: 180px;
+  }
+
+  .image-upload-thumb {
+    width: 48px;
+    height: 48px;
+  }
 }
 
 /* Upload buttons should use semantic tokens and be accessible */
-.btn-primary, .btn-primary:hover, .btn-primary:focus {
+.btn-primary,
+.btn-primary:hover,
+.btn-primary:focus {
   background-color: var(--btn-primary);
   color: var(--on-primary);
   border-color: transparent;
 }
-.btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-color); }
-.btn-sm { padding: 0.25rem 0.5rem; font-size: 0.85rem; }
 
-.image-upload-item .image-upload-markdown { min-width: 120px; }
-.image-upload-item .image-upload-insert { margin-left: 6px; }
-.image-upload-item .image-upload-delete { margin-left: 6px; }
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+}
+
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+.image-upload-item .image-upload-markdown {
+  min-width: 120px;
+}
+
+.image-upload-item .image-upload-insert {
+  margin-left: 6px;
+}
+
+.image-upload-item .image-upload-delete {
+  margin-left: 6px;
+}
 
 /* Make settings sidebar link more prominent for image management */
-.settings-sidebar a[href*="images"] { font-weight: 700; }
+.settings-sidebar a[href*="images"] {
+  font-weight: 700;
+}
+
+
+/* 消息操作下拉菜单样式 */
+.message-actions-dropdown {
+  position: relative;
+  display: inline-block;
+  margin-left: 6px;
+}
+
+.dropdown-toggle {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--muted-text-color);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.dropdown-toggle:hover {
+  background-color: var(--neutral-200);
+  color: var(--text-color);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: var(--surface-color);
+  border: 1px solid var(--neutral-300);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 120px;
+  z-index: 1000;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dropdown-menu.show {
+  display: flex;
+}
+
+.dropdown-item {
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--text-color);
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dropdown-item:hover {
+  background-color: var(--neutral-100);
+  color: var(--primary-600);
+}
+
+.dropdown-item:first-child {
+  border-radius: 0;
+}
+
+.dropdown-item:last-child {
+  border-radius: 0;
+}
+
+/* 为不同操作类型添加特定样式 */
+.message-delete-item {
+  color: var(--danger-500);
+}
+
+.message-delete-item:hover {
+  background-color: var(--danger-50);
+  color: var(--danger-700);
+}
+
+.message-quote-item {
+  color: var(--success-600);
+}
+
+.message-quote-item:hover {
+  background-color: var(--success-50);
+  color: var(--success-700);
+}
+
+/* 确保下拉菜单在消息元素中正确显示 */
+.chat-message .dropdown-menu {
+  margin-top: 4px;
+  margin-right: 0;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .dropdown-menu {
+    min-width: 100px;
+    font-size: var(--text-sm);
+  }
+
+  .dropdown-item {
+    padding: 6px 10px;
+  }
+
+  .dropdown-toggle {
+    width: 22px;
+    height: 22px;
+    font-size: 0.9rem;
+  }
+}

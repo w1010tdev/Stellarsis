@@ -6,9 +6,6 @@
 {% endblock %} {% block head %}
 <title>{{ room.name }} - 聊天室</title>
 {% endblock %} {% block content %}
-<div class="room-header">
-  <h1>{{ room.name }}</h1>
-</div>
 <div id="online-list-modal" class="modal-backdrop">
   <div class="modal-content">
     <div class="modal-header">
@@ -87,6 +84,17 @@
 {% endblock %} {% block scripts %} {{ super() }}
 <!-- 确保socket.io加载 -->
 <script>
+  var global_title = document.getElementById("global_title");
+  if (global_title) {
+    global_title.innerText = "群星议会 - "+" {{ room.name }} ";
+  }
+  //移动端隐藏footer
+  if (window.innerWidth <= 768) {
+    var footer = document.querySelector("footer");
+    if (footer) {
+      footer.style.display = "none";
+    }
+  }
   // 添加socket.io加载状态跟踪
   document.chatIoLoaded = false;
   document.chatIoCallbacks = [];

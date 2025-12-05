@@ -12,40 +12,60 @@
         <div class="dashboard-card">
             <h2>用户管理</h2>
             <p>管理平台用户，包括创建、删除和修改用户权限</p>
-            <a href="{{ url_for('user_management') }}" class="btn btn-primary">进入用户管理</a>
+            <button onclick="window.location.replace('{{ url_for('user_management') }}')"
+                class="btn btn-primary">进入用户管理</a>
         </div>
         <div class="dashboard-card">
             <h2>聊天管理</h2>
             <p>管理聊天室和聊天消息</p>
-            <a href="{{ url_for('chat_management') }}" class="btn btn-primary">进入聊天管理</a>
+            <button onclick="window.location.replace('{{ url_for('chat_management') }}')"
+                class="btn btn-primary">进入聊天管理</a>
         </div>
         <div class="dashboard-card">
             <h2>帖子管理</h2>
             <p>管理贴吧分区和帖子内容</p>
-            <a href="{{ url_for('forum_management') }}" class="btn btn-primary">进入帖子管理</a>
+            <button onclick="window.location.replace(' {{ url_for('forum_management') }}')"
+                class="btn btn-primary">进入帖子管理</a>
         </div>
         <div class="dashboard-card">
             <h2>文件管理</h2>
             <p class="warning-text">警告：仅用于开发环境</p>
-            <a href="{{ url_for('file_manager_view') }}" class="btn btn-primary">进入文件管理</a>
+            <button onclick="window.location.replace(' {{ url_for('file_manager_view') }}')"
+                class="btn btn-primary">进入文件管理</a>
+        </div>
+        <div class="dashboard-card">
+            <h2>系统信息与管理</h2>
+            <p class="warning-text">查看系统相关信息</p>
+            <button id="btn-system-info" class="btn btn">系统信息</button>
+            <button id="btn-restart" class="btn delete-btn">重启服务器</button>
+            <button id="btn-shutdown" class="btn delete-btn">关停服务器</button>
+        </div>
+        <div class="dashboard-card">
+            <h2>数据库管理</h2>
+            <p class="warning-text">请谨慎操作</p>
+            <button id="btn-db-admin" class="btn btn">数据库管理</button>
+            <button id="btn-clear-cache" class="btn btn">清除缓存</button>
+            <button id="btn-backup-db" class="btn btn">备份数据库</button>
+            <button id="btn-optimize-db" class="btn btn">优化数据库</button>
+        </div>
+        <div class="dashboard-card">
+            <h2>图片相关</h2>
+            <p class="warning-text">图片重新统计</p>
+            <button id="btn-recalc-uploads" class="btn btn">重新统计图片大小</button>
+            <button id="btn-recount-files" class="btn btn">重新按文件统计大小</button>
+        </div>
+        <div class="dashboard-card">
+            <h2>备份下载</h2>
+            <p class="warning-text">下载备份</p>
+            <button id="btn-download-root" class="btn btn">下载项目根目录(zip)</button>
+            <button id="btn-download-dbfile" class="btn btn">下载数据库文件</button>
+            <button id="btn-download-images" class="btn btn">下载图片压缩包</button>
         </div>
     </div>
     <!-- 管理工具区域 -->
     <div class="admin-tools" style="margin-top:20px;">
-        <h2>系统管理工具</h2>
-        <button id="btn-db-admin" class="btn btn">数据库管理</button>
+        <h2>系统日志工具</h2>
         <div class="admin-actions">
-            <button id="btn-system-info" class="btn btn">系统信息</button>
-            <button id="btn-clear-cache" class="btn btn">清除缓存</button>
-            <button id="btn-backup-db" class="btn btn">备份数据库</button>
-            <button id="btn-optimize-db" class="btn btn">优化数据库</button>
-            <button id="btn-restart" class="btn delete-btn">重启服务器</button>
-            <button id="btn-shutdown" class="btn delete-btn">关停服务器</button>
-            <button id="btn-recalc-uploads" class="btn btn">重新统计图片大小</button>
-            <button id="btn-recount-files" class="btn btn">重新按文件统计大小</button>
-            <button id="btn-download-root" class="btn btn">下载项目根目录(zip)</button>
-            <button id="btn-download-dbfile" class="btn btn">下载数据库文件</button>
-            <button id="btn-download-images" class="btn btn">下载图片压缩包</button>
             <a href="#" id="btn-view-logs" class="btn btn">查看系统日志</a>
         </div>
 

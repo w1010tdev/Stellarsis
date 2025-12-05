@@ -184,7 +184,7 @@
 }
 
 .confirm-cancel {
-  color: var(--neutral-500);
+  background-color: var(--neutral-500);
   border: 1px solid var(--neutral-200);
   padding: 0.5rem 1rem;
   border-radius: 8px;
@@ -198,9 +198,9 @@
   color: var(--neutral-600);
 }
 
-  .confirm-ok {
+.confirm-ok {
   background: var(--primary-600);
-  color: var(--on-surface);
+  color: var(--on-primary);
   border: none;
   padding: 0.5rem 1rem;
   border-radius: 8px;
@@ -230,24 +230,25 @@
     align-items: center;
     width: auto;
   }
-  
+
   .toast {
     width: 100%;
     max-width: 100%;
     border-radius: 10px;
   }
-  
+
   .confirm-modal {
     width: 100%;
     max-width: 100%;
     border-radius: 16px;
   }
-  
+
   .confirm-actions {
     flex-direction: column;
   }
-  
-  .confirm-cancel, .confirm-ok {
+
+  .confirm-cancel,
+  .confirm-ok {
     width: 100%;
   }
 }

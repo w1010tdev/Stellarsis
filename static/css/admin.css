@@ -75,7 +75,7 @@
 /* 兼容旧样式：将 .delete-btn 也映射为删除样式，便于模板统一使用 */
 .delete-btn {
   background-color: var(--btn-danger);
-  color: var(--on-surface);
+  color: var(--on-primary);
 }
 .delete-btn:hover {
   background-color: #c0392b;

@@ -489,8 +489,8 @@ function setupPolling() {
                                     // Exact content match + reasonable time window (30s)
                                     const pendingSent = pending.sentTime || pending.timestamp || 0;
                                     // allow match when content equals and timestamps within 30s OR the calendar date matches (tolerate timezone differences)
-                                    const serverDateIso = new Date(serverTsMs).toISOString().slice(0,10);
-                                    const pendingDateIso = new Date(pendingSent).toISOString().slice(0,10);
+                                    const serverDateIso = new Date(serverTsMs).toISOString().slice(0, 10);
+                                    const pendingDateIso = new Date(pendingSent).toISOString().slice(0, 10);
                                     if (pending.content === serverContent && (Math.abs(serverTsMs - pendingSent) < 30000 || serverDateIso === pendingDateIso)) {
                                         console.debug('Polling matched pending by content/time (or same-date)', cid, '->', msg.id, 'serverDate=', serverDateIso, 'pendingDate=', pendingDateIso);
                                         updateExistingMessage(cid, msg);
@@ -569,17 +569,17 @@ function setupPolling() {
 }
 
 // Developer helper: toggle websocket fallback simulation from console
-window.__dev_toggle_ws_fallback = function(enable) {
+window.__dev_toggle_ws_fallback = function (enable) {
     try {
         if (enable) {
             console.info('Dev: enabling WS fallback (simulate websocket unavailable)');
             document.body.classList.add('no-websocket');
-            try { if (chatSocket && chatSocket.disconnect) chatSocket.disconnect(); } catch(e) {}
-            try { setupPolling(); } catch(e) { console.warn('setupPolling unavailable', e); }
+            try { if (chatSocket && chatSocket.disconnect) chatSocket.disconnect(); } catch (e) { }
+            try { setupPolling(); } catch (e) { console.warn('setupPolling unavailable', e); }
         } else {
             console.info('Dev: disabling WS fallback (attempt reload)');
             document.body.classList.remove('no-websocket');
-            try { location.reload(); } catch(e) { }
+            try { location.reload(); } catch (e) { }
         }
     } catch (e) { console.error(e); }
 };
@@ -602,10 +602,26 @@ function setupWebSocket() {
             timeout: 20000,
             transports: ['websocket', 'polling']
         });
-
+        if (window.roomHeartbeatInterval) {
+            clearInterval(window.roomHeartbeatInterval);
+        }
+        window.roomHeartbeatInterval = setInterval(() => {
+            if (chatSocket && chatSocket.connected) {
+                chatSocket.emit('heartbeat_chat', { room_id: roomId });
+            }
+        }, 5000);
         chatSocket.on('connect', () => {
             console.log('WebSocket连接已建立');
             updateConnectionStatus('connected', '已连接');
+            if (!chatSocket.hasJoinedRoom) {
+                // 重新加入房间
+                chatSocket.emit('join', { room: roomId });
+                chatSocket.hasJoinedRoom = true;
+                // 重新获取在线人数
+                setTimeout(() => {
+                    chatSocket.emit('get_online_users', { room_id: roomId });
+                }, 1000);
+            }
             if (!chatSocket.hasJoinedRoom) {
                 // 加载关注列表
                 fetch('/api/follow/following')
@@ -678,8 +694,8 @@ function setupWebSocket() {
                             if (pending.content === serverContent) {
                                 const serverTime = data.timestamp ? new Date(data.timestamp).getTime() : 0;
                                 const sentTime = pending.sentTime || 0;
-                                const serverDateIso = serverTime ? new Date(serverTime).toISOString().slice(0,10) : '';
-                                const pendingDateIso = sentTime ? new Date(sentTime).toISOString().slice(0,10) : '';
+                                const serverDateIso = serverTime ? new Date(serverTime).toISOString().slice(0, 10) : '';
+                                const pendingDateIso = sentTime ? new Date(sentTime).toISOString().slice(0, 10) : '';
                                 if (!serverTime || Math.abs(serverTime - sentTime) < 15000 || (serverDateIso && pendingDateIso && serverDateIso === pendingDateIso)) {
                                     matchedClientId = cid;
                                     console.debug('精确匹配通过:', cid, 'serverDate=', serverDateIso, 'pendingDate=', pendingDateIso);
@@ -744,6 +760,9 @@ function setupWebSocket() {
             onlineUsers = data.users || [];
             updateOnlineCount();
         });
+        window.updateOnlineCountInterval = setInterval(() => {
+            socket.emit('get_online_users', { room_id: roomId });
+        }, 5000);
 
         // 监听用户进出事件（用于关注通知） - 使用 addMessageToUI 以利用已存在的系统事件去重逻辑
         chatSocket.on('user_join', (data) => {
@@ -800,18 +819,23 @@ function toggleFollowUser(userId) {
         .catch(err => console.error('关注操作失败:', err));
 }
 
-// 更新在线状态
+// 3. 修复updateOnlineStatus函数
 function updateOnlineStatus() {
-    if (chatSocket) {
+    if (chatSocket && chatSocket.connected) {
         chatSocket.emit('get_online_users', { room_id: roomId });
     } else {
-        // 轮询模式下，简单更新在线人数
-        fetch('/api/online_count')
+        // 轮询模式下，获取特定房间的在线人数
+        fetch(`/api/chat/${roomId}/online_count`)
             .then(response => response.json())
             .then(data => {
                 const onlineCountElement = document.getElementById('online-count');
                 if (onlineCountElement) {
                     onlineCountElement.textContent = data.count || '未知';
+                }
+                // 同时更新在线用户列表
+                if (data.users) {
+                    onlineUsers = data.users;
+                    updateOnlineUsersList();
                 }
             })
             .catch(error => {
@@ -900,11 +924,11 @@ function sendMessage() {
     // 通过WebSocket发送
     if (chatSocket && chatSocket.connected) {
         // 本地预览
-            // 本地预览
-            // include both id and client_id on the local preview so server echoes can be matched
-            const localMessage = {
-                id: clientId,
-                client_id: clientId,
+        // 本地预览
+        // include both id and client_id on the local preview so server echoes can be matched
+        const localMessage = {
+            id: clientId,
+            client_id: clientId,
             content: message,
             timestamp: new Date().toISOString(),
             user_id: currentUserId,
@@ -1054,7 +1078,7 @@ function addMessageToUI(msg, isLocal = false, his = false) {
     if (!messagesContainer) return;
     if (his) {
         isLocal = (msg.user_id == userId);
-        his=0;
+        his = 0;
     }
     if (msg.user_id == userId && !isLocal) return;
     // 2. 特殊处理系统消息
@@ -1284,39 +1308,43 @@ function updateExistingMessage(clientId, serverMessage) {
         try {
             const confirmedMessage = document.querySelector(`[data-message-id="${serverId || serverClientId}"]`);
             if (confirmedMessage) {
-                const hasDel = confirmedMessage.querySelector('.message-delete-btn');
-                // If a delete button already exists it may still have an old click handler
-                // bound to the temporary id. Replace it so it uses the authoritative id.
-                if (hasDel) {
-                    try {
-                        const replaced = hasDel.cloneNode(true);
-                        hasDel.parentNode.replaceChild(replaced, hasDel);
-                        // rebind new handler
-                        replaced.addEventListener('click', function (e) {
+                const existingDropdown = confirmedMessage.querySelector('.message-actions-dropdown');
+                if (existingDropdown) {
+                    // Update any delete handlers in the dropdown to use the new serverId
+                    const deleteItem = existingDropdown.querySelector('.message-delete-item');
+                    console.log("GET_WS_update,need to replace", deleteItem);
+                    if (deleteItem && serverId) {
+                        const newDeleteItem = deleteItem.cloneNode(true);
+                        deleteItem.parentNode.replaceChild(newDeleteItem, deleteItem);
+                        newDeleteItem.addEventListener('click', (e) => {
                             e.stopPropagation();
                             deleteChatMessage(serverId || serverClientId, confirmedMessage);
+                            const menu = existingDropdown.querySelector('.dropdown-menu');
+                            if (menu) menu.classList.remove('show');
                         });
-                    } catch (e) {
-                        // If cloning/rebinding fails we'll remove the old handler and proceed to add a fresh button below
-                        try { hasDel.remove(); } catch (er) { /* ignore */ }
                     }
-                }
-
-                if (!confirmedMessage.querySelector('.message-delete-btn')) {
-                    const userElement = confirmedMessage.querySelector('.message-user');
-                    const canDeleteAll = (typeof roomPermission !== 'undefined' && roomPermission === 'su');
-                    const canDeleteOwn = (typeof roomPermission !== 'undefined' && roomPermission === '777' && Number(serverMessage.user_id) === Number(currentUserId));
-                    if (userElement && (canDeleteAll || canDeleteOwn)) {
-                        const delBtn = document.createElement('button');
-                        delBtn.className = 'btn delete-btn message-delete-btn';
-                        delBtn.title = '删除消息';
-                        delBtn.textContent = '删除';
-                        delBtn.style.marginLeft = '8px';
-                        delBtn.addEventListener('click', function (e) {
+                    const quoteItem = existingDropdown.querySelector('.message-quote-item');
+                    if (quoteItem && serverId) {
+                        // Remove existing event listener by cloning the element
+                        const newQuoteItem = quoteItem.cloneNode(true);
+                        quoteItem.parentNode.replaceChild(newQuoteItem, quoteItem);
+                        // Rebind the new handler with the correct serverId
+                        newQuoteItem.addEventListener('click', (e) => {
                             e.stopPropagation();
-                            deleteChatMessage(serverId || serverClientId, confirmedMessage);
+                            try {
+                                const ta = document.getElementById('message-text');
+                                if (!ta) return;
+                                const insert = `@quote{${serverId || serverClientId}}\n`;
+                                ta.value = insert + ta.value;
+                                ta.focus();
+                                try { ta.setSelectionRange(insert.length, insert.length); } catch (err) { }
+                            } catch (err) {
+                                console.error('插入引用失败', err);
+                            } finally {
+                                const menu = existingDropdown.querySelector('.dropdown-menu');
+                                if (menu) menu.classList.remove('show');
+                            }
                         });
-                        userElement.appendChild(delBtn);
                     }
                 }
             }
@@ -1338,7 +1366,7 @@ function updateExistingMessage(clientId, serverMessage) {
 // 删除聊天室消息
 function deleteChatMessage(messageId, messageElement) {
     if (!messageId) return;
-    showConfirm('确定要删除此消息吗？此操作不可撤销。', {danger: true})
+    showConfirm('确定要删除此消息吗？此操作不可撤销。', { danger: true })
         .then(function (confirmed) {
             if (!confirmed) return;
             // 调用后端删除接口
@@ -1454,53 +1482,88 @@ function createMessageElement(msg, isLocal = false) {
     } else if (msg.client_id) {
         messageElement.dataset.messageId = msg.client_id;
     }
-
-    // 添加删除按钮（根据权限）
     try {
-        const canDeleteAll = (typeof roomPermission !== 'undefined' && roomPermission === 'su');
-        const canDeleteOwn = (typeof roomPermission !== 'undefined' && roomPermission === '777' && Number(msg.user_id) === Number(currentUserId));
-        if (msg.id && (canDeleteAll || canDeleteOwn)) {
-            const delBtn = document.createElement('button');
-            delBtn.className = 'btn delete-btn message-delete-btn';
-            delBtn.title = '删除消息';
-            delBtn.textContent = '删除';
-            delBtn.style.marginLeft = '8px';
-            delBtn.addEventListener('click', function (e) {
+        const canDelete = msg.id && (
+            (typeof roomPermission !== 'undefined' && roomPermission === 'su') ||
+            (typeof roomPermission !== 'undefined' && roomPermission === '777' && Number(msg.user_id) === Number(currentUserId))
+        );
+        const canQuote = msg.id && canSendMessages();
+
+        if (canDelete || canQuote) {
+            // 创建下拉菜单容器
+            const dropdown = document.createElement('div');
+            dropdown.className = 'dropdown message-actions-dropdown'; // 主容器
+
+            // 创建触发按钮（...）
+            const toggleBtn = document.createElement('button');
+            toggleBtn.className = 'btn dropdown-toggle action-toggle-btn'; // 触发按钮
+            toggleBtn.title = '更多操作';
+            toggleBtn.textContent = '⋯';
+            toggleBtn.style.marginLeft = '6px';
+            toggleBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                deleteChatMessage(msg.id, messageElement);
+                // 切换菜单显示/隐藏（实际实现需要CSS配合，这里只提供类名）
+                const menu = dropdown.querySelector('.dropdown-menu');
+                menu.classList.toggle('show'); // 显示/隐藏菜单
             });
-            // 将删除按钮添加到用户Element末尾（更靠近用户名）
-            userElement.appendChild(delBtn);
+
+            // 创建菜单
+            const menu = document.createElement('div');
+            menu.className = 'dropdown-menu action-context-menu'; // 下拉菜单容器
+
+            // 添加删除选项（如果权限允许）
+            if (canDelete) {
+                const deleteItem = document.createElement('button');
+                deleteItem.className = 'dropdown-item message-delete-item'; // 菜单项
+                deleteItem.textContent = '删除消息';
+                deleteItem.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteChatMessage(msg.id, messageElement);
+                    menu.classList.remove('show'); // 关闭菜单
+                });
+                menu.appendChild(deleteItem);
+            }
+
+            // 添加引用选项（如果权限允许）
+            if (canQuote) {
+                const quoteItem = document.createElement('button');
+                quoteItem.className = 'dropdown-item message-quote-item'; // 菜单项
+                quoteItem.textContent = '引用';
+                quoteItem.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    try {
+                        const ta = document.getElementById('message-text');
+                        if (!ta) return;
+                        const insert = `@quote{${msg.id}}\n`;
+                        ta.value = insert + ta.value;
+                        ta.focus();
+                        try { ta.setSelectionRange(insert.length, insert.length); } catch (err) { }
+                    } catch (err) {
+                        console.error('插入引用失败', err);
+                    } finally {
+                        menu.classList.remove('show'); // 关闭菜单
+                    }
+                });
+                menu.appendChild(quoteItem);
+            }
+
+            // 组装组件
+            dropdown.appendChild(toggleBtn);
+            dropdown.appendChild(menu);
+
+            // 添加点击外部区域关闭菜单（简化版）
+            document.addEventListener('click', (e) => {
+                if (!dropdown.contains(e.target)) {
+                    menu.classList.remove('show');
+                }
+            });
+
+            // 插入到用户元素
+            userElement.appendChild(dropdown);
         }
     } catch (e) {
-        console.error('添加删除按钮失败:', e);
+        console.error('添加操作菜单失败:', e);
     }
-
-    // 添加引用按钮（如果允许发送消息）
-    try {
-        if (msg.id && canSendMessages()) {
-            const quoteBtn = document.createElement('button');
-            quoteBtn.className = 'btn quote-btn';
-            quoteBtn.title = '引用此消息';
-            quoteBtn.textContent = '引用';
-            quoteBtn.style.marginLeft = '6px';
-            quoteBtn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                try {
-                    const ta = document.getElementById('message-text');
-                    if (!ta) return;
-                    const insert = `@quote{${msg.id}}\n`;
-                    ta.value = insert + ta.value;
-                    ta.focus();
-                    try { ta.setSelectionRange(insert.length, insert.length); } catch (err) {}
-                } catch (err) { console.error('插入引用失败', err); }
-            });
-            userElement.appendChild(quoteBtn);
-        }
-    } catch (e) {
-        console.error('添加删除按钮失败:', e);
-    }
-
     return messageElement;
 }
 
@@ -1587,7 +1650,7 @@ window.initChat = function () {
         // 1. 先设置UI元素
         const onlineCountElement = document.getElementById('online-count');
         if (onlineCountElement) {
-            onlineCountElement.textContent = '加载中...';
+            onlineCountElement.textContent = '加载中......';
         }
 
 
@@ -1621,7 +1684,19 @@ window.initChat = function () {
         if (typeof window.renderContent === 'function') {
             isRenderingReady = true;
         }
+        if (chatSocket) {
+            window.roomHeartbeatInterval = setInterval(() => {
+                if (chatSocket.connected) {
+                    chatSocket.emit('heartbeat_chat', { room_id: roomId });
+                }
+            }, 5000);
 
+            window.updateOnlineCountInterval = setInterval(() => {
+                if (chatSocket.connected) {
+                    chatSocket.emit('get_online_users', { room_id: roomId });
+                }
+            }, 5000);
+        }
         console.log('聊天系统初始化完成');
     } catch (e) {
         console.error('聊天室初始化失败:', e);

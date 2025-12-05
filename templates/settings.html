@@ -35,12 +35,6 @@
                 })();
             </script>
         </div>
-        <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;">
-            <a class="btn" href="{{ url_for('profile') }}">修改个人资料</a>
-            <a class="btn btn-secondary" href="{{ url_for('change_password') }}">修改密码</a>
-            <a class="btn" href="{{ url_for('settings_follows') }}">管理关注列表</a>
-            <a class="btn btn-danger" href="{{ url_for('logout') }}">退出登录</a>
-        </div>
     </section>
 </div>
 {% endblock %}

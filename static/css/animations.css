@@ -25,13 +25,7 @@
   --blur-lg: 12px;
 }
 
-/* 无障碍：用户偏好减少动画时关闭所有过渡 */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition: none !important;
-    animation: none !important;
-  }
-}
+
 
 /* 全局过渡定义 */
 .transition-all {
