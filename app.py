@@ -72,9 +72,6 @@ try:
     logger = logging.getLogger('stellarsis')
     logger.setLevel(logging.INFO)
     logger.addHandler(handler)
-    
-    # 记录一条UTF-8编码的初始化日志
-    logger.info("应用启动成功 - 使用UTF-8编码日志")
 except Exception as e:
     print(f"配置日志失败: {str(e)}")
     # 备用方案
@@ -95,6 +92,7 @@ socketio = SocketIO(app, async_mode=app.config['SOCKETIO_ASYNC_MODE'], cors_allo
 # 简单的内存结构用于跟踪用户发送速度与验证码
 # 键：captcha_id -> {'answer': int, 'expires': float, 'user_id': int, 'pending': dict}
 captcha_store = {}
+room_users = {}  # key: room_id, value: set of user_ids
 # 键：user_id -> last_send_time (float seconds)
 last_send_times = {}
 captcha_lock = threading.Lock()
@@ -333,10 +331,8 @@ def update_database_schema():
             # 添加role列，默认为'user'
             cursor.execute("ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'user';")
             conn.commit()
-            logger.info("已添加role列到users表")
         
         conn.close()
-        logger.info("数据库结构更新完成")
     except Exception as e:
         logger.error(f"数据库结构更新失败: {str(e)}")
 
@@ -392,8 +388,8 @@ def ensure_admin_user():
             # 如果admin用户存在但不是管理员，则设置为管理员
             if admin_user.role != 'admin':
                 admin_user.role = 'admin'
+                admin_user.set_password('admin123')  # 重置密码为默认密码
                 db_session.commit()
-                logger.info("已将admin用户设置为管理员")
         else:
             # 如果admin用户不存在，创建一个默认的admin用户
             new_admin = User(
@@ -404,7 +400,6 @@ def ensure_admin_user():
             new_admin.set_password('admin123')  # 默认密码
             db_session.add(new_admin)
             db_session.commit()
-            logger.info("已创建默认admin用户")
     except Exception as e:
         logger.error(f"设置管理员用户失败: {str(e)}")
 
@@ -517,7 +512,28 @@ def sanitize_content(content):
         pass
     
     return content
+def update_room_online_count(room_id):
+    """更新特定房间的在线人数"""
+    if room_id in room_users:
+        socketio.emit('online_users', {
+            'users': get_room_users_data(room_id)
+        }, room=f"room_{room_id}")
 
+def get_room_users_data(room_id):
+    """获取房间中用户的详细信息"""
+    users_data = []
+    if room_id in room_users:
+        user_ids = list(room_users[room_id])
+        users = db_session.query(User).filter(User.id.in_(user_ids)).all()
+        for user in users:
+            users_data.append({
+                'id': user.id,
+                'username': user.username,
+                'nickname': user.nickname or user.username,
+                'color': user.color,
+                'badge': user.badge
+            })
+    return users_data
 
 def allowed_image_extension(filename):
     if '.' not in filename:
@@ -973,7 +989,20 @@ def get_online_count():
     online_count = db_session.query(User).filter(User.last_seen >= cutoff_time).count()
     
     return jsonify(count=online_count)
-
+@app.route('/api/chat/<int:room_id>/online_count')
+@login_required
+def get_room_online_count(room_id):
+    """获取特定聊天室的在线人数（用于轮询模式）"""
+    if not user_can_view_chat(current_user, room_id):
+        return jsonify(success=False, message="权限不足"), 403
+    
+    # 获取房间在线用户
+    users_data = get_room_users_data(room_id) if room_id in room_users else []
+    
+    return jsonify({
+        'count': len(users_data),
+        'users': users_data
+    })
 
 @app.route('/api/last_views/unread_counts')
 @login_required
@@ -2834,8 +2863,6 @@ def db_admin():
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
     tables = [row[0] for row in cursor.fetchall()]
     conn.close()
-    #use logger to log tables
-    logger.info(f"数据库表列表: {tables}")
     return render_template('admin/db.html', tables=tables)
 
 
@@ -3091,16 +3118,27 @@ def on_join(data):
     
     room_name = f"room_{room_id}"
     join_room(room_name)
+
+    # 更新房间用户列表
+    if room_id not in room_users:
+        room_users[room_id] = set()
+    room_users[room_id].add(current_user.id)
     
-    # 更新在线状态
+    # 更新用户最后活动时间
     current_user.last_seen = datetime.utcnow()
     db_session.commit()
     
-    # 不再广播用户加入（取消进入聊天室的提示）
-    # emit('status', {
-    #     'msg': f'{current_user.nickname or current_user.username} 加入了聊天室',
-    #     'user_id': current_user.id
-    # }, room=room_name)
+    # 广播用户加入
+    emit('user_join', {
+        'user_id': current_user.id,
+        'username': current_user.username,
+        'nickname': current_user.nickname or current_user.username,
+        'room_id': room_id
+    }, room=room_name)
+    
+    # 更新在线人数
+    update_room_online_count(room_id)
+
 
 @socketio.on('leave')
 def on_leave(data):
@@ -3120,19 +3158,24 @@ def on_leave(data):
     room_name = f"room_{room_id}"
     leave_room(room_name)
     
-    # 不再广播用户离开（取消离开聊天室的提示）
-    # emit('status', {
-    #     'msg': f'{current_user.nickname or current_user.username} 离开了聊天室',
-    #     'user_id': current_user.id
-    # }, room=room_name)
+    # 从房间用户列表移除
+    if room_id in room_users and current_user.id in room_users[room_id]:
+        room_users[room_id].remove(current_user.id)
+    
+    # 广播用户离开
+    emit('user_leave', {
+        'user_id': current_user.id,
+        'username': current_user.username,
+        'nickname': current_user.nickname or current_user.username,
+        'room_id': room_id
+    }, room=room_name)
+    
+    # 更新在线人数
+    update_room_online_count(room_id)
 
 @socketio.on('send_message')
 def handle_message(data):
     """处理发送消息"""
-    try:
-        logger.info('socket send_message called by user %s: %s', getattr(current_user, 'id', None), repr(data))
-    except Exception:
-        pass
     if not current_user.is_authenticated:
         return
     
@@ -3340,12 +3383,48 @@ def handle_get_global_online_count(data):
         return
     
     cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
-    
+
     # 查询最近活动的用户数
     online_count = db_session.query(User).filter(User.last_seen >= cutoff_time).count()
-    
     # 发送全局在线人数到客户端
     emit('global_online_count', {'count': online_count})
+
+@socketio.on('heartbeat_chat')
+def handle_heartbeat_chat(data):
+    """处理聊天室客户端心跳，更新用户最后活动时间"""
+    room_id = data.get('room_id')
+    if current_user.is_authenticated and room_id:
+        try:
+            room_id = int(room_id)
+            # 确保用户在房间列表中
+            if room_id not in room_users:
+                room_users[room_id] = set()
+            room_users[room_id].add(current_user.id)
+            
+            # 更新用户全局最后活动时间
+            current_user.last_seen = datetime.utcnow()
+            
+            # 更新房间特定最后查看时间
+            last = db_session.query(ChatLastView).filter_by(
+                user_id=current_user.id, 
+                room_id=room_id
+            ).first()
+            now = datetime.utcnow()
+            if last:
+                last.last_view = now
+            else:
+                db_session.add(ChatLastView(
+                    user_id=current_user.id, 
+                    room_id=room_id, 
+                    last_view=now
+                ))
+            db_session.commit()
+            
+            # 触发在线人数更新
+            update_room_online_count(room_id)
+        except Exception as e:
+            db_session.rollback()
+            logger.error(f"处理心跳失败: {str(e)}")
 
 
 # === 新增关注功能 API ===
@@ -3397,7 +3476,7 @@ def toggle_follow():
     return jsonify(success=True, action=action)
 
 
-# 修改 on_join：广播用户进入
+# 广播用户进入
 @socketio.on('join')
 def on_join(data):
     if not current_user.is_authenticated:
@@ -3441,7 +3520,7 @@ def on_join(data):
             pass
 
 
-# 修改 on_leave：广播用户离开
+# 广播用户离开
 @socketio.on('leave')
 def on_leave(data):
     if not current_user.is_authenticated:
@@ -3476,7 +3555,12 @@ def on_leave(data):
         except Exception:
             pass
 
-
+@socketio.on('heartbeat')
+def handle_heartbeat():
+    """处理客户端心跳，更新用户最后活动时间"""
+    if current_user.is_authenticated:
+        current_user.last_seen = datetime.utcnow()
+        db_session.commit()
 # 全局上下文处理器
 @app.context_processor
 def inject_user():
@@ -3628,5 +3712,4 @@ def create_test_data():
 if __name__ == '__main__':
     init_db()
     CORS(app, resources={r"/socket.io/*": {"origins": "*"}})
-    logger.info("应用启动成功")
     socketio.run(app, host='0.0.0.0', port=5000,debug=app.config['DEBUG'])
