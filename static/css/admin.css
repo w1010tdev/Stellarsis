@@ -81,6 +81,15 @@
   background-color: #c0392b;
 }
 
+.btn-batch {
+  background-color: var(--secondary-color);
+  color: var(--on-primary);
+}
+
+.btn-batch:hover {
+  background-color: var(--secondary-dark);
+}
+
 .btn-permission {
   background-color: var(--secondary-color);
 }
