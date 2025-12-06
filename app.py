@@ -3789,4 +3789,4 @@ def create_test_data():
 if __name__ == '__main__':
     init_db()
     CORS(app, resources={r"/socket.io/*": {"origins": "*"}})
-    socketio.run(app, host='0.0.0.0', port=5000,debug=app.config['DEBUG'])
+    socketio.run(app, host='0.0.0.0', port=80,debug=app.config['DEBUG'])
