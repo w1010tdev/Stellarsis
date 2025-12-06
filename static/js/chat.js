@@ -907,17 +907,8 @@ function canSendMessages() {
 }
 
 // 发送消息
-function sendMessage() {
-    if (!canSendMessages()) {
-        addStatusMessage('当前权限仅允许查看消息');
-        return;
-    }
-    const messageInput = document.getElementById('message-text');
-    if (!messageInput) return;
-
-    const message = messageInput.value.trim();
-    if (!message) return;
-
+// 实际发送消息的函数
+function sendActualMessage(message, messageInput) {
     // 生成唯一客户端ID
     const clientId = 'client-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
 
@@ -999,6 +990,71 @@ function sendMessage() {
                 errorElement.textContent = '消息发送失败，请检查网络连接';
                 document.getElementById('chat-messages').appendChild(errorElement);
             });
+    }
+}
+
+// 发送消息
+function sendMessage() {
+    if (!canSendMessages()) {
+        addStatusMessage('当前权限仅允许查看消息');
+        return;
+    }
+    const messageInput = document.getElementById('message-text');
+    if (!messageInput) return;
+
+    let message = messageInput.value.trim();
+    if (!message) return;
+
+    // 处理@quote标记，获取引用的消息内容
+    const quoteRegex = /@quote\{(\d+)\}/g;
+    let match;
+    let hasQuote = false;
+    const quoteMatches = [];
+    
+    while ((match = quoteRegex.exec(message)) !== null) {
+        hasQuote = true;
+        quoteMatches.push(match[1]);
+    }
+    
+    if (hasQuote) {
+        // 处理所有引用，获取引用的消息内容
+        let quoteCount = 0;
+        quoteMatches.forEach(quotedMessageId => {
+            fetch(`/api/chat/message/${quotedMessageId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.message) {
+                        const quotedUser = data.message.nickname || data.message.username;
+                        const quotedContent = data.message.content;
+                        const quotedTimestamp = formatTimeDisplay(new Date(data.message.timestamp).getTime());
+                        
+                        // 用引用格式替换@quote{ID}
+                        const quotedText = `> @${quotedUser} (${quotedTimestamp})\n> ${quotedContent}\n\n`;
+                        message = message.replace(`@quote{${quotedMessageId}}`, quotedText);
+                        
+                        // 更新输入框内容
+                        messageInput.value = message;
+                    } else {
+                        console.warn(`无法获取ID为${quotedMessageId}的引用消息`);
+                    }
+                    
+                    quoteCount++;
+                    // 当所有引用都处理完毕后发送消息
+                    if (quoteCount === quoteMatches.length) {
+                        sendActualMessage(message, messageInput);
+                    }
+                })
+                .catch(err => {
+                    console.error('获取引用消息失败:', err);
+                    quoteCount++;
+                    // 当所有引用都处理完毕后发送消息
+                    if (quoteCount === quoteMatches.length) {
+                        sendActualMessage(message, messageInput);
+                    }
+                });
+        });
+    } else {
+        sendActualMessage(message, messageInput);
     }
 }
 
@@ -1376,37 +1432,102 @@ function updateExistingMessage(clientId, serverMessage) {
 // 删除聊天室消息
 function deleteChatMessage(messageId, messageElement) {
     if (!messageId) return;
-    showConfirm('确定要删除此消息吗？此操作不可撤销。', { danger: true })
-        .then(function (confirmed) {
-            if (!confirmed) return;
-            // 调用后端删除接口
-            fetch(`/api/chat/${roomId}/messages/${messageId}`, {
-                method: 'DELETE',
-                credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json' }
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data && data.success) {
-                        // 可选择完全移除或替换为已删除提示
-                        try {
-                            // 使用幂等标记函数，避免重复插入删除提示
-                            if (messageElement) {
-                                markMessageRemoved(messageElement);
-                            }
-                        } catch (e) {
-                            console.warn('更新删除的消息UI失败，尝试移除元素:', e);
-                            if (messageElement && messageElement.parentNode) messageElement.parentNode.removeChild(messageElement);
+    
+    // 先通过API获取消息详情，以确认消息存在并验证权限
+    fetch(`/api/chat/message/${messageId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.message) {
+                // 使用搜索接口验证消息（使用消息内容和时间戳）
+                const content = encodeURIComponent(data.message.content);
+                const timestamp = new Date(data.message.timestamp).toISOString();
+                
+                fetch(`/api/chat/message/search?content=${content}&timestamp=${timestamp}`)
+                    .then(searchResponse => searchResponse.json())
+                    .then(searchData => {
+                        if (searchData.success && searchData.message && searchData.message.id == messageId) {
+                            // 搜索成功，消息确认存在，继续删除操作
+                            showConfirm('确定要删除此消息吗？此操作不可撤销。', { danger: true })
+                                .then(function (confirmed) {
+                                    if (!confirmed) return;
+                                    // 调用后端删除接口
+                                    fetch(`/api/chat/${roomId}/messages/${messageId}`, {
+                                        method: 'DELETE',
+                                        credentials: 'same-origin',
+                                        headers: { 'Content-Type': 'application/json' }
+                                    })
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            if (data && data.success) {
+                                                // 可选择完全移除或替换为已删除提示
+                                                try {
+                                                    // 使用幂等标记函数，避免重复插入删除提示
+                                                    if (messageElement) {
+                                                        markMessageRemoved(messageElement);
+                                                    }
+                                                } catch (e) {
+                                                    console.warn('更新删除的消息UI失败，尝试移除元素:', e);
+                                                    if (messageElement && messageElement.parentNode) messageElement.parentNode.removeChild(messageElement);
+                                                }
+                                                showToast('success', data.message || '消息已删除');
+                                            } else {
+                                                showToast('error', '删除失败: ' + (data && data.message ? data.message : '未知错误'));
+                                            }
+                                        })
+                                        .catch(err => {
+                                            console.error('删除消息请求失败:', err);
+                                            showToast('error', '删除请求失败');
+                                        });
+                                });
+                        } else {
+                            showToast('error', '消息验证失败，可能已被删除');
+                            console.warn(`搜索验证失败，消息ID: ${messageId}`);
                         }
-                        showToast('success', data.message || '消息已删除');
-                    } else {
-                        showToast('error', '删除失败: ' + (data && data.message ? data.message : '未知错误'));
-                    }
-                })
-                .catch(err => {
-                    console.error('删除消息请求失败:', err);
-                    showToast('error', '删除请求失败');
-                });
+                    })
+                    .catch(err => {
+                        console.error('搜索消息验证失败:', err);
+                        // 如果搜索验证失败，仍然允许删除，但给出警告
+                        showConfirm('确定要删除此消息吗？此操作不可撤销。', { danger: true })
+                            .then(function (confirmed) {
+                                if (!confirmed) return;
+                                // 调用后端删除接口
+                                fetch(`/api/chat/${roomId}/messages/${messageId}`, {
+                                    method: 'DELETE',
+                                    credentials: 'same-origin',
+                                    headers: { 'Content-Type': 'application/json' }
+                                })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data && data.success) {
+                                            // 可选择完全移除或替换为已删除提示
+                                            try {
+                                                // 使用幂等标记函数，避免重复插入删除提示
+                                                if (messageElement) {
+                                                    markMessageRemoved(messageElement);
+                                                }
+                                            } catch (e) {
+                                                console.warn('更新删除的消息UI失败，尝试移除元素:', e);
+                                                if (messageElement && messageElement.parentNode) messageElement.parentNode.removeChild(messageElement);
+                                            }
+                                            showToast('success', data.message || '消息已删除');
+                                        } else {
+                                            showToast('error', '删除失败: ' + (data && data.message ? data.message : '未知错误'));
+                                        }
+                                    })
+                                    .catch(err => {
+                                        console.error('删除消息请求失败:', err);
+                                        showToast('error', '删除请求失败');
+                                    });
+                            });
+                    });
+            } else {
+                showToast('error', '消息不存在或无法访问');
+                console.warn(`无法获取ID为${messageId}的消息`);
+            }
+        })
+        .catch(err => {
+            console.error('获取消息详情失败:', err);
+            showToast('error', '获取消息详情失败');
         });
 }
 

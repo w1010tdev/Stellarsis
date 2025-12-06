@@ -956,6 +956,11 @@ def api_get_chat_message(message_id):
     msg = db_session.query(ChatMessage).filter_by(id=message_id).first()
     if not msg:
         return jsonify(success=False, message='消息不存在'), 404
+    
+    # 检查用户是否有查看该消息所在聊天室的权限
+    if not user_can_view_chat(current_user, msg.room_id):
+        return jsonify(success=False, message='无权限查看此消息'), 403
+    
     user = msg.user
     return jsonify(success=True, message={
         'id': msg.id,
@@ -997,6 +1002,10 @@ def api_search_chat_message():
     
     if not msg:
         return jsonify(success=False, message='消息不存在'), 404
+    
+    # 检查用户是否有查看该消息所在聊天室的权限
+    if not user_can_view_chat(current_user, msg.room_id):
+        return jsonify(success=False, message='无权限查看此消息'), 403
     
     user = msg.user
     return jsonify(success=True, message={
