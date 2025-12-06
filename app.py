@@ -488,7 +488,7 @@ class ProfileForm(FlaskForm):
 
 # 全局工具函数
 def sanitize_content(content):
-    """基础XSS防护 - 仅允许安全的HTML标签"""
+    """增强XSS防护 - 过滤危险HTML标签和属性"""
     if not content:
         return ""
     # 解码已有的HTML实体，避免双重转义导致在客户端仍然显示为实体
@@ -496,20 +496,44 @@ def sanitize_content(content):
         content = html.unescape(content)
     except Exception:
         pass
+
+    # 移除危险的HTML标签
+    content = re.sub(r'<script[^>]*>.*?</script>', '', content, flags=re.IGNORECASE | re.DOTALL)
+    content = re.sub(r'<style[^>]*>.*?</style>', '', content, flags=re.IGNORECASE | re.DOTALL)
     
-    # 允许的简单标签（Markdown会生成这些） - 不使用 html.escape 全面转义以保留 Markdown 代码块
-    allowed_tags = ['b', 'i', 'em', 'strong', 'code', 'pre', 'a', 'ul', 'ol', 'li', 'blockquote', 'br', 'hr']
+    # 移除on*事件处理器
+    content = re.sub(r'\s*on\w+\s*=\s*["\'][^"\']*["\']', '', content, flags=re.IGNORECASE)
     
+    # 移除危险的协议
+    content = re.sub(r'href\s*=\s*["\']\s*javascript:[^"\']*["\']', 'href="#"', content, flags=re.IGNORECASE)
+    content = re.sub(r'src\s*=\s*["\']\s*javascript:[^"\']*["\']', 'src="#"', content, flags=re.IGNORECASE)
+    content = re.sub(r':\s*expression\s*\([^)]*\)', '', content, flags=re.IGNORECASE)
+    
+    # 移除危险的CSS样式 - 限制字体大小等属性的数值
+    content = re.sub(r'font-size\s*:\s*\d{5,}[^;"\']*', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'(width|height|margin|padding|top|left|right|bottom)\s*:\s*\d{5,}[^;"\']*', '', content, flags=re.IGNORECASE)
+    
+    # 移除style属性中的危险内容
+    def remove_dangerous_style(match):
+        tag_start = match.group(0)
+        # 移除危险的style内容
+        clean_style = re.sub(r'expression|javascript|eval', '', tag_start, flags=re.IGNORECASE)
+        # 限制数值大小
+        clean_style = re.sub(r'(font-size|width|height|margin|padding|top|left|right|bottom)\s*:\s*\d{5,}', '', clean_style, flags=re.IGNORECASE)
+        return clean_style
+    
+    content = re.sub(r'<[^>]*style\s*=\s*["\'][^"\']*["\'][^>]*>', remove_dangerous_style, content, flags=re.IGNORECASE)
+
     # 处理链接（仅允许 http/https），并将可能包含的 javascript: 存在的 href 设置为安全的占位
     try:
         # 使用安全的替换函数，避免在替换字符串内直接嵌入不匹配引号导致语法问题
         def _link_safe(m):
             return '<a href="%s" target="_blank" rel="noopener noreferrer"' % escape(m.group(1))
-        content = re.sub(r'<a\s+href=["\'](https?://[^"\']+)["\']', _link_safe, content, flags=re.I)
+        content = re.sub(r'<a\s+href=["\'](https?://[^"\']+)', _link_safe, content, flags=re.I)
         content = re.sub(r'href=["\']\s*javascript:[^"\']*["\']', 'href="#"', content, flags=re.I)
     except Exception:
         pass
-    
+
     return content
 def update_room_online_count(room_id):
     """更新特定房间的在线人数"""
@@ -932,6 +956,48 @@ def api_get_chat_message(message_id):
     msg = db_session.query(ChatMessage).filter_by(id=message_id).first()
     if not msg:
         return jsonify(success=False, message='消息不存在'), 404
+    user = msg.user
+    return jsonify(success=True, message={
+        'id': msg.id,
+        'content': html.unescape(msg.content) if isinstance(msg.content, str) else msg.content,
+        'timestamp': msg.timestamp.isoformat(),
+        'user_id': msg.user_id,
+        'username': user.username if user else None,
+        'nickname': user.nickname if user else None,
+        'color': user.color if user else None,
+        'badge': user.badge if user else None
+    })
+
+
+@app.route('/api/chat/message/search', methods=['GET'])
+@login_required
+def api_search_chat_message():
+    """通过内容和时间查询自己发送的消息ID"""
+    content = request.args.get('content', '').strip()
+    timestamp_str = request.args.get('timestamp', '').strip()  # ISO格式时间字符串
+    
+    if not content:
+        return jsonify(success=False, message='内容不能为空'), 400
+    
+    query = db_session.query(ChatMessage).filter_by(user_id=current_user.id, content=content)
+    
+    if timestamp_str:
+        try:
+            # 尝试解析时间字符串
+            timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+            # 考虑到时间可能存在微小差异，允许±1分钟的误差
+            time_lower = timestamp - timedelta(minutes=1)
+            time_upper = timestamp + timedelta(minutes=1)
+            query = query.filter(ChatMessage.timestamp >= time_lower, ChatMessage.timestamp <= time_upper)
+        except ValueError:
+            return jsonify(success=False, message='时间格式错误'), 400
+    
+    # 按时间倒序排列，取最新的消息
+    msg = query.order_by(ChatMessage.timestamp.desc()).first()
+    
+    if not msg:
+        return jsonify(success=False, message='消息不存在'), 404
+    
     user = msg.user
     return jsonify(success=True, message={
         'id': msg.id,
