@@ -514,16 +514,22 @@ def sanitize_content(content):
     return content
 def update_room_online_count(room_id):
     """更新特定房间的在线人数"""
-    if room_id in room_users:
-        socketio.emit('online_users', {
-            'users': get_room_users_data(room_id)
-        }, room=f"room_{room_id}")
+    socketio.emit('online_users', {
+        'users': get_room_users_data(room_id)
+    }, room=f"room_{room_id}")
 
 def get_room_users_data(room_id):
     """获取房间中用户的详细信息"""
     users_data = []
-    if room_id in room_users:
-        user_ids = list(room_users[room_id])
+    # 获取在指定聊天室最后活动时间在超时时间内的用户
+    cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
+    online_users = db_session.query(ChatLastView).filter(
+        ChatLastView.room_id == room_id,
+        ChatLastView.last_view >= cutoff_time
+    ).all()
+    
+    user_ids = [view.user_id for view in online_users]
+    if user_ids:
         users = db_session.query(User).filter(User.id.in_(user_ids)).all()
         for user in users:
             users_data.append({
@@ -571,24 +577,29 @@ def get_image_type(stream):
 
 def get_online_users(room_id):
     """获取指定房间的在线用户"""
-    # 获取最近5分钟有活动的用户
-    cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
+    # 获取最近ONLINE_TIMEOUT秒内在该聊天室有活动的用户
+    cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
     
-    # 实际上Flask-SocketIO没有内置的房间在线用户列表，我们需要自己维护
-    # 这里简化处理，返回最近活动的用户
-    recent_users = db_session.query(User).filter(User.last_seen >= cutoff_time).all()
+    # 从ChatLastView表中获取最近活动的用户
+    online_users = db_session.query(ChatLastView).filter(
+        ChatLastView.room_id == room_id,
+        ChatLastView.last_view >= cutoff_time
+    ).all()
     
-    online_users = []
-    for user in recent_users:
-        online_users.append({
-            'id': user.id,
-            'username': user.username,
-            'nickname': user.nickname or user.username,
-            'color': user.color,
-            'badge': user.badge
-        })
+    users_data = []
+    user_ids = [view.user_id for view in online_users]
+    if user_ids:
+        users = db_session.query(User).filter(User.id.in_(user_ids)).all()
+        for user in users:
+            users_data.append({
+                'id': user.id,
+                'username': user.username,
+                'nickname': user.nickname or user.username,
+                'color': user.color,
+                'badge': user.badge
+            })
     
-    return online_users
+    return users_data
 
 def get_recent_logs(limit=10):
     """获取最近的系统日志"""
@@ -997,7 +1008,7 @@ def get_room_online_count(room_id):
         return jsonify(success=False, message="权限不足"), 403
     
     # 获取房间在线用户
-    users_data = get_room_users_data(room_id) if room_id in room_users else []
+    users_data = get_room_users_data(room_id)
     
     return jsonify({
         'count': len(users_data),
@@ -3118,14 +3129,23 @@ def on_join(data):
     
     room_name = f"room_{room_id}"
     join_room(room_name)
-
-    # 更新房间用户列表
-    if room_id not in room_users:
-        room_users[room_id] = set()
-    room_users[room_id].add(current_user.id)
-    
     # 更新用户最后活动时间
     current_user.last_seen = datetime.utcnow()
+    
+    # 在ChatLastView表中记录用户进入房间的时间
+    last = db_session.query(ChatLastView).filter_by(
+        user_id=current_user.id,
+        room_id=room_id
+    ).first()
+    now = datetime.utcnow()
+    if last:
+        last.last_view = now
+    else:
+        db_session.add(ChatLastView(
+            user_id=current_user.id,
+            room_id=room_id,
+            last_view=now
+        ))
     db_session.commit()
     
     # 广播用户加入
@@ -3158,11 +3178,7 @@ def on_leave(data):
     room_name = f"room_{room_id}"
     leave_room(room_name)
     
-    # 从房间用户列表移除
-    if room_id in room_users and current_user.id in room_users[room_id]:
-        room_users[room_id].remove(current_user.id)
-    
-    # 广播用户离开
+    # 不需要从内存中移除用户，因为我们现在使用数据库来跟踪在线状态
     emit('user_leave', {
         'user_id': current_user.id,
         'username': current_user.username,
