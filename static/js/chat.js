@@ -1763,13 +1763,7 @@ window.addEventListener('unhandledrejection', function (e) {
     e.preventDefault();
 });
 
-// 全局在线人数更新 - 用于所有页面
-// 注意：此函数现在仅在非聊天页面使用，聊天页面的全局在线人数由base.html处理
-function initializeGlobalOnlineCount() {
-    // 不执行任何操作，因为全局在线人数现在由base.html统一管理
-    // 避免重复更新导致冲突
-    console.log('聊天页面的全局在线人数由base.html统一管理');
-}
+
 
 // 页面加载完成后自动初始化
 document.addEventListener('DOMContentLoaded', function () {
@@ -1792,4 +1786,5 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 });
+
 
