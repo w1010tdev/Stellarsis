@@ -771,7 +771,7 @@ function setupWebSocket() {
             updateOnlineCount();
         });
         window.updateOnlineCountInterval = setInterval(() => {
-            socket.emit('get_online_users', { room_id: roomId });
+            chatSocket.emit('get_online_users', { room_id: roomId });
         }, 5000);
 
         // 监听用户进出事件（用于关注通知） - 使用 addMessageToUI 以利用已存在的系统事件去重逻辑
@@ -1792,3 +1792,4 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 });
+
