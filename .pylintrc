@@ -1,7 +1,0 @@
-[MASTER]
-# 允许 Pylint 在较低分数下仍然通过
-fail-under=6.0
-
-[FORMAT]
-# 增加行长度限制
-max-line-length=120
