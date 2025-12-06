@@ -650,7 +650,17 @@ function setupWebSocket() {
             if (onlineCountElement) {
                 onlineCountElement.textContent = '连接中...';
             }
+            // 清理心跳定时器
+            if (window.roomHeartbeatInterval) {
+                clearInterval(window.roomHeartbeatInterval);
+                window.roomHeartbeatInterval = null;
+            }
 
+            // 清理在线人数更新定时器
+            if (window.updateOnlineCountInterval) {
+                clearInterval(window.updateOnlineCountInterval);
+                window.updateOnlineCountInterval = null;
+            }
             // 尝试重新连接
             if (reason !== 'io server disconnect') {
                 updateConnectionStatus('disconnected', '服务器断开连接，请重新连接');
@@ -1780,4 +1790,5 @@ document.addEventListener('DOMContentLoaded', function () {
         // 如果不是聊天页面，仍然初始化全局在线人数更新
         initializeGlobalOnlineCount();
     }
+
 });
