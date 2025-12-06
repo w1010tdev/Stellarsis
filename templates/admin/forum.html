@@ -12,6 +12,7 @@
             <button class="btn btn-add" onclick="createSection()">创建新分区</button>
             <button class="btn delete-btn" onclick="deleteAllPosts()">删除所有帖子</button>
             <button class="btn delete-btn" onclick="deletePost()">删除特定帖子</button>
+            <button class="btn btn-batch" onclick="showBatchGrantModal('forum')">批量权限管理</button>
         </div>
         <div class="search-box">
             <input type="text" id="searchInput" placeholder="搜索分区名称...">
@@ -153,6 +154,53 @@
                 <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeDeletePostModal()">取消</button>
                 <button class="btn delete-btn" onclick="confirmDeletePost()">删除帖子</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 批量权限管理模态框 -->
+    <div class="modal-backdrop" id="batchGrantModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">批量权限管理</h3>
+                <button class="modal-close" onclick="closeBatchGrantModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="batchScope">权限类型:</label>
+                    <select id="batchScope" class="form-control" onchange="updateBatchTargetOptions()">
+                        <option value="forum" selected>贴吧分区</option>
+                        <option value="chat">聊天室</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="batchTarget">选择目标:</label>
+                    <select id="batchTarget" class="form-control">
+                        <!-- 通过JavaScript动态填充 -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="batchPermission">权限等级:</label>
+                    <select id="batchPermission" class="form-control">
+                        <option value="777">777 (读写权限)</option>
+                        <option value="su">su (超级权限)</option>
+                        <option value="444">444 (只读权限)</option>
+                        <option value="Null">Null (无权限)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="confirmBatchAction"> 
+                        我确认要将 <strong id="previewPermission">777</strong> 权限批量授予所有用户
+                    </label>
+                </div>
+                <div class="alert alert-warning">
+                    <strong>警告:</strong> 此操作将影响所有非管理员用户，操作不可撤销！
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeBatchGrantModal()">取消</button>
+                <button class="btn btn-primary" onclick="confirmBatchGrant()" id="batchGrantBtn" disabled>执行批量操作</button>
             </div>
         </div>
     </div>
@@ -496,5 +544,122 @@
         }
 
         function closeSectionUsersModal() { hideModal('sectionUsersModal'); }
+        
+        // 批量权限管理相关函数
+        function showBatchGrantModal(defaultScope = 'forum') {
+            // 设置默认值
+            document.getElementById('batchScope').value = defaultScope;
+            document.getElementById('batchPermission').value = '777';
+            document.getElementById('confirmBatchAction').checked = false;
+            document.getElementById('previewPermission').textContent = '777';
+            document.getElementById('batchGrantBtn').disabled = true;
+            
+            // 填充目标选项
+            updateBatchTargetOptions();
+            
+            showModal('batchGrantModal');
+        }
+
+        function updateBatchTargetOptions() {
+            const scope = document.getElementById('batchScope').value;
+            const targetSelect = document.getElementById('batchTarget');
+            
+            // 清空现有选项
+            targetSelect.innerHTML = '';
+            
+            // 根据选择的类型添加选项
+            if (scope === 'forum') {
+                // 获取论坛分区数据
+                fetch('/api/admin/forum/sections')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            data.sections.forEach(section => {
+                                const option = document.createElement('option');
+                                option.value = section.id;
+                                option.textContent = section.name;
+                                targetSelect.appendChild(option);
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('获取论坛分区失败:', error);
+                    });
+            } else {
+                // 获取聊天室数据
+                fetch('/api/admin/chat/rooms')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            data.rooms.forEach(room => {
+                                const option = document.createElement('option');
+                                option.value = room.id;
+                                option.textContent = room.name;
+                                targetSelect.appendChild(option);
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('获取聊天室失败:', error);
+                    });
+            }
+        }
+
+        function closeBatchGrantModal() {
+            hideModal('batchGrantModal');
+        }
+
+        // 更新权限预览
+        document.getElementById('batchPermission').addEventListener('change', function() {
+            document.getElementById('previewPermission').textContent = this.value;
+        });
+
+        // 更新确认框状态
+        document.getElementById('confirmBatchAction').addEventListener('change', function() {
+            document.getElementById('batchGrantBtn').disabled = !this.checked;
+        });
+
+        function confirmBatchGrant() {
+            const scope = document.getElementById('batchScope').value;
+            const targetId = document.getElementById('batchTarget').value;
+            const permission = document.getElementById('batchPermission').value;
+            
+            if (!targetId) {
+                showToast('warning', '请选择目标');
+                return;
+            }
+            
+            const targetName = document.getElementById('batchTarget').options[document.getElementById('batchTarget').selectedIndex].text;
+            
+            showConfirm(`确定要将 ${permission} 权限批量授予所有用户吗？此操作将影响所有非管理员用户，不可撤销！`, {danger: true})
+                .then(confirmed => {
+                    if (confirmed) {
+                        // 发送批量权限请求
+                        fetch('/api/admin/batch-grant-permissions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                scope: scope,
+                                target_id: parseInt(targetId),
+                                perm: permission
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                showToast('success', `批量权限操作成功！已为 ${data.count} 个用户授予 ${permission} 权限`);
+                                closeBatchGrantModal();
+                            } else {
+                                showToast('error', '批量权限操作失败: ' + (data.message || '未知错误'));
+                            }
+                        })
+                        .catch(error => {
+                            showToast('error', '批量权限操作失败: ' + error.message);
+                        });
+                    }
+                });
+        }
     </script>
 {% endblock %}

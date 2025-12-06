@@ -2563,6 +2563,76 @@ def update_user_permissions(user_id):
     return jsonify(success=True, message="权限已更新", perm=perm_value)
 
 
+@app.route('/api/admin/batch-grant-permissions', methods=['POST'])
+@login_required
+def batch_grant_permissions():
+    """批量授予所有用户某个聊天室/贴吧分区的777权限"""
+    if not current_user.is_admin():
+        return jsonify(success=False, message="权限不足"), 403
+
+    data = request.get_json() or {}
+    scope = (data.get('scope') or '').lower()
+    target_id = data.get('target_id')
+    perm_value = normalize_permission_value(data.get('perm', '777'))  # 默认为777权限
+
+    if scope not in ('chat', 'forum'):
+        return jsonify(success=False, message="scope 必须为 chat 或 forum"), 400
+
+    try:
+        target_id = int(target_id)
+    except (TypeError, ValueError):
+        return jsonify(success=False, message="target_id 无效"), 400
+
+    if perm_value not in PERMISSION_VALUES:
+        return jsonify(success=False, message="无效的权限值"), 400
+
+    # 检查目标是否存在
+    if scope == 'chat':
+        target = db_session.query(ChatRoom).get(target_id)
+        if not target:
+            return jsonify(success=False, message="聊天室不存在"), 404
+    else:
+        target = db_session.query(ForumSection).get(target_id)
+        if not target:
+            return jsonify(success=False, message="贴吧分区不存在"), 404
+
+    try:
+        # 获取所有非管理员用户
+        users = db_session.query(User).filter(User.role != 'admin').all()
+        
+        for user in users:
+            if scope == 'chat':
+                # 检查是否已有权限记录
+                existing = db_session.query(ChatPermission).filter_by(user_id=user.id, room_id=target_id).first()
+                if perm_value == 'Null':
+                    if existing:
+                        db_session.delete(existing)
+                else:
+                    if existing:
+                        existing.perm = perm_value
+                    else:
+                        db_session.add(ChatPermission(user_id=user.id, room_id=target_id, perm=perm_value))
+            else:
+                # 检查是否已有权限记录
+                existing = db_session.query(ForumPermission).filter_by(user_id=user.id, section_id=target_id).first()
+                if perm_value == 'Null':
+                    if existing:
+                        db_session.delete(existing)
+                else:
+                    if existing:
+                        existing.perm = perm_value
+                    else:
+                        db_session.add(ForumPermission(user_id=user.id, section_id=target_id, perm=perm_value))
+
+        db_session.commit()
+        
+        log_admin_action(f"管理员 {current_user.username} 批量授予所有用户 {scope} ID {target_id} 的 {perm_value} 权限，共处理 {len(users)} 个用户")
+        return jsonify(success=True, message=f"已批量授予 {len(users)} 个用户 {perm_value} 权限", count=len(users))
+    except Exception as e:
+        logger.error(f"批量权限操作失败: {str(e)}")
+        return jsonify(success=False, message=f"批量权限操作失败: {str(e)}"), 500
+
+
 @app.route('/api/admin/users', methods=['POST'])
 @login_required
 def create_user():
