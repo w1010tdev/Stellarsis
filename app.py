@@ -92,7 +92,6 @@ socketio = SocketIO(app, async_mode=app.config['SOCKETIO_ASYNC_MODE'], cors_allo
 # 简单的内存结构用于跟踪用户发送速度与验证码
 # 键：captcha_id -> {'answer': int, 'expires': float, 'user_id': int, 'pending': dict}
 captcha_store = {}
-room_users = {}  # key: room_id, value: set of user_ids
 # 键：user_id -> last_send_time (float seconds)
 last_send_times = {}
 captcha_lock = threading.Lock()
@@ -3412,10 +3411,6 @@ def handle_heartbeat_chat(data):
     if current_user.is_authenticated and room_id:
         try:
             room_id = int(room_id)
-            # 确保用户在房间列表中
-            if room_id not in room_users:
-                room_users[room_id] = set()
-            room_users[room_id].add(current_user.id)
             
             # 更新用户全局最后活动时间
             current_user.last_seen = datetime.utcnow()
