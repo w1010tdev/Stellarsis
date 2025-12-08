@@ -1,0 +1,2489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>管理面板</title>
+    <style>
+      /* ==== THEME & MOTION (kept short lines) ==== */
+      :root {
+        --bg: #f6f8fb;
+        --card: #ffffff;
+        --muted: #6b7280;
+        --accent: #2065f2;
+        --accent-2: #1b4fd8;
+        --danger: #ef4444;
+        --border: #e6e9ef;
+        --radius: 12px;
+        --text: #0f1724;
+        --ease: cubic-bezier(0.2, 0.9, 0.22, 1);
+        --fast: 120ms;
+        --mid: 280ms;
+        --slow: 480ms;
+        --shadow-1: 0 10px 30px rgba(16, 24, 40, 0.06);
+        --shadow-2: 0 20px 50px rgba(16, 24, 40, 0.12);
+        --folder-bg: #e4eeff;
+        --folder-accent: #5b8def;
+        --file-bg: #f8f9fb;
+        --file-accent: #bfc4ce;
+      }
+      /* reset */
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto,
+          "Helvetica Neue", Arial;
+        color: var(--text);
+        background: var(--bg);
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+      a {
+        color: inherit;
+      }
+      .smooth * {
+        transition-property: transform, opacity, background-color, color,
+          border-color, box-shadow;
+        transition-timing-function: var(--ease);
+        transition-duration: var(--mid);
+        will-change: transform, opacity;
+      }
+      /* layout */
+      .app {
+        display: flex;
+        min-height: 100vh;
+        overflow: hidden;
+      }
+      .sidebar {
+        width: 260px;
+        padding: 18px;
+        background: var(--card);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        transform: translateZ(0);
+        z-index: 10;
+      }
+      .brand {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      .logo {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        background: linear-gradient(180deg, var(--accent), var(--accent-2));
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        box-shadow: 0 6px 18px rgba(32, 101, 242, 0.12);
+        transition: transform var(--fast) var(--ease);
+      }
+      .logo:hover {
+        transform: scale(1.05);
+      }
+      h1 {
+        font-size: 1.05rem;
+        margin: 0;
+      }
+      /* nav */
+      .nav {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        border-radius: 10px;
+        color: var(--muted);
+        cursor: pointer;
+        font-weight: 800;
+        border: 1px solid transparent;
+        position: relative;
+        overflow: hidden;
+        z-index: 1;
+      }
+      .nav-item:hover {
+        background: #f1f5f9;
+        color: var(--text);
+        transform: translateX(6px);
+      }
+      .nav-item.active {
+        background: #eef6ff;
+        color: var(--accent);
+        border-color: #e5f0ff;
+        transform: none;
+      }
+      .nav-item.active::after {
+        content: "";
+        position: absolute;
+        right: 0;
+        top: 0;
+        height: 100%;
+        width: 4px;
+        background: var(--accent);
+        border-radius: 4px 0 0 4px;
+        transition: transform var(--slow) var(--ease);
+        transform: scaleX(1);
+        transform-origin: right;
+      }
+      .nav-item:not(.active)::after {
+        content: "";
+        position: absolute;
+        right: 0;
+        top: 0;
+        height: 100%;
+        width: 4px;
+        background: transparent;
+        border-radius: 4px 0 0 4px;
+        transition: transform var(--slow) var(--ease);
+        transform: scaleX(0);
+      }
+      /* main */
+      .main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 18px;
+        overflow: hidden;
+        position: relative;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        gap: 12px;
+        z-index: 10;
+      }
+      .title {
+        font-size: 1.05rem;
+        font-weight: 900;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      /* buttons */
+      .btn {
+        background: var(--accent);
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 10px;
+        border: 0;
+        cursor: pointer;
+        font-weight: 800;
+        transition: transform var(--fast) var(--ease),
+          box-shadow var(--fast) var(--ease),
+          background-color var(--fast) var(--ease);
+        will-change: transform, background-color;
+      }
+      .btn:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-2);
+        background-color: var(--accent-2);
+      }
+      .btn:active {
+        transform: translateY(0);
+      }
+      .btn.ghost {
+        background: transparent;
+        color: var(--muted);
+        border: 1px solid var(--border);
+      }
+      .btn.ghost:hover {
+        background: #f1f5f9;
+        color: var(--text);
+        border-color: #d1d5db;
+      }
+      .btn.small {
+        padding: 6px 8px;
+        font-size: 0.92rem;
+      }
+      .btn.warn {
+        background: var(--danger);
+      }
+      .btn.warn:hover {
+        background: #dc2626;
+      }
+      /* content and sections */
+      html,
+      body {
+        overflow: hidden;
+      }
+      .content {
+        flex: 1;
+        overflow: hidden;
+        position: relative;
+        padding: 0;
+      }
+      .section-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+      .section {
+        opacity: 0;
+        transform: translateX(24px) scale(0.98);
+        pointer-events: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        padding: 14px;
+        background: var(--card);
+        border-radius: var(--radius);
+        transition: opacity var(--slow) var(--ease),
+          transform var(--slow) var(--ease);
+        will-change: opacity, transform;
+      }
+      .section.active {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+        pointer-events: auto;
+        z-index: 10;
+      }
+      .section.exit {
+        opacity: 0;
+        transform: translateX(-24px) scale(0.98);
+        z-index: 5;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px;
+        margin-bottom: 12px;
+        box-shadow: 0 4px 12px rgba(16, 24, 40, 0.03);
+        transition: transform var(--fast) var(--ease),
+          box-shadow var(--fast) var(--ease);
+        will-change: transform, box-shadow;
+      }
+      .card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-1);
+      }
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+      .table th,
+      .table td {
+        padding: 12px 12px;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+        transition: background-color var(--fast) var(--ease);
+      }
+      .table tr:hover {
+        background-color: #f9fafb;
+      }
+      .table th {
+        font-weight: 800;
+        color: var(--muted);
+        background-color: #f8fafc;
+      }
+      /* users */
+      .users-wrap {
+        max-height: 52vh;
+        overflow: auto;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        padding-right: 6px;
+      }
+      /* files */
+      .file-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: 36vh;
+        overflow: auto;
+        padding-right: 6px;
+      }
+      .file-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: transform var(--mid) var(--ease),
+          box-shadow var(--mid) var(--ease),
+          background-color var(--mid) var(--ease);
+      }
+      .file-item:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-1);
+        background: #fff;
+      }
+      .file-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .file-accent {
+        width: 8px;
+        height: 48px;
+        border-radius: 8px;
+        margin-right: 12px;
+        flex-shrink: 0;
+      }
+      .file-meta {
+        display: flex;
+        flex-direction: column;
+      }
+      .file-name {
+        font-weight: 800;
+        transition: color var(--fast) var(--ease);
+      }
+      .file-item:hover .file-name {
+        color: var(--accent);
+      }
+      .file-type {
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      .item-folder {
+        background: linear-gradient(180deg, var(--folder-bg), #f4f8ff);
+        border-left: 4px solid var(--folder-accent);
+      }
+      .item-file {
+        background: linear-gradient(180deg, var(--file-bg), #fff);
+        border-left: 4px solid var(--file-accent);
+      }
+      /* big select (modal full-screen style) */
+      .big-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(2, 6, 23, 0.55);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2400;
+        opacity: 0;
+        transition: opacity var(--slow) var(--ease);
+        will-change: opacity;
+      }
+      .big-backdrop.show {
+        display: flex;
+        opacity: 1;
+      }
+      .big-modal {
+        width: 92%;
+        max-width: 1100px;
+        height: 78vh;
+        background: var(--card);
+        border-radius: 12px;
+        padding: 18px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transform: scale(0.95);
+        opacity: 0;
+        transition: transform var(--slow) var(--ease),
+          opacity var(--slow) var(--ease);
+        will-change: transform, opacity;
+      }
+      .big-backdrop.show .big-modal {
+        transform: scale(1);
+        opacity: 1;
+      }
+      .big-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .big-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .big-grid {
+        display: grid;
+        gap: 10px;
+        overflow: hidden;
+        padding: 4px;
+      }
+      @media (min-width: 900px) {
+        .big-grid {
+          grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+          align-content: start;
+        }
+      }
+      @media (max-width: 900px) {
+        .sidebar {
+          display: none;
+        }
+        .big-modal {
+          width: 100%;
+          height: 95vh; /* 留出一点空间避免完全覆盖屏幕 */
+          max-height: 95vh;
+          border-radius: 0;
+          padding: 12px;
+          display: flex;
+          flex-direction: column;
+        }
+        .big-body {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+        .big-grid {
+          grid-template-columns: 1fr;
+          align-content: start;
+          overflow-y: auto; /* 确保内容可滚动 */
+          padding: 8px;
+          max-height: calc(100% - 50px); /* 为页脚留出空间 */
+          -webkit-overflow-scrolling: touch; /* 使iOS滚动更流畅 */
+        }
+        .big-footer {
+          position: sticky;
+          bottom: 0;
+          background: var(--card);
+          padding-top: 10px;
+          z-index: 10;
+        }
+        html,
+        body {
+          overflow: auto;
+        }
+        .content {
+          padding: 12px;
+        }
+      }
+      .big-tile {
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: transparent;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        transition: transform var(--fast) var(--ease),
+          box-shadow var(--fast) var(--ease),
+          background-color var(--fast) var(--ease);
+        will-change: transform, background-color;
+      }
+      .big-tile:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-1);
+        background: #fbfdff;
+      }
+      .big-tile.selected {
+        background: linear-gradient(90deg, #eef7ff, #e6f1ff);
+        border-color: #d7eaff;
+        transform: translateY(-2px);
+      }
+      .big-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 12px;
+      }
+      .big-pager {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      /* modal & toast */
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(2, 6, 23, 0.45);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        opacity: 0;
+        transition: opacity var(--slow) var(--ease);
+        will-change: opacity;
+      }
+      .modal-backdrop.show {
+        display: flex;
+        opacity: 1;
+      }
+      .modal {
+        width: 100%;
+        max-width: 820px;
+        background: var(--card);
+        border-radius: 12px;
+        padding: 18px;
+        transform: translateY(24px) scale(0.95);
+        opacity: 0.9;
+        transition: all var(--slow) var(--ease);
+        will-change: transform, opacity;
+      }
+      .modal-backdrop.show .modal {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+      }
+      .modal-body {
+        max-height: 64vh;
+        overflow: auto;
+        padding-right: 6px;
+      }
+      .toast {
+        position: fixed;
+        right: 18px;
+        bottom: 18px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        z-index: 2500;
+        display: none;
+        opacity: 0;
+        transform: translateY(16px) scale(0.95);
+        transition: all var(--slow) var(--ease);
+        box-shadow: var(--shadow-1);
+        will-change: transform, opacity;
+      }
+      .toast.show {
+        display: block;
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+      /* small helpers */
+      .chip {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: #fff;
+        margin-right: 6px;
+        transition: all var(--fast) var(--ease);
+      }
+      .chip:hover {
+        background: #eef6ff;
+        border-color: #d7eaff;
+        transform: translateY(-2px);
+      }
+      /* ✅ 通用输入控件美化：input / textarea / select */
+      input,
+      textarea,
+      select {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #fff;
+        font-size: 14px;
+        font-family: inherit;
+        color: var(--text);
+        outline: none;
+        transition: border-color var(--mid) var(--ease),
+          box-shadow var(--mid) var(--ease);
+        box-sizing: border-box;
+      }
+      input:focus,
+      textarea:focus,
+      select:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(32, 101, 242, 0.15);
+      }
+      textarea {
+        resize: vertical;
+        min-height: 80px;
+      }
+      /* Drawer for mobile */
+      .drawer {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 280px;
+        height: 100%;
+        background: var(--card);
+        z-index: 2200;
+        transform: translateX(-100%);
+        transition: transform var(--slow) var(--ease);
+        box-shadow: var(--shadow-2);
+        overflow-y: auto;
+        padding: 0;
+        will-change: transform;
+      }
+      .drawer.open {
+        transform: translateX(0);
+      }
+      .drawer-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.3);
+        z-index: 2100;
+        display: none;
+        opacity: 0;
+        transition: opacity var(--slow) var(--ease);
+        will-change: opacity;
+      }
+      .drawer.open + .drawer-backdrop {
+        display: block;
+        opacity: 1;
+      }
+      .file-left {
+        display: flex;
+        align-items: center;
+        gap: 10px; /* 减小图标与文字间距 */
+        flex: 1;
+      }
+      .file-accent {
+        width: 6px; /* 减小左侧色条宽度 */
+        height: 36px; /* 减小高度 */
+        border-radius: 6px;
+        margin-right: 8px;
+        flex-shrink: 0;
+      }
+      .file-item {
+        padding: 10px; /* 减小内边距 */
+      }
+    </style>
+  </head>
+  <body class="smooth">
+    <div class="app" id="appRoot">
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="brand">
+          <div class="logo">群</div>
+          <h1>管理面板</h1>
+        </div>
+        <nav class="nav" aria-label="主导航">
+          <div class="nav-item active" data-tab="users">用户管理</div>
+          <div class="nav-item" data-tab="messages">消息管理</div>
+          <div class="nav-item" data-tab="announcement">公告管理</div>
+          <div class="nav-item" data-tab="admin-permissions">管理员权限</div>
+          <div class="nav-item" data-tab="channels">分区管理</div>
+          <div class="nav-item" data-tab="file-browser">文件管理</div>
+        </nav>
+      </aside>
+      <!-- Main area -->
+      <main class="main">
+        <div class="header">
+          <div style="display: flex; align-items: center; gap: 12px">
+            <button
+              id="drawerToggle"
+              class="btn ghost drawer-toggle"
+              style="display: none"
+            >
+              ☰ 菜单
+            </button>
+            <div class="title" id="pageTitle">用户管理</div>
+          </div>
+          <div class="controls">
+            <button class="btn small" id="addUserBtn">+ 添加</button>
+            <button class="btn ghost small" id="refreshAllBtn">刷新</button>
+          </div>
+        </div>
+        <div class="content" id="contentArea">
+          <div class="section-container">
+            <!-- Users -->
+            <section id="users-section" class="section active">
+              <div class="card">
+                <div
+                  style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 10px;
+                  "
+                >
+                  <strong>用户列表</strong>
+                  <div style="display: flex; gap: 8px; align-items: center">
+                    <input
+                      id="userSearch"
+                      class="input"
+                      placeholder="搜索用户名"
+                      style="max-width: 240px"
+                    />
+                    <select id="pageSize" class="input" style="width: 100px">
+                      <option value="10">10/页</option>
+                      <option value="20">20/页</option>
+                      <option value="50">50/页</option>
+                    </select>
+                    <div
+                      id="userCount"
+                      style="
+                        padding: 6px 8px;
+                        border-radius: 999px;
+                        border: 1px solid var(--border);
+                        font-weight: 800;
+                        color: var(--muted);
+                      "
+                    >
+                      -
+                    </div>
+                  </div>
+                </div>
+                <div class="users-wrap" style="padding: 0">
+                  <table class="table" id="usersTable">
+                    <thead>
+                      <tr>
+                        <th>用户名</th>
+                        <th style="width: 240px">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody id="usersTBody">
+                      <tr>
+                        <td colspan="2" class="muted">加载中...</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="pager" style="margin-top: 12px">
+                  <div style="display: flex; align-items: center; gap: 8px">
+                    <button class="btn small ghost" id="prevPage">
+                      上一页
+                    </button>
+                    <div
+                      id="pageIndicator"
+                      style="
+                        min-width: 90px;
+                        text-align: center;
+                        color: var(--muted);
+                      "
+                    >
+                      第 1 / 1 页
+                    </div>
+                    <button class="btn small ghost" id="nextPage">
+                      下一页
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <!-- Messages -->
+            <section id="messages-section" class="section">
+              <div class="card">
+                <div
+                  style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 10px;
+                  "
+                >
+                  <strong>消息管理</strong>
+                  <div style="display: flex; gap: 8px; align-items: center">
+                    <button class="btn warn" id="clearMessagesBtn">
+                      清空所有消息
+                    </button>
+                    <button class="btn ghost" id="markAllReadBtn">
+                      全部标为已读
+                    </button>
+                    <div
+                      id="messagesCount"
+                      style="
+                        padding: 6px 8px;
+                        border-radius: 999px;
+                        border: 1px solid var(--border);
+                        font-weight: 800;
+                        color: var(--muted);
+                      "
+                    >
+                      -
+                    </div>
+                  </div>
+                </div>
+                <div class="messages-list" id="messagesList"></div>
+              </div>
+            </section>
+            <!-- Announcement -->
+            <section id="announcement-section" class="section">
+              <div class="card">
+                <div
+                  style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 8px;
+                  "
+                >
+                  <strong>公告管理（Markdown）</strong>
+                  <div style="display: flex; gap: 8px">
+                    <button class="btn" id="saveAnnouncementBtn">
+                      保存公告
+                    </button>
+                    <button class="btn ghost" id="previewAnnouncementBtn">
+                      预览
+                    </button>
+                  </div>
+                </div>
+                <textarea
+                  id="announcementEditor"
+                  class="input"
+                  placeholder="加载中..."
+                ></textarea>
+                <div
+                  id="announcementPreview"
+                  style="
+                    margin-top: 12px;
+                    display: none;
+                    padding: 12px;
+                    border: 1px solid var(--border);
+                    border-radius: 10px;
+                    background: #fff;
+                  "
+                ></div>
+              </div>
+            </section>
+            <!-- Admin permissions -->
+            <section id="admin-permissions-section" class="section">
+              <div class="card">
+                <div
+                  style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 10px;
+                  "
+                >
+                  <strong>管理员权限</strong>
+                </div>
+                <div
+                  id="permissionsGrid"
+                  style="
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 10px;
+                  "
+                ></div>
+              </div>
+            </section>
+            <!-- Channels -->
+            <section id="channels-section" class="section">
+              <div class="card">
+                <div
+                  style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 8px;
+                  "
+                >
+                  <strong>分区管理</strong>
+                  <button class="btn" id="createChannelBtn">创建分区</button>
+                </div>
+                <div
+                  id="channelsGrid"
+                  style="
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+                    gap: 10px;
+                  "
+                ></div>
+              </div>
+            </section>
+            <!-- File browser -->
+            <section id="file-browser-section" class="section">
+              <div class="card">
+                <div
+                  style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 8px;
+                  "
+                >
+                  <strong>文件管理</strong>
+                  <div style="display: flex; gap: 8px; align-items: center">
+                    <div
+                      id="currentPath"
+                      style="
+                        padding: 6px 8px;
+                        border-radius: 999px;
+                        border: 1px solid var(--border);
+                        font-weight: 700;
+                      "
+                    >
+                      /
+                    </div>
+                    <button class="btn" id="createItemBtn">新建</button>
+                    <button class="btn ghost" id="downloadZipBtn">
+                      打包下载
+                    </button>
+                  </div>
+                </div>
+                <div class="file-list" id="fileList"></div>
+                <div style="margin-top: 12px">
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: center;
+                      margin-bottom: 8px;
+                    "
+                  >
+                    <div id="currentFileName">未选择</div>
+                    <div style="display: flex; gap: 8px">
+                      <button class="btn" id="saveFileBtn">保存</button>
+                      <button class="btn ghost" id="deleteFileBtn">删除</button>
+                    </div>
+                  </div>
+                  <div
+                    style="
+                      border: 1px solid var(--border);
+                      border-radius: 10px;
+                      overflow: hidden;
+                    "
+                  >
+                    <textarea
+                      id="fileEditor"
+                      style="
+                        width: 100%;
+                        height: 320px;
+                        padding: 12px;
+                        border: 0;
+                        font-family: monospace;
+                        resize: vertical;
+                      "
+                    ></textarea>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
+    </div>
+    <!-- Drawer for mobile -->
+    <div class="drawer" id="drawer" aria-hidden="true">
+      <div style="padding: 12px">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          "
+        >
+          <div style="display: flex; gap: 10px; align-items: center">
+            <div class="logo">群</div>
+            <strong>管理</strong>
+          </div>
+          <button id="closeDrawer" class="btn ghost small">关闭</button>
+        </div>
+        <nav
+          style="
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 12px;
+          "
+        >
+          <div class="nav-item active" data-tab="users">用户管理</div>
+          <div class="nav-item" data-tab="messages">消息管理</div>
+          <div class="nav-item" data-tab="announcement">公告管理</div>
+          <div class="nav-item" data-tab="admin-permissions">管理员权限</div>
+          <div class="nav-item" data-tab="channels">分区管理</div>
+          <div class="nav-item" data-tab="file-browser">文件管理</div>
+        </nav>
+      </div>
+    </div>
+    <div class="drawer-backdrop" id="drawerBackdrop"></div>
+    <!-- Big select -->
+    <div class="big-backdrop" id="bigBackdrop" aria-hidden="true">
+      <div class="big-modal" role="dialog" aria-modal="true" id="bigModal">
+        <div class="big-header">
+          <div style="display: flex; align-items: center; gap: 12px">
+            <strong id="bigTitle">选择用户</strong>
+            <input
+              id="bigSearch"
+              class="input"
+              placeholder="搜索用户（回车选择）"
+              style="min-width: 260px"
+            />
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px">
+            <button class="btn ghost small" id="bigSelectAll">全选本页</button>
+            <button class="btn ghost small" id="bigClear">清空已选</button>
+            <button class="btn ghost small" id="bigClose">✕ 关闭</button>
+          </div>
+        </div>
+        <div class="big-body">
+          <div class="big-grid" id="bigGrid" aria-live="polite"></div>
+          <div class="big-footer">
+            <div id="bigInfo" style="color: var(--muted)"></div>
+            <div class="big-pager">
+              <button class="btn small ghost" id="bigPrev">上一页</button>
+              <div
+                id="bigPage"
+                style="min-width: 90px; text-align: center; color: var(--muted)"
+              >
+                第 1 / 1 页
+              </div>
+              <button class="btn small ghost" id="bigNext">下一页</button>
+              <button class="btn" id="bigConfirm">确认选择</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Generic modal -->
+    <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
+      <div class="modal" id="modal">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+          "
+        >
+          <strong id="modalTitle">标题</strong>
+          <button id="modalClose" class="btn ghost small">关闭</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+        <div
+          style="
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 12px;
+          "
+        >
+          <button class="btn ghost" id="modalCancel">取消</button>
+          <button class="btn" id="modalConfirm">确认</button>
+        </div>
+      </div>
+    </div>
+    <div id="toast" class="toast"></div>
+    <script>
+      /* =========================
+       Utilities / robust folder detection
+       ========================= */
+      function escapeHtml(str) {
+        if (str == null) return "";
+        return String(str).replace(/[&<>"']/g, function (m) {
+          return {
+            "&": "&amp;",
+            "<": "<",
+            ">": ">",
+            '"': "&quot;",
+            "'": "&#39;",
+          }[m];
+        });
+      }
+      function isFolderType(type) {
+        if (!type) return false;
+        return /^(folder|dir|directory|folderitem|directoryitem)$/i.test(
+          String(type).trim()
+        );
+      }
+      /* High-availability fetch */
+      const DEFAULT_TIMEOUT = 10000;
+      async function apiFetchJSON(
+        path,
+        opts = {},
+        { timeout = DEFAULT_TIMEOUT, retries = 1 } = {}
+      ) {
+        const controller = new AbortController();
+        opts.signal = controller.signal;
+        opts.headers = opts.headers || {};
+        if (!opts.headers["Content-Type"])
+          opts.headers["Content-Type"] = "application/json";
+        const timer = setTimeout(() => controller.abort(), timeout);
+        try {
+          const res = await fetch(path, opts);
+          clearTimeout(timer);
+          if (!res.ok) {
+            const text = await res.text().catch(() => null);
+            throw new Error(
+              "HTTP " + res.status + " " + (text || res.statusText)
+            );
+          }
+          const txt = await res.text().catch(() => "");
+          try {
+            return JSON.parse(txt);
+          } catch (e) {
+            return txt;
+          }
+        } catch (err) {
+          clearTimeout(timer);
+          if (retries > 0) {
+            await new Promise((r) => setTimeout(r, 250));
+            return apiFetchJSON(path, opts, { timeout, retries: retries - 1 });
+          }
+          throw err;
+        }
+      }
+      async function apiPostForm(
+        path,
+        formObj = {},
+        opts = { timeout: DEFAULT_TIMEOUT, retries: 1 }
+      ) {
+        const body = new URLSearchParams();
+        for (const k in formObj) body.append(k, formObj[k]);
+        return apiFetchJSON(
+          path,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: body.toString(),
+          },
+          opts
+        );
+      }
+      /* =========================
+       Modal & Toast
+       ========================= */
+      const modalBackdrop = document.getElementById("modalBackdrop");
+      const modalTitle = document.getElementById("modalTitle");
+      const modalBody = document.getElementById("modalBody");
+      const modalConfirm = document.getElementById("modalConfirm");
+      const modalCancel = document.getElementById("modalCancel");
+      const modalClose = document.getElementById("modalClose");
+      function showToast(msg) {
+        const t = document.getElementById("toast");
+        t.textContent = msg;
+        t.className = "toast show";
+        setTimeout(() => {
+          t.className = "toast";
+        }, 3200);
+      }
+      function showModal(
+        title,
+        contentNode,
+        { confirmText = "确认", cancelText = "取消", showCancel = true } = {}
+      ) {
+        return new Promise((resolve) => {
+          modalTitle.textContent = title;
+          modalBody.innerHTML = "";
+          modalBody.appendChild(contentNode);
+          modalConfirm.textContent = confirmText;
+          modalCancel.textContent = cancelText;
+          modalCancel.style.display = showCancel ? "inline-flex" : "none";
+          modalBackdrop.classList.add("show");
+          modalBackdrop.setAttribute("aria-hidden", "false");
+          const cleanup = () => {
+            modalBackdrop.classList.remove("show");
+            modalBackdrop.setAttribute("aria-hidden", "true");
+            modalConfirm.removeEventListener("click", onConfirm);
+            modalCancel.removeEventListener("click", onCancel);
+            modalClose.removeEventListener("click", onCancel);
+          };
+          const onConfirm = () => {
+            cleanup();
+            resolve(true);
+          };
+          const onCancel = () => {
+            cleanup();
+            resolve(false);
+          };
+          modalConfirm.addEventListener("click", onConfirm);
+          modalCancel.addEventListener("click", onCancel);
+          modalClose.addEventListener("click", onCancel);
+        });
+      }
+      /* =========================
+       Navigation + Drawer (mobile)
+       ========================= */
+      function setActiveTab(tabKey, direction = 1) {
+        const sections = [
+          "users",
+          "messages",
+          "announcement",
+          "admin-permissions",
+          "channels",
+          "file-browser",
+        ];
+
+        // 移除当前活动的section
+        const currentActive = document.querySelector(".section.active");
+        if (currentActive) {
+          currentActive.classList.remove("active");
+          currentActive.classList.add("exit");
+
+          // 动画结束后移除类
+          setTimeout(() => {
+            currentActive.classList.remove("exit");
+          }, 400);
+        }
+
+        // 激活新section
+        const newSection = document.getElementById(`${tabKey}-section`);
+        if (newSection) {
+          newSection.classList.add("active");
+        }
+
+        // 更新导航项
+        document.querySelectorAll(".nav-item").forEach((it) => {
+          it.classList.toggle("active", it.getAttribute("data-tab") === tabKey);
+        });
+
+        // 更新标题
+        const mapTitle = {
+          users: "用户管理",
+          messages: "消息管理",
+          announcement: "公告管理",
+          "admin-permissions": "管理员权限",
+          channels: "分区管理",
+          "file-browser": "文件管理",
+        };
+        document.getElementById("pageTitle").textContent =
+          mapTitle[tabKey] || "管理面板";
+      }
+
+      function bindNavs() {
+        document.querySelectorAll(".nav-item").forEach((item) => {
+          item.addEventListener("click", () => {
+            setActiveTab(item.getAttribute("data-tab"));
+            closeDrawerIfOpen();
+          });
+        });
+      }
+
+      const sidebarEl = document.getElementById("sidebar");
+      const drawer = document.getElementById("drawer");
+      const drawerToggle = document.getElementById("drawerToggle");
+      const closeDrawerBtn = document.getElementById("closeDrawer");
+      const drawerBackdrop = document.getElementById("drawerBackdrop");
+
+      function openDrawer() {
+        drawer.classList.add("open");
+        drawerBackdrop.style.display = "block";
+        setTimeout(() => {
+          drawerBackdrop.style.opacity = "1";
+        }, 10);
+        drawer.setAttribute("aria-hidden", "false");
+      }
+
+      function closeDrawer() {
+        drawerBackdrop.style.opacity = "0";
+        drawer.classList.remove("open");
+        setTimeout(() => {
+          if (!drawer.classList.contains("open")) {
+            drawerBackdrop.style.display = "none";
+          }
+        }, 400);
+        drawer.setAttribute("aria-hidden", "true");
+      }
+
+      function closeDrawerIfOpen() {
+        if (drawer.classList.contains("open")) closeDrawer();
+      }
+
+      if (drawerToggle) drawerToggle.addEventListener("click", openDrawer);
+      if (closeDrawerBtn) closeDrawerBtn.addEventListener("click", closeDrawer);
+      if (drawerBackdrop) drawerBackdrop.addEventListener("click", closeDrawer);
+
+      function updateMobileToggleVisibility() {
+        if (window.innerWidth <= 900) {
+          if (drawerToggle) drawerToggle.style.display = "inline-flex";
+          if (sidebarEl) sidebarEl.style.display = "none";
+        } else {
+          if (drawerToggle) drawerToggle.style.display = "none";
+          if (sidebarEl) sidebarEl.style.display = "flex";
+          closeDrawer();
+        }
+      }
+      window.addEventListener("resize", updateMobileToggleVisibility);
+      /* =========================
+       USERS (load/render/pagination)
+       ========================= */
+      let usersData = [];
+      let usersPage = 1;
+      let usersPageSize = 10;
+      const usersTBody = document.getElementById("usersTBody");
+      const userCountNode = document.getElementById("userCount");
+      const userSearchInput = document.getElementById("userSearch");
+      async function loadUsers() {
+        usersTBody.innerHTML =
+          '<tr><td colspan="2" class="muted">加载中...</td></tr>';
+        try {
+          const data = await apiFetchJSON(
+            "/get_users",
+            { method: "GET" },
+            { timeout: 8000 }
+          );
+          usersData = Array.isArray(data) ? data : data.users || [];
+          const count = data.count != null ? data.count : usersData.length;
+          userCountNode.textContent = count;
+          usersPage = 1;
+          renderUsers();
+        } catch (e) {
+          console.error("loadUsers", e);
+          usersTBody.innerHTML =
+            '<tr><td colspan="2" class="muted">加载失败</td></tr>';
+          showToast("加载用户失败");
+        }
+      }
+      function renderUsers() {
+        const q = userSearchInput.value.trim().toLowerCase();
+        const filtered = usersData.filter(
+          (u) => !q || (u.username && u.username.toLowerCase().includes(q))
+        );
+        usersPageSize = Number(document.getElementById("pageSize").value || 10);
+        const totalPages = Math.max(
+          1,
+          Math.ceil(filtered.length / usersPageSize)
+        );
+        if (usersPage > totalPages) usersPage = totalPages;
+        const start = (usersPage - 1) * usersPageSize;
+        const pageItems = filtered.slice(start, start + usersPageSize);
+        usersTBody.innerHTML = "";
+        if (!pageItems.length) {
+          usersTBody.innerHTML =
+            '<tr><td colspan="2" class="muted">无用户</td></tr>';
+        } else {
+          pageItems.forEach((u) => {
+            const tr = document.createElement("tr");
+            tr.className = "user-row";
+            tr.innerHTML = `<td>${escapeHtml(u.username)}</td>
+            <td style="display:flex;gap:8px;justify-content:flex-end">
+              <button class="btn ghost small editUserBtn" data-username="${escapeHtml(
+                u.username
+              )}">编辑</button>
+              <button class="btn small deleteUserBtn" data-username="${escapeHtml(
+                u.username
+              )}">删除</button>
+            </td>`;
+            usersTBody.appendChild(tr);
+          });
+          usersTBody
+            .querySelectorAll(".editUserBtn")
+            .forEach((b) => b.addEventListener("click", onEditUser));
+          usersTBody
+            .querySelectorAll(".deleteUserBtn")
+            .forEach((b) => b.addEventListener("click", onDeleteUser));
+        }
+        document.getElementById(
+          "pageIndicator"
+        ).textContent = `第 ${usersPage} / ${Math.max(
+          1,
+          Math.ceil(filtered.length / usersPageSize)
+        )} 页`;
+      }
+      document.getElementById("prevPage").addEventListener("click", () => {
+        if (usersPage > 1) {
+          usersPage--;
+          renderUsers();
+          document
+            .querySelector(".users-wrap")
+            .scrollTo({ top: 0, behavior: "smooth" });
+        }
+      });
+      document.getElementById("nextPage").addEventListener("click", () => {
+        const q = userSearchInput.value.trim().toLowerCase();
+        const filtered = usersData.filter(
+          (u) => !q || (u.username && u.username.toLowerCase().includes(q))
+        );
+        const totalPages = Math.max(
+          1,
+          Math.ceil(filtered.length / usersPageSize)
+        );
+        if (usersPage < totalPages) {
+          usersPage++;
+          renderUsers();
+          document
+            .querySelector(".users-wrap")
+            .scrollTo({ top: 0, behavior: "smooth" });
+        }
+      });
+      document.getElementById("pageSize").addEventListener("change", () => {
+        usersPage = 1;
+        renderUsers();
+      });
+      userSearchInput.addEventListener("input", () => {
+        usersPage = 1;
+        renderUsers();
+      });
+      /* add user */
+      document
+        .getElementById("addUserBtn")
+        .addEventListener("click", async () => {
+          const form = document.createElement("div");
+          form.innerHTML = `<label>用户名 <input class="input" id="modal_new_username" /></label>
+      <div style="height:8px"></div>
+      <label>密码 <input class="input" id="modal_new_password" type="password" /></label>`;
+          const ok = await showModal("创建用户", form, { confirmText: "创建" });
+          if (!ok) return;
+          const username = form
+            .querySelector("#modal_new_username")
+            .value.trim();
+          const password = form.querySelector("#modal_new_password").value;
+          if (!username || !password) {
+            showToast("用户名或密码不能为空");
+            return;
+          }
+          try {
+            const newUsers = usersData.concat([{ username, password }]);
+            const res = await apiFetchJSON(
+              "/update_users",
+              {
+                method: "POST",
+                body: JSON.stringify({ users: newUsers }),
+                headers: { "Content-Type": "application/json" },
+              },
+              { timeout: 8000 }
+            );
+            if (res.status === "success") {
+              showToast("创建成功");
+              await loadUsers();
+            } else showToast(res.error || "创建失败");
+          } catch (e) {
+            console.error(e);
+            showToast("创建失败");
+          }
+        });
+      async function onEditUser(ev) {
+        const username = ev.currentTarget.dataset.username;
+        const user = usersData.find((u) => u.username === username) || {};
+        const form = document.createElement("div");
+        form.innerHTML = `<label>用户名 <input class="input" id="modal_edit_username" value="${escapeHtml(
+          user.username
+        )}" disabled /></label>
+        <div style="height:8px"></div>
+        <label>新密码（留空不改） <input class="input" id="modal_edit_password" type="password" /></label>`;
+        const ok = await showModal("编辑用户", form, { confirmText: "保存" });
+        if (!ok) return;
+        const newPwd = form.querySelector("#modal_edit_password").value;
+        const updated = usersData.map((u) =>
+          u.username === username
+            ? Object.assign({}, u, newPwd ? { password: newPwd } : {})
+            : u
+        );
+        try {
+          const res = await apiFetchJSON(
+            "/update_users",
+            {
+              method: "POST",
+              body: JSON.stringify({ users: updated }),
+              headers: { "Content-Type": "application/json" },
+            },
+            { timeout: 8000 }
+          );
+          if (res.status === "success") {
+            showToast("更新成功");
+            await loadUsers();
+          } else showToast(res.error || "更新失败");
+        } catch (err) {
+          console.error(err);
+          showToast("更新失败");
+        }
+      }
+      async function onDeleteUser(ev) {
+        const username = ev.currentTarget.dataset.username;
+        const dom = document.createElement("div");
+        dom.innerHTML = `将删除用户 <strong>${escapeHtml(
+          username
+        )}</strong>，此操作不可恢复。`;
+        const ok = await showModal("删除用户", dom, { confirmText: "删除" });
+        if (!ok) return;
+        try {
+          const updated = usersData.filter((u) => u.username !== username);
+          const res = await apiFetchJSON(
+            "/update_users",
+            {
+              method: "POST",
+              body: JSON.stringify({ users: updated }),
+              headers: { "Content-Type": "application/json" },
+            },
+            { timeout: 8000 }
+          );
+          if (res.status === "success") {
+            showToast("删除成功");
+            await loadUsers();
+          } else showToast(res.error || "删除失败");
+        } catch (e) {
+          console.error(e);
+          showToast("删除失败");
+        }
+      }
+      /* =========================
+       Messages
+       ========================= */
+      let messagesData = [];
+      const messagesList = document.getElementById("messagesList");
+      async function loadMessages() {
+        messagesList.innerHTML = '<div class="muted">加载中...</div>';
+        try {
+          const data = await apiFetchJSON(
+            "/get_messages_admin",
+            { method: "GET" },
+            { timeout: 8000 }
+          );
+          messagesData = Array.isArray(data) ? data : data.messages || [];
+          document.getElementById("messagesCount").textContent =
+            messagesData.length;
+          renderMessages();
+        } catch (e) {
+          console.error(e);
+          messagesList.innerHTML = '<div class="muted">加载失败</div>';
+          showToast("加载消息失败");
+        }
+      }
+      function renderMessages() {
+        messagesList.innerHTML = "";
+        if (!messagesData.length) {
+          messagesList.innerHTML = '<div class="muted">无消息</div>';
+          return;
+        }
+        messagesData.forEach((m) => {
+          const row = document.createElement("div");
+          row.className = "msg-row";
+          row.innerHTML = `<div style="display:flex;flex-direction:column">
+            <strong>${escapeHtml(m.username)}</strong>
+            <div style="color:var(--muted);margin-top:6px;white-space:pre-wrap">${escapeHtml(
+              m.content
+            )}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+            <div style="font-size:.85rem;color:var(--muted)">${escapeHtml(
+              m.datetime || ""
+            )}</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn ghost small markReadBtn" data-id="${escapeHtml(
+                m.id
+              )}">${m.read ? "已读" : "标记已读"}</button>
+              <button class="btn small deleteMsgBtn" data-id="${escapeHtml(
+                m.id
+              )}">删除</button>
+            </div>
+          </div>`;
+          messagesList.appendChild(row);
+        });
+        messagesList
+          .querySelectorAll(".deleteMsgBtn")
+          .forEach((b) => b.addEventListener("click", onDeleteMessage));
+        messagesList
+          .querySelectorAll(".markReadBtn")
+          .forEach((b) => b.addEventListener("click", onMarkMessageRead));
+      }
+      async function onDeleteMessage(ev) {
+        const id = ev.currentTarget.dataset.id;
+        const dom = document.createElement("div");
+        dom.innerHTML = `确认删除消息 ID <strong>${escapeHtml(id)}</strong> ?`;
+        const ok = await showModal("删除消息", dom, { confirmText: "删除" });
+        if (!ok) return;
+        try {
+          const res = await apiFetchJSON(
+            "/delete_message",
+            {
+              method: "POST",
+              body: JSON.stringify({ id: Number(id) }),
+              headers: { "Content-Type": "application/json" },
+            },
+            { timeout: 8000 }
+          );
+          if (res.status === "success") {
+            showToast("删除成功");
+            await loadMessages();
+          } else showToast(res.error || "删除失败");
+        } catch (e) {
+          console.error(e);
+          showToast("删除失败");
+        }
+      }
+      async function onMarkMessageRead(ev) {
+        const id = ev.currentTarget.dataset.id;
+        try {
+          const res = await apiFetchJSON(
+            "/mark_message_read",
+            {
+              method: "POST",
+              body: JSON.stringify({ id: Number(id) }),
+              headers: { "Content-Type": "application/json" },
+            },
+            { timeout: 8000 }
+          );
+          if (res.status === "success") {
+            showToast("已标记");
+            await loadMessages();
+          } else showToast(res.error || "失败");
+        } catch (e) {
+          console.error(e);
+          showToast("失败");
+        }
+      }
+      document
+        .getElementById("markAllReadBtn")
+        .addEventListener("click", async () => {
+          const dom = document.createElement("div");
+          dom.innerHTML = `将所有消息标记为已读？`;
+          const ok = await showModal("全部标为已读", dom, {
+            confirmText: "全部标为已读",
+          });
+          if (!ok) return;
+          try {
+            const res = await apiFetchJSON(
+              "/mark_messages_read",
+              {
+                method: "POST",
+                body: JSON.stringify({}),
+                headers: { "Content-Type": "application/json" },
+              },
+              { timeout: 8000 }
+            );
+            if (res.status === "success") {
+              showToast("已标记全部为已读");
+              await loadMessages();
+            } else showToast(res.error || "失败");
+          } catch (e) {
+            console.error(e);
+            showToast("失败");
+          }
+        });
+      document
+        .getElementById("clearMessagesBtn")
+        .addEventListener("click", async () => {
+          const dom = document.createElement("div");
+          dom.innerHTML = `清空所有消息（不可恢复）`;
+          const ok = await showModal("清空消息", dom, { confirmText: "清空" });
+          if (!ok) return;
+          try {
+            const res = await apiFetchJSON(
+              "/clear_messages",
+              {
+                method: "POST",
+                body: JSON.stringify({}),
+                headers: { "Content-Type": "application/json" },
+              },
+              { timeout: 10000 }
+            );
+            if (res.status === "success") {
+              showToast("已清空");
+              await loadMessages();
+            } else showToast(res.error || "失败");
+          } catch (e) {
+            console.error(e);
+            showToast("失败");
+          }
+        });
+      /* =========================
+       Announcement (announcement.txt)
+       ========================= */
+      const annEditor = document.getElementById("announcementEditor");
+      const annPreview = document.getElementById("announcementPreview");
+      document
+        .getElementById("previewAnnouncementBtn")
+        .addEventListener("click", () => {
+          if (annPreview.style.display === "none") {
+            annPreview.innerHTML = markedSafe(annEditor.value || "");
+            annPreview.style.display = "block";
+          } else {
+            annPreview.style.display = "none";
+          }
+        });
+      async function loadAnnouncement() {
+        try {
+          const res = await fetch("/announcement.txt", {
+            method: "GET",
+            credentials: "same-origin",
+          });
+          if (!res.ok) throw new Error("无法读取公告");
+          const txt = await res.text();
+          annEditor.value = txt || "";
+          annPreview.innerHTML = markedSafe(txt || "");
+        } catch (e) {
+          console.warn("announcement load failed", e);
+          annEditor.placeholder = "无法加载公告";
+        }
+      }
+      document
+        .getElementById("saveAnnouncementBtn")
+        .addEventListener("click", async () => {
+          const content = annEditor.value || "";
+          const dom = document.createElement("div");
+          dom.innerHTML = `确认保存并更新公告？`;
+          const ok = await showModal("保存公告", dom, { confirmText: "保存" });
+          if (!ok) return;
+          try {
+            const res = await apiPostForm(
+              "/update_announcement",
+              { content },
+              { timeout: 10000 }
+            );
+            if (res.status === "success") {
+              showToast("公告已更新");
+              await loadAnnouncement();
+            } else showToast(res.error || "保存失败");
+          } catch (e) {
+            console.error(e);
+            showToast("保存失败");
+          }
+        });
+      function markedSafe(md) {
+        try {
+          if (typeof marked !== "undefined") {
+            const raw = marked.parse(md || "");
+            if (typeof DOMPurify !== "undefined")
+              return DOMPurify.sanitize(raw);
+            return raw;
+          } else {
+            return escapeHtml(md).replace(/\n/g, "<br>");
+          }
+        } catch (e) {
+          return escapeHtml(md);
+        }
+      }
+      /* =========================
+       Admin permissions
+       ========================= */
+      let permissionsData = { admin_users: [] };
+      async function loadPermissions() {
+        try {
+          const res = await apiFetchJSON(
+            "/get_admin_permissions",
+            { method: "GET" },
+            { timeout: 8000 }
+          );
+          permissionsData = res || permissionsData;
+          const ures = await apiFetchJSON(
+            "/get_users",
+            { method: "GET" },
+            { timeout: 8000 }
+          );
+          usersData = Array.isArray(ures) ? ures : ures.users || usersData;
+          renderPermissions();
+        } catch (e) {
+          console.error(e);
+          showToast("加载权限失败");
+        }
+      }
+      function renderPermissions() {
+        const grid = document.getElementById("permissionsGrid");
+        grid.innerHTML = "";
+        usersData.forEach((u) => {
+          const isAdmin = (permissionsData.admin_users || []).includes(
+            u.username
+          );
+          const card = document.createElement("div");
+          card.style.padding = "10px";
+          card.style.border = "1px solid var(--border)";
+          card.style.borderRadius = "10px";
+          card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
+            <div><strong>${escapeHtml(u.username)}</strong>
+              <div style="font-size:.85rem;color:var(--muted)">${
+                isAdmin ? "管理员" : "普通用户"
+              }</div>
+            </div>
+            <div><button class="btn small ${
+              isAdmin ? "ghost" : ""
+            }" data-username="${escapeHtml(u.username)}" data-action="${
+            isAdmin ? "demote" : "promote"
+          }">${isAdmin ? "撤销" : "设为"}</button></div>
+          </div>`;
+          grid.appendChild(card);
+        });
+        grid.querySelectorAll("button").forEach((b) => {
+          b.addEventListener("click", async () => {
+            const username = b.dataset.username;
+            const action = b.dataset.action;
+            let newAdmins = Array.from(permissionsData.admin_users || []);
+            if (action === "promote") {
+              if (!newAdmins.includes(username)) newAdmins.push(username);
+            } else {
+              newAdmins = newAdmins.filter((x) => x !== username);
+            }
+            try {
+              const res = await apiFetchJSON(
+                "/update_admin_permissions",
+                {
+                  method: "POST",
+                  body: JSON.stringify({ admin_users: newAdmins }),
+                  headers: { "Content-Type": "application/json" },
+                },
+                { timeout: 8000 }
+              );
+              if (res.status === "success") {
+                showToast("更新成功");
+                await loadPermissions();
+              } else showToast(res.error || "失败");
+            } catch (e) {
+              console.error(e);
+              showToast("失败");
+            }
+          });
+        });
+      }
+      /* =========================
+       Channels (create/edit using big select)
+       ========================= */
+      let channelsData = {};
+      document
+        .getElementById("createChannelBtn")
+        .addEventListener("click", async () => {
+          const container = document.createElement("div");
+          container.innerHTML = `<label>分区名称 <input class="input" id="modal_channel_name" placeholder="例如 team1"></label>
+        <div style="height:8px"></div>
+        <label>描述 <input class="input" id="modal_channel_desc"></label>
+        <div style="height:8px"></div>
+        <div style="color:var(--muted);margin-bottom:8px">选择允许的用户（大卡片分页选择）</div>
+        <div><button id="openBigBtn" class="btn ghost small">打开大选择器</button>
+        <div style="height:8px"></div>
+        <div id="selectedPreview" style="min-height:36px;color:var(--muted)"></div></div>`;
+          const selected = [];
+          container
+            .querySelector("#openBigBtn")
+            .addEventListener("click", () => {
+              openBig({
+                title: "选择允许用户",
+                initial: selected.slice(),
+                onConfirm: (vals) => {
+                  selected.length = 0;
+                  vals.forEach((v) => selected.push(v));
+                  renderPreview();
+                },
+              });
+            });
+          function renderPreview() {
+            const p = container.querySelector("#selectedPreview");
+            p.innerHTML = "";
+            if (!selected.length) p.textContent = "未选择用户";
+            else
+              selected.forEach((u) => {
+                const s = document.createElement("span");
+                s.className = "chip";
+                s.textContent = u;
+                p.appendChild(s);
+              });
+          }
+          renderPreview();
+          const ok = await showModal("创建分区", container, {
+            confirmText: "创建",
+          });
+          if (!ok) return;
+          const name = container
+            .querySelector("#modal_channel_name")
+            .value.trim();
+          const desc = container
+            .querySelector("#modal_channel_desc")
+            .value.trim();
+          const allowed = selected.slice();
+          if (
+            !name ||
+            !/^[a-zA-Z0-9_-]{1,32}$/.test(name) ||
+            name === "default"
+          ) {
+            showToast("无效分区名");
+            return;
+          }
+          try {
+            const res = await apiFetchJSON(
+              "/create_channel",
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  name,
+                  description: desc,
+                  allowed_users: allowed,
+                }),
+                headers: { "Content-Type": "application/json" },
+              },
+              { timeout: 8000 }
+            );
+            if (res.status === "success") {
+              showToast("创建成功");
+              await loadChannels();
+            } else showToast(res.error || "创建失败");
+          } catch (e) {
+            console.error(e);
+            showToast("创建失败");
+          }
+        });
+      async function loadChannels() {
+        try {
+          const data = await apiFetchJSON(
+            "/get_channels",
+            { method: "GET" },
+            { timeout: 8000 }
+          );
+          channelsData = data || {};
+          renderChannels();
+        } catch (e) {
+          console.error(e);
+          showToast("加载分区失败");
+        }
+      }
+      function renderChannels() {
+        const grid = document.getElementById("channelsGrid");
+        grid.innerHTML = "";
+        Object.values(channelsData).forEach((ch) => {
+          const card = document.createElement("div");
+          card.style.padding = "12px";
+          card.style.border = "1px solid var(--border)";
+          card.style.borderRadius = "10px";
+          card.innerHTML = `<div style="display:flex;justify-content:space-between">
+            <div><strong>${escapeHtml(ch.name)}</strong>
+              <div style="font-size:.85rem;color:var(--muted)">${escapeHtml(
+                ch.description || ""
+              )}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <button class="btn small editPermBtn" data-channel="${escapeHtml(
+                ch.name
+              )}">编辑权限</button>
+              ${
+                ch.name !== "default"
+                  ? `<button class="btn small ghost deleteChannelBtn" data-channel="${escapeHtml(
+                      ch.name
+                    )}">删除</button>`
+                  : `<button class="btn small ghost" disabled>默认</button>`
+              }
+            </div>
+          </div>
+          <div style="margin-top:10px;color:var(--muted);font-size:.9rem">${(
+            ch.allowed_users || []
+          ).join(", ")}</div>`;
+          grid.appendChild(card);
+        });
+        grid
+          .querySelectorAll(".editPermBtn")
+          .forEach((b) =>
+            b.addEventListener("click", onEditChannelPermissions)
+          );
+        grid
+          .querySelectorAll(".deleteChannelBtn")
+          .forEach((b) => b.addEventListener("click", onDeleteChannel));
+      }
+      async function onEditChannelPermissions(e) {
+        const channelName = e.currentTarget.dataset.channel;
+        const ch = channelsData[channelName];
+        if (!ch) return showToast("分区不存在");
+        const container = document.createElement("div");
+        container.innerHTML = `<div style="color:var(--muted);margin-bottom:8px">选择允许用户（大卡片分页选择）</div>
+        <div><button id="openEditBigBtn" class="btn ghost small">打开大选择器</button>
+        <div id="selectedPreviewEdit" style="min-height:36px;color:var(--muted);margin-top:8px"></div></div>`;
+        const selected = (ch.allowed_users || []).slice();
+        container
+          .querySelector("#openEditBigBtn")
+          .addEventListener("click", () => {
+            openBig({
+              title: `编辑 ${channelName} 权限`,
+              initial: selected.slice(),
+              onConfirm: (vals) => {
+                selected.length = 0;
+                vals.forEach((v) => selected.push(v));
+                renderSelectedEdit();
+              },
+            });
+          });
+        function renderSelectedEdit() {
+          const p = container.querySelector("#selectedPreviewEdit");
+          p.innerHTML = "";
+          if (!selected.length) p.textContent = "未选择用户";
+          else
+            selected.forEach((u) => {
+              const s = document.createElement("span");
+              s.className = "chip";
+              s.textContent = u;
+              p.appendChild(s);
+            });
+        }
+        renderSelectedEdit();
+        const ok = await showModal(`编辑 ${channelName} 权限`, container, {
+          confirmText: "保存",
+        });
+        if (!ok) return;
+        try {
+          const res = await apiFetchJSON(
+            "/update_channel_permissions",
+            {
+              method: "POST",
+              body: JSON.stringify({
+                channel: channelName,
+                allowed_users: selected,
+              }),
+              headers: { "Content-Type": "application/json" },
+            },
+            { timeout: 8000 }
+          );
+          if (res.status === "success") {
+            showToast("更新成功");
+            await loadChannels();
+          } else showToast(res.error || "失败");
+        } catch (e) {
+          console.error(e);
+          showToast("失败");
+        }
+      }
+      async function onDeleteChannel(e) {
+        const channelName = e.currentTarget.dataset.channel;
+        const dom = document.createElement("div");
+        dom.innerHTML = `确认删除分区 <strong>${escapeHtml(
+          channelName
+        )}</strong> ? 此操作会清理分区消息。`;
+        const ok = await showModal("删除分区", dom, { confirmText: "删除" });
+        if (!ok) return;
+        try {
+          const res = await apiFetchJSON(
+            "/delete_channel",
+            {
+              method: "POST",
+              body: JSON.stringify({ channel: channelName }),
+              headers: { "Content-Type": "application/json" },
+            },
+            { timeout: 8000 }
+          );
+          if (res.status === "success") {
+            showToast("已删除");
+            await loadChannels();
+            await loadMessages();
+          } else showToast(res.error || "失败");
+        } catch (e) {
+          console.error(e);
+          showToast("失败");
+        }
+      }
+      /* =========================
+       Big select (paged, mobile single-column)
+       ========================= */
+      const bigBackdrop = document.getElementById("bigBackdrop");
+      const bigModal = document.getElementById("bigModal");
+      const bigGrid = document.getElementById("bigGrid");
+      const bigSearch = document.getElementById("bigSearch");
+      const bigInfo = document.getElementById("bigInfo");
+      const bigPage = document.getElementById("bigPage");
+      const bigPrev = document.getElementById("bigPrev");
+      const bigNext = document.getElementById("bigNext");
+      const bigConfirm = document.getElementById("bigConfirm");
+      const bigClose = document.getElementById("bigClose");
+      const bigSelectAll = document.getElementById("bigSelectAll");
+      const bigClear = document.getElementById("bigClear");
+      let bigState = {
+        allUsers: [],
+        filtered: [],
+        selected: new Set(),
+        page: 1,
+        pageSize: 36,
+        totalPages: 1,
+        onConfirm: null,
+      };
+      async function loadAllUsersForBig() {
+        if (!bigState.allUsers.length) {
+          try {
+            const res = await apiFetchJSON(
+              "/get_users",
+              { method: "GET" },
+              { timeout: 8000 }
+            );
+            const raw = Array.isArray(res) ? res : res.users || [];
+            bigState.allUsers = raw
+              .map((u) => (typeof u === "string" ? u : u.username || ""))
+              .filter(Boolean);
+          } catch (e) {
+            console.warn("big select: load users failed", e);
+            bigState.allUsers = [];
+          }
+        }
+        return bigState.allUsers;
+      }
+      function openBig({
+        title = "选择用户",
+        initial = [],
+        onConfirm = null,
+      } = {}) {
+        document.getElementById("bigTitle").textContent = title;
+        if (window.innerWidth <= 420) bigState.pageSize = 6;
+        else if (window.innerWidth <= 680) bigState.pageSize = 8;
+        else if (window.innerWidth <= 900) bigState.pageSize = 10;
+        else bigState.pageSize = 36;
+        bigState.selected = new Set(initial || []);
+        bigState.onConfirm = onConfirm;
+        bigSearch.value = "";
+        loadAllUsersForBig().then(() => {
+          refreshBigFiltered();
+          showBig();
+        });
+      }
+      function showBig() {
+        bigBackdrop.classList.add("show");
+        bigBackdrop.setAttribute("aria-hidden", "false");
+        bigModal.scrollTop = 0;
+        setTimeout(() => bigSearch.focus(), 140);
+      }
+      function closeBig() {
+        bigBackdrop.classList.remove("show");
+        bigBackdrop.setAttribute("aria-hidden", "true");
+      }
+      function refreshBigFiltered() {
+        const q = bigSearch.value.trim().toLowerCase();
+        bigState.filtered = bigState.allUsers
+          .filter((u) => !q || u.toLowerCase().includes(q))
+          .slice();
+        bigState.totalPages = Math.max(
+          1,
+          Math.ceil(bigState.filtered.length / bigState.pageSize)
+        );
+        if (bigState.page > bigState.totalPages)
+          bigState.page = bigState.totalPages;
+        renderBigPage();
+      }
+      function renderBigPage() {
+        bigGrid.style.opacity = "0";
+        setTimeout(() => {
+          bigGrid.innerHTML = "";
+          const start = (bigState.page - 1) * bigState.pageSize;
+          const items = bigState.filtered.slice(
+            start,
+            start + bigState.pageSize
+          );
+          items.forEach((u) => {
+            const tile = document.createElement("div");
+            tile.className =
+              "big-tile" + (bigState.selected.has(u) ? " selected" : "");
+            tile.innerHTML = `<div style="font-weight:800">${escapeHtml(
+              u
+            )}</div>
+            <div style="color:var(--muted);font-size:.9rem">${escapeHtml(
+              u
+            )}</div>`;
+            tile.tabIndex = 0;
+            tile.addEventListener("click", () => {
+              toggleBig(u);
+              tile.classList.toggle("selected", bigState.selected.has(u));
+              updateBigInfo();
+            });
+            tile.addEventListener("keydown", (e) => {
+              if (e.key === "Enter") {
+                toggleBig(u);
+                tile.classList.toggle("selected", bigState.selected.has(u));
+                updateBigInfo();
+              }
+            });
+            bigGrid.appendChild(tile);
+          });
+          bigInfo.textContent = `已选 ${bigState.selected.size} 项 · 共 ${bigState.filtered.length} 条匹配`;
+          bigPage.textContent = `第 ${bigState.page} / ${bigState.totalPages} 页`;
+          setTimeout(() => (bigGrid.style.opacity = "1"), 20);
+        }, 140);
+      }
+      function toggleBig(u) {
+        if (bigState.selected.has(u)) bigState.selected.delete(u);
+        else bigState.selected.add(u);
+      }
+      function updateBigInfo() {
+        bigInfo.textContent = `已选 ${bigState.selected.size} 项 · 共 ${bigState.filtered.length} 条匹配`;
+      }
+      bigSearch.addEventListener("input", () => {
+        bigState.page = 1;
+        refreshBigFiltered();
+      });
+      bigPrev.addEventListener("click", () => {
+        if (bigState.page > 1) {
+          bigState.page--;
+          renderBigPage();
+        }
+      });
+      bigNext.addEventListener("click", () => {
+        if (bigState.page < bigState.totalPages) {
+          bigState.page++;
+          renderBigPage();
+        }
+      });
+      bigSelectAll.addEventListener("click", () => {
+        const start = (bigState.page - 1) * bigState.pageSize;
+        const items = bigState.filtered.slice(start, start + bigState.pageSize);
+        items.forEach((u) => bigState.selected.add(u));
+        renderBigPage();
+      });
+      bigClear.addEventListener("click", () => {
+        bigState.selected.clear();
+        renderBigPage();
+      });
+      bigConfirm.addEventListener("click", () => {
+        const arr = Array.from(bigState.selected);
+        if (typeof bigState.onConfirm === "function") bigState.onConfirm(arr);
+        closeBig();
+      });
+      bigClose.addEventListener("click", closeBig);
+      bigBackdrop.addEventListener("click", (ev) => {
+        if (ev.target === bigBackdrop) closeBig();
+      });
+      /* =========================
+       File browser
+       ========================= */
+      let currentPath = "";
+      let currentFilePath = "";
+      async function loadFileBrowser(path = "") {
+        try {
+          const res = await apiFetchJSON(
+            `/file-browser?path=${encodeURIComponent(path || "")}`,
+            { method: "GET" },
+            { timeout: 10000 }
+          );
+          currentPath = res.current_path || res.path || path || "";
+          document.getElementById("currentPath").textContent =
+            currentPath || "/";
+          const list = document.getElementById("fileList");
+          list.innerHTML = "";
+          (res.items || []).forEach((item) => {
+            const node = document.createElement("div");
+            const folder = isFolderType(item.type);
+            node.className =
+              "file-item " + (folder ? "item-folder" : "item-file");
+            const left = document.createElement("div");
+            left.className = "file-left";
+            const accent = document.createElement("div");
+            accent.className = "file-accent";
+            if (folder) {
+              accent.style.background =
+                "linear-gradient(180deg,var(--folder-accent),#2f6fd6)";
+              left.appendChild(accent);
+              const icon = document.createElement("div");
+              icon.textContent = "📁";
+              icon.style.fontSize = "1rem";
+              icon.style.lineHeight = "1";
+              const meta = document.createElement("div");
+              meta.className = "file-meta";
+              meta.innerHTML = `<div class="file-name">${escapeHtml(
+                item.name
+              )}</div>
+              <div class="file-type">目录 · ${escapeHtml(
+                item.size || ""
+              )}</div>`;
+              left.appendChild(icon);
+              left.appendChild(meta);
+            } else {
+              accent.style.background =
+                "linear-gradient(180deg,var(--file-accent),#dfe3ea)";
+              left.appendChild(accent);
+              const icon = document.createElement("div");
+              icon.textContent = "📄";
+              icon.style.fontSize = "1rem";
+              icon.style.lineHeight = "1";
+              const meta = document.createElement("div");
+              meta.className = "file-meta";
+              meta.innerHTML = `<div class="file-name">${escapeHtml(
+                item.name
+              )}</div>
+              <div class="file-type">文件 · ${escapeHtml(
+                item.size || ""
+              )}</div>`;
+              left.appendChild(icon);
+              left.appendChild(meta);
+            }
+            node.appendChild(left);
+            node.addEventListener("click", () => {
+              if (folder) {
+                node.animate(
+                  [
+                    { transform: "translateX(0)" },
+                    { transform: "translateX(-6px)" },
+                  ],
+                  { duration: 200, easing: "cubic-bezier(.2,.9,.22,1)" }
+                );
+                loadFileBrowser(item.path);
+              } else {
+                openFile(item.path);
+              }
+            });
+            list.appendChild(node);
+          });
+          if ((res.items || []).length === 0)
+            list.innerHTML = '<div class="muted">路径为空</div>';
+        } catch (e) {
+          console.error("loadFileBrowser", e);
+          document.getElementById("fileList").innerHTML =
+            '<div class="muted">加载失败或无权限</div>';
+          showToast("加载文件失败");
+        }
+      }
+      async function openFile(path) {
+        try {
+          const res = await apiFetchJSON(
+            `/read-file?path=${encodeURIComponent(path)}`,
+            { method: "GET" },
+            { timeout: 8000 }
+          );
+          currentFilePath = res.path || path;
+          document.getElementById("currentFileName").textContent =
+            currentFilePath;
+          document.getElementById("fileEditor").value = res.content || "";
+          const el = document.getElementById("currentFileName");
+          el.animate(
+            [
+              { transform: "scale(1)" },
+              { transform: "scale(1.03)" },
+              { transform: "scale(1)" },
+            ],
+            { duration: 340, easing: "cubic-bezier(.2,.9,.22,1)" }
+          );
+          showToast("文件已加载");
+        } catch (e) {
+          console.error("openFile", e);
+          showToast("打开文件失败");
+        }
+      }
+      document
+        .getElementById("saveFileBtn")
+        .addEventListener("click", async () => {
+          if (!currentFilePath) {
+            showToast("请先选择文件");
+            return;
+          }
+          try {
+            const content = document.getElementById("fileEditor").value;
+            const res = await apiFetchJSON(
+              "/save-file",
+              {
+                method: "POST",
+                body: JSON.stringify({ path: currentFilePath, content }),
+                headers: { "Content-Type": "application/json" },
+              },
+              { timeout: 10000 }
+            );
+            if (res.status === "success") {
+              showToast("保存成功");
+              await loadFileBrowser(currentPath);
+            } else showToast(res.error || "保存失败");
+          } catch (e) {
+            console.error(e);
+            showToast("保存失败");
+          }
+        });
+      document
+        .getElementById("deleteFileBtn")
+        .addEventListener("click", async () => {
+          if (!currentFilePath) {
+            showToast("请选择文件或目录");
+            return;
+          }
+          const dom = document.createElement("div");
+          dom.innerHTML = `确认删除 <strong>${escapeHtml(
+            currentFilePath.split("/").pop() || currentFilePath
+          )}</strong> ?`;
+          const ok = await showModal("删除", dom, { confirmText: "删除" });
+          if (!ok) return;
+          try {
+            const res = await apiFetchJSON(
+              "/delete-file",
+              {
+                method: "POST",
+                body: JSON.stringify({ path: currentFilePath }),
+                headers: { "Content-Type": "application/json" },
+              },
+              { timeout: 10000 }
+            );
+            if (res.status === "success") {
+              showToast("删除成功");
+              currentFilePath = "";
+              document.getElementById("currentFileName").textContent = "未选择";
+              document.getElementById("fileEditor").value = "";
+              await loadFileBrowser(currentPath);
+            } else showToast(res.error || "删除失败");
+          } catch (e) {
+            console.error(e);
+            showToast("删除失败");
+          }
+        });
+      document
+        .getElementById("createItemBtn")
+        .addEventListener("click", async () => {
+          const container = document.createElement("div");
+          container.innerHTML = `<label>类型 <select id="create_type" class="input"><option value="file">文件</option><option value="dir">目录</option></select></label>
+        <div style="height:8px"></div>
+        <label>名称 <input class="input" id="create_name" placeholder="例如 test.txt 或 newdir"></label>`;
+          const ok = await showModal("新建", container, {
+            confirmText: "创建",
+          });
+          if (!ok) return;
+          const type = container.querySelector("#create_type").value;
+          const name = container.querySelector("#create_name").value.trim();
+          if (!name) {
+            showToast("名称不能为空");
+            return;
+          }
+          try {
+            if (type === "file") {
+              const res = await apiFetchJSON(
+                "/create-file",
+                {
+                  method: "POST",
+                  body: JSON.stringify({ path: currentPath, name }),
+                  headers: { "Content-Type": "application/json" },
+                },
+                { timeout: 8000 }
+              );
+              if (res.status === "success") {
+                showToast("文件创建成功");
+                await loadFileBrowser(currentPath);
+              } else showToast(res.error || "创建失败");
+            } else {
+              const res = await apiFetchJSON(
+                "/create-directory",
+                {
+                  method: "POST",
+                  body: JSON.stringify({ path: currentPath, name }),
+                  headers: { "Content-Type": "application/json" },
+                },
+                { timeout: 8000 }
+              );
+              if (res.status === "success") {
+                showToast("目录创建成功");
+                await loadFileBrowser(currentPath);
+              } else showToast(res.error || "创建失败");
+            }
+          } catch (e) {
+            console.error(e);
+            showToast("创建失败");
+          }
+        });
+      document
+        .getElementById("downloadZipBtn")
+        .addEventListener("click", () => {
+          window.location.href = "/down";
+        });
+      /* =========================
+       Init & load all
+       ========================= */
+      async function loadAll() {
+        await Promise.allSettled([
+          loadUsers(),
+          loadPermissions(),
+          loadChannels(),
+          loadMessages(),
+          loadAnnouncement(),
+          loadFileBrowser(""),
+        ]);
+      }
+      document.addEventListener("DOMContentLoaded", () => {
+        updateMobileToggleVisibility();
+        bindNavs();
+        document.querySelectorAll("#drawer .nav-item").forEach((it) =>
+          it.addEventListener("click", () => {
+            setActiveTab(it.getAttribute("data-tab"));
+            closeDrawer();
+          })
+        );
+        setActiveTab("users");
+        loadAll();
+      });
+      /* try load optional libs if available */
+      (function tryLoadLibs() {
+        const urls = ["/libs/marked.min.js", "/libs/purify.min.js"];
+        urls.forEach((u) => {
+          const s = document.createElement("script");
+          s.src = u;
+          s.async = false;
+          s.onerror = () => {};
+          document.head.appendChild(s);
+        });
+      })();
+    </script>
+  </body>
+</html>
