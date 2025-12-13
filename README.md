@@ -97,7 +97,7 @@ Main Branch也可以使用，但是不保证Bug解决
    python app.py
    ```
 
-4. 访问 `http://localhost`， 如果您需要分享，请访问：`http://YOUR-IP`
+4. 访问 `http://localhost:5000`， 如果您需要分享，请访问：`http://YOUR-IP:5000`
 
 ## 默认账户 / Default Account
 

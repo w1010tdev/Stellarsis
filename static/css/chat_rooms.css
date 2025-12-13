@@ -149,7 +149,7 @@
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
-  color: var(--on-surface);
+  color: var(--on-primary);
   gap: 0.25rem;
 }
 

@@ -72,10 +72,9 @@
     <header>
         <div class="container">
             <h1><a href="/" id="global_title">群星议会</a></h1>
-            <button class="menu-toggle" id="menu-toggle">
-                <span></span>
-            </button>
-            <nav id="main-nav">
+            <!-- 只在移动端显示的进入按钮 -->
+            <button class="entry-button" id="entry-button">菜单</button>
+            <nav id="main-nav" class="mobile-nav">
                 <ul id="main-menu">
                     <li><a href="{{ url_for('chat_index') }}">即时聊天</a></li>
                     <li><a href="{{ url_for('forum_index') }}">贴吧</a></li>
@@ -91,8 +90,6 @@
             </nav>
         </div>
     </header>
-    <!-- backdrop should be a body-level overlay so it can catch clicks outside header/nav reliably -->
-    <div class="nav-backdrop" id="nav-backdrop"></div>
     <main class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -120,42 +117,142 @@
     <!-- 汉堡菜单JS交互 -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const menuToggle = document.getElementById('menu-toggle');
-            const mainNav = document.getElementById('main-nav');
-            const navBackdrop = document.getElementById('nav-backdrop');
-            const mainMenu = document.getElementById('main-menu');
+            const entryButton = document.getElementById('entry-button');
 
-            if (menuToggle && mainNav && navBackdrop) {
-                const toggleMenu = () => {
-                    const isOpen = mainNav.classList.contains('show');
-                    mainNav.classList.toggle('show', !isOpen);
-                    navBackdrop.classList.toggle('show', !isOpen);
-                    menuToggle.classList.toggle('open', !isOpen);
-                    document.body.style.overflow = !isOpen ? 'hidden' : '';
-                };
+            // 绑定进入按钮点击事件
+            if (entryButton) {
+                entryButton.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
 
-                menuToggle.addEventListener('click', toggleMenu);
-                navBackdrop.addEventListener('click', toggleMenu);
+                    // 仅在移动端处理
+                    if (window.innerWidth > 768) return;
 
-                // 菜单项点击后关闭菜单(移动端)
-                const menuLinks = mainMenu.querySelectorAll('a');
-                menuLinks.forEach(link => {
-                    link.addEventListener('click', function () {
-                        if (window.innerWidth <= 768) {
-                            mainNav.classList.remove('show');
-                            navBackdrop.classList.remove('show');
-                            menuToggle.classList.remove('open');
-                            document.body.style.overflow = '';
-                        }
-                    });
+                    // 动态创建并显示菜单
+                    createAndShowMobileMenu();
                 });
+            }
 
-                // 窗口大小变化时关闭菜单
+            function createAndShowMobileMenu() {
+                // 如果菜单已经存在，则不再重复创建
+                if (document.getElementById('menu-toggle')) return;
+
+                // 1. 创建汉堡菜单按钮
+                const menuToggle = document.createElement('button');
+                menuToggle.className = 'menu-toggle';
+                menuToggle.id = 'menu-toggle';
+                menuToggle.innerHTML = '<span></span>';
+
+                // 2. 创建导航菜单（如果不存在）
+                let mainNav = document.getElementById('main-nav');
+                if (!mainNav) {
+                    mainNav = document.createElement('nav');
+                    mainNav.id = 'main-nav';
+                    mainNav.className = 'mobile-nav';
+                    
+                    const menuUl = document.createElement('ul');
+                    menuUl.id = 'main-menu';
+                    
+                    // 添加菜单项
+                    const menuItems = [];
+                    menuItems.push({ text: '即时聊天', href: '{{ url_for("chat_index") }}' });
+                    menuItems.push({ text: '贴吧', href: '{{ url_for("forum_index") }}' });
+                    {% if current_user.is_authenticated %}
+                    menuItems.push({ text: '设置', href: '{{ url_for("settings_index") }}' });
+                    {% else %}
+                    menuItems.push({ text: '登录', href: '{{ url_for("login") }}' });
+                    {% endif %}
+                    {% if current_user.is_authenticated and current_user.is_admin() %}
+                    menuItems.push({ text: '管理面板', href: '{{ url_for("admin_index") }}' });
+                    {% endif %}
+                    
+                    menuItems.forEach(item => {
+                        const li = document.createElement('li');
+                        const a = document.createElement('a');
+                        a.href = item.href;
+                        a.textContent = item.text;
+                        li.appendChild(a);
+                        menuUl.appendChild(li);
+                    });
+                    
+                    mainNav.appendChild(menuUl);
+                }
+
+                // 3. 创建背景覆盖层
+                const navBackdrop = document.createElement('div');
+                navBackdrop.className = 'nav-backdrop';
+                navBackdrop.id = 'nav-backdrop';
+
+                // 4. 将元素添加到DOM中
+                document.body.appendChild(mainNav);
+                document.body.appendChild(navBackdrop);
+                
+                const headerContainer = document.querySelector('header .container');
+                headerContainer.insertBefore(menuToggle, document.querySelector('.entry-button'));
+
+                // 5. 绑定菜单事件
+                bindMenuEvents();
+
+                // 6. 显示菜单
+                setTimeout(() => {
+                    mainNav.classList.add('show');
+                    navBackdrop.classList.add('show');
+                    menuToggle.classList.add('open');
+                    document.body.style.overflow = 'hidden';
+                }, 30);
+            }
+
+            function bindMenuEvents() {
+                const menuToggle = document.getElementById('menu-toggle');
+                const mainNav = document.getElementById('main-nav');
+                const navBackdrop = document.getElementById('nav-backdrop');
+
+                if (!menuToggle || !mainNav || !navBackdrop) return;
+
+                // 关闭菜单函数
+                function closeMenu() {
+                    mainNav.classList.remove('show');
+                    navBackdrop.classList.remove('show');
+                    menuToggle.classList.remove('open');
+                    document.body.style.overflow = '';
+
+                    // 延迟删除元素，确保动画完成
+                    setTimeout(() => {
+                        if (menuToggle && menuToggle.parentNode) menuToggle.remove();
+                        if (mainNav && mainNav.parentNode) mainNav.remove();
+                        if (navBackdrop && navBackdrop.parentNode) navBackdrop.remove();
+                    }, 300);
+                }
+
+                // 绑定点击事件
+                menuToggle.addEventListener('click', closeMenu);
+                navBackdrop.addEventListener('click', closeMenu);
+
+                // 菜单项点击后关闭菜单
+                const mainMenu = document.getElementById('main-menu');
+                if (mainMenu) {
+                    const menuLinks = mainMenu.querySelectorAll('a');
+                    menuLinks.forEach(link => {
+                        link.addEventListener('click', function () {
+                            if (window.innerWidth <= 768) {
+                                closeMenu();
+                            }
+                        });
+                    });
+                }
+
+                // 窗口大小变化处理
                 window.addEventListener('resize', function () {
-                    if (window.innerWidth > 768 && mainNav.classList.contains('show')) {
-                        mainNav.classList.remove('show');
-                        navBackdrop.classList.remove('show');
-                        menuToggle.classList.remove('open');
+                    if (window.innerWidth > 768) {
+                        // 桌面端：移除动态元素
+                        const toggleEl = document.getElementById('menu-toggle');
+                        const navEl = document.getElementById('main-nav');
+                        const backdropEl = document.getElementById('nav-backdrop');
+                        
+                        if (toggleEl) toggleEl.remove();
+                        if (navEl) navEl.remove();
+                        if (backdropEl) backdropEl.remove();
+                        
                         document.body.style.overflow = '';
                     }
                 });

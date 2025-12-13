@@ -387,7 +387,6 @@ def ensure_admin_user():
             # 如果admin用户存在但不是管理员，则设置为管理员
             if admin_user.role != 'admin':
                 admin_user.role = 'admin'
-                admin_user.set_password('admin123')  # 重置密码为默认密码
                 db_session.commit()
         else:
             # 如果admin用户不存在，创建一个默认的admin用户
@@ -488,51 +487,74 @@ class ProfileForm(FlaskForm):
 
 # 全局工具函数
 def sanitize_content(content):
-    """增强XSS防护 - 过滤危险HTML标签和属性"""
+    """
+    增强XSS防护 - 完全移除所有HTML标签，输出纯文本
+    核心逻辑：
+    1. 移除所有HTML标签（包括自闭合、多行、嵌套标签）
+    2. 解码并转义HTML实体，避免XSS注入
+    3. 移除脚本相关协议/关键词（即使文本中包含）
+    4. 清理危险字符和多余空白，确保输出纯文本
+    """
+    # 1. 空值/非字符串处理
     if not content:
         return ""
-    # 解码已有的HTML实体，避免双重转义导致在客户端仍然显示为实体
+    # 确保输入为字符串类型（防止非字符串输入导致异常）
+    if not isinstance(content, str):
+        try:
+            content = str(content)
+        except Exception:
+            return ""
+
+    # 2. 解码HTML实体（避免双重转义）
     try:
         content = html.unescape(content)
     except Exception:
         pass
 
-    # 移除危险的HTML标签
-    content = re.sub(r'<script[^>]*>.*?</script>', '', content, flags=re.IGNORECASE | re.DOTALL)
-    content = re.sub(r'<style[^>]*>.*?</style>', '', content, flags=re.IGNORECASE | re.DOTALL)
-    
-    # 移除on*事件处理器
-    content = re.sub(r'\s*on\w+\s*=\s*["\'][^"\']*["\']', '', content, flags=re.IGNORECASE)
-    
-    # 移除危险的协议
-    content = re.sub(r'href\s*=\s*["\']\s*javascript:[^"\']*["\']', 'href="#"', content, flags=re.IGNORECASE)
-    content = re.sub(r'src\s*=\s*["\']\s*javascript:[^"\']*["\']', 'src="#"', content, flags=re.IGNORECASE)
-    content = re.sub(r':\s*expression\s*\([^)]*\)', '', content, flags=re.IGNORECASE)
-    
-    # 移除危险的CSS样式 - 限制字体大小等属性的数值
-    content = re.sub(r'font-size\s*:\s*\d{5,}[^;"\']*', '', content, flags=re.IGNORECASE)
-    content = re.sub(r'(width|height|margin|padding|top|left|right|bottom)\s*:\s*\d{5,}[^;"\']*', '', content, flags=re.IGNORECASE)
-    
-    # 移除style属性中的危险内容
-    def remove_dangerous_style(match):
-        tag_start = match.group(0)
-        # 移除危险的style内容
-        clean_style = re.sub(r'expression|javascript|eval', '', tag_start, flags=re.IGNORECASE)
-        # 限制数值大小
-        clean_style = re.sub(r'(font-size|width|height|margin|padding|top|left|right|bottom)\s*:\s*\d{5,}', '', clean_style, flags=re.IGNORECASE)
-        return clean_style
-    
-    content = re.sub(r'<[^>]*style\s*=\s*["\'][^"\']*["\'][^>]*>', remove_dangerous_style, content, flags=re.IGNORECASE)
+    # 3. 完全移除所有HTML标签
+    # 匹配所有<开头、>结尾的标签（包括多行、自闭合、注释标签）
+    # 覆盖：<tag>、</tag>、<tag/>、<tag attr="val">、<!-- 注释 --> 等所有HTML标签形式
+    content = re.sub(
+        r'<[^>]*?>',          # 匹配所有<...>结构（非贪婪匹配）
+        '',                   # 直接移除
+        content,
+        flags=re.IGNORECASE | re.DOTALL | re.MULTILINE
+    )
 
-    # 处理链接（仅允许 http/https），并将可能包含的 javascript: 存在的 href 设置为安全的占位
-    try:
-        # 使用安全的替换函数，避免在替换字符串内直接嵌入不匹配引号导致语法问题
-        def _link_safe(m):
-            return '<a href="%s" target="_blank" rel="noopener noreferrer"' % escape(m.group(1))
-        content = re.sub(r'<a\s+href=["\'](https?://[^"\']+)', _link_safe, content, flags=re.I)
-        content = re.sub(r'href=["\']\s*javascript:[^"\']*["\']', 'href="#"', content, flags=re.I)
-    except Exception:
-        pass
+    # 4. 移除脚本相关危险内容（即使是文本中的残留）
+    # 移除各类脚本协议前缀
+    script_protocols = [
+        r'javascript:', r'jscript:', r'vbscript:', r'vbs:',
+        r'data:', r'blob:', r'file:', r'about:', r'chrome:',
+        r'ms-script:', r'ms-javascript:'
+    ]
+    for protocol in script_protocols:
+        content = re.sub(
+            re.escape(protocol),
+            '',
+            content,
+            flags=re.IGNORECASE | re.DOTALL
+        )
+
+    # 移除危险脚本关键词（避免文本中残留执行逻辑）
+    dangerous_keywords = [
+        r'eval\(', r'expression\(', r'setTimeout\(', r'setInterval\(',
+        r'Function\(', r'alert\(', r'prompt\(', r'confirm\('
+    ]
+    for keyword in dangerous_keywords:
+        content = re.sub(
+            keyword,
+            '',
+            content,
+            flags=re.IGNORECASE | re.DOTALL
+        )
+
+    # 5. 转义所有HTML特殊字符（最终确保纯文本）
+    # quote=True：转义双引号/单引号；escape_slashes=True：转义斜杠
+    content = html.escape(
+        content,
+        quote=True
+    )
 
     return content
 def update_room_online_count(room_id):

@@ -71,7 +71,14 @@
   align-items: center;
   gap: var(--spacing-xs);
 }
-
+.message-content img {
+  max-width: 100%;
+  max-height: 400px;
+  border-radius: 8px;
+  margin: 8px 0;
+  object-fit: contain;
+  display: block;
+}
 #show-online-list:hover {
   background-color: var(--primary-700);
   transform: translateY(-1px);
@@ -612,6 +619,10 @@
 
   .chat-status {
     display: none;
+  }
+/* 移动端图片尺寸优化 */
+  .message-content img {
+    max-height: 300px;
   }
 }
 

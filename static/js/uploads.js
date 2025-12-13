@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function loadExistingImages(listId, insertTargetSelector) {
         var list = document.getElementById(listId);
         if (!list) return;
-        fetch('/api/upload/images', {credentials: 'same-origin'})
+        fetch('/api/upload/images', { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (d) {
                 if (!d || !d.success) return;
@@ -159,8 +159,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     container.appendChild(fname);
                     var copyBtn = document.createElement('button');
                     copyBtn.className = 'btn btn-sm btn-outline image-upload-copy';
-                    copyBtn.textContent='复制 Markdown';
-                    copyBtn.addEventListener('click', function(){ try{ navigator.clipboard.writeText(container.dataset.markdown); showToast('success', '复制成功'); }catch(e){ showToast('warning','复制失败'); }});
+                    copyBtn.textContent = '复制 Markdown';
+                    copyBtn.addEventListener('click', function () { try { navigator.clipboard.writeText(container.dataset.markdown); showToast('success', '复制成功'); } catch (e) { console.log(e);showToast('warning', '复制失败'); } });
                     container.appendChild(copyBtn);
                     // insert button
                     if (insertTargetSelector) {
@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     container.appendChild(delBtn);
                     list.appendChild(container);
                 });
-            }).catch(function (e) {console.error('获取已有图片失败', e);});
+            }).catch(function (e) { console.error('获取已有图片失败', e); });
     }
 
     // Initialize on known IDs
