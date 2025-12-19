@@ -395,7 +395,7 @@ function loadChatHistory() {
             if (typeof data.page !== 'undefined' && typeof data.total_pages !== 'undefined') {
                 chatCurrentPage = data.page;
                 chatTotalPages = data.total_pages;
-                if (chatTotalPages > 1 && messagesContainer) {
+                if (messagesContainer) {
                     let wrap = document.getElementById('chat-load-more-wrap');
                     if (!wrap) {
                         wrap = document.createElement('div');
@@ -408,18 +408,30 @@ function loadChatHistory() {
                         btn.dataset.currentPage = chatCurrentPage;
                         btn.dataset.totalPages = chatTotalPages;
                         btn.textContent = '加载更多';
+                        
+                        // Determine initial visibility based on has_more field
+                        if (data.has_more !== undefined) {
+                            // Use the has_more field to determine visibility
+                            if (data.has_more || chatCurrentPage > 0) {
+                                btn.style.display = '';
+                            } else {
+                                btn.style.display = 'none';
+                            }
+                        } else {
+                            // Fallback to old logic if has_more field is not provided
+                            if (chatTotalPages > 1) {
+                                btn.style.display = '';
+                            } else {
+                                btn.style.display = 'none';
+                            }
+                        }
+                        
                         wrap.appendChild(btn);
                         messagesContainer.insertBefore(wrap, messagesContainer.firstChild);
 
                         btn.addEventListener('click', function () {
                             const cur = parseInt(btn.dataset.currentPage || '0', 10);
                             const nextPage = cur - 1;
-                            
-                            // Don't request negative page numbers as API will cap them to 0
-                            if (nextPage < 0) {
-                                btn.style.display = 'none';
-                                return;
-                            }
                             
                             btn.disabled = true; btn.textContent = '加载中...';
                             fetch(`/api/chat/${roomId}/history?page=${nextPage}&limit=${pageSize}`)
@@ -434,19 +446,27 @@ function loadChatHistory() {
                                         messagesContainer.scrollTop = prevScrollTop;
                                         btn.dataset.currentPage = nextPage;
                                         
-                                        // Hide the button if we've reached the first page of history
-                                        if (nextPage <= 0) btn.style.display = 'none';
-                                        else btn.style.display = '';
+                                        // Use the new has_more field to determine if we should show the button
+                                        if (d.has_more !== undefined) {
+                                            // Server provides has_more field, use it
+                                            if (d.has_more) {
+                                                btn.style.display = '';
+                                            } else {
+                                                btn.style.display = 'none';
+                                            }
+                                        } else {
+                                            // Fallback to old logic if has_more field is not provided
+                                            if (nextPage <= 0) btn.style.display = 'none';
+                                            else btn.style.display = '';
+                                        }
                                     } else {
                                         console.error('加载更多返回格式错误');
-                                        // Even if there's an error, if we tried to load a negative page, hide the button
-                                        if (nextPage < 0) btn.style.display = 'none';
+                                        btn.style.display = 'none';
                                     }
                                 })
                                 .catch(err => { 
                                     console.error('加载更多失败', err); 
-                                    // If we tried to load a negative page, hide the button
-                                    if (nextPage < 0) btn.style.display = 'none';
+                                    btn.style.display = 'none';
                                 })
                                 .finally(() => { btn.disabled = false; btn.textContent = '加载更多'; });
                         });

@@ -927,6 +927,14 @@ def chat_history(room_id):
         offset = page * limit
         messages = db_session.query(ChatMessage).filter_by(room_id=room_id)\
             .order_by(ChatMessage.timestamp.asc()).limit(limit).offset(offset).all()
+        
+        # Check if there are more messages after this page
+        # Using a more compatible approach to check for existence
+        next_offset = (page + 1) * limit
+        next_batch = db_session.query(ChatMessage.id).filter_by(room_id=room_id)\
+                      .order_by(ChatMessage.timestamp.asc()).limit(1).offset(next_offset).all()
+        has_more = len(next_batch) > 0
+        
         messages_data = [{
             'id': msg.id,
             'content': html.unescape(msg.content) if isinstance(msg.content, str) else msg.content,
@@ -937,7 +945,7 @@ def chat_history(room_id):
             'color': msg.user.color,
             'badge': msg.user.badge
         } for msg in messages]
-        return jsonify(messages=messages_data, page=page, total_pages=total_pages)
+        return jsonify(messages=messages_data, page=page, total_pages=total_pages, has_more=has_more)
 
 @app.route('/api/chat/send', methods=['POST'])
 @login_required
