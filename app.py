@@ -492,35 +492,51 @@ class ProfileForm(FlaskForm):
 # 全局工具函数
 def sanitize_content(content):
     """
-    增强XSS防护 - 使用更智能的过滤方法，保留Markdown和LaTeX标签，但过滤掉HTML标签
-    核心逻辑：
-    1. 保留Markdown语法（**bold**, *italic*, , 等）
-    2. 保留LaTeX语法（$...$, 37...37, \\(...\), \\[...\]等）
-    3. 保留@quote{...}等自定义标签
-    4. 过滤掉潜在危险的HTML标签和脚本
+    增强XSS防护 - 过滤掉真正的HTML标签，但保留代码中的尖括号
     """
     # 1. 空值/非字符串处理
     if not content:
         return ""
-    # 确保输入为字符串类型（防止非字符串输入导致异常）
+    # 确保输入为字符串类型
     if not isinstance(content, str):
         try:
             content = str(content)
         except Exception:
             return ""
 
-    # 2. 解码HTML实体（避免双重转义）
+    # 2. 解码HTML实体
     try:
         content = html.unescape(content)
     except Exception:
         pass
 
-    # 3. 临时替换安全的标签（Markdown、LaTeX、自定义标签）
-    # 存储临时替换的标记
+    # 3. 临时保护代码块和特殊语法
     temp_placeholders = {}
     
-    # 保存LaTeX表达式：$...$, 37...37, \\(...\), \\[...\]
-    latex_pattern = r'($[^$]*$|[$]{2}[^......[\s\S]*?[^|@quote\{\d+\})'
+    # 首先保护代码块（包括多行代码块和行内代码）
+    # 保护多行代码块：```code```
+    code_block_pattern = r'```[\s\S]*?```'
+    
+    def replace_code_block(match):
+        key = f"__CODEBLOCK_{len(temp_placeholders)}__"
+        temp_placeholders[key] = match.group(0)
+        return key
+    
+    content = re.sub(code_block_pattern, replace_code_block, content, flags=re.MULTILINE)
+    
+    # 保护行内代码：`code`
+    inline_code_pattern = r'`[^`]*`'
+    
+    def replace_inline_code(match):
+        key = f"__INLINECODE_{len(temp_placeholders)}__"
+        temp_placeholders[key] = match.group(0)
+        return key
+    
+    content = re.sub(inline_code_pattern, replace_inline_code, content, flags=re.MULTILINE)
+    
+    # 保存LaTeX表达式：$...$, $$...$$, \(...\), \[...\]
+    latex_pattern = r'\$[^\$]*?\$|\$\$[^\$]*?\$\$|\\\\\(.*?\\\\\)|\\\\\[.*?\\\\\]'
+    
     def replace_latex(match):
         key = f"__LATEX_{len(temp_placeholders)}__"
         temp_placeholders[key] = match.group(0)
@@ -538,16 +554,40 @@ def sanitize_content(content):
     
     content = re.sub(quote_pattern, replace_quote, content, flags=re.MULTILINE)
 
-    # 4. 移除所有HTML标签
-    content = re.sub(
-        r'<[^>]*?>',          # 匹配所有<...>结构（非贪婪匹配）
-        '',                   # 直接移除
-        content,
-        flags=re.IGNORECASE | re.DOTALL | re.MULTILINE
-    )
-
-    # 5. 移除脚本相关危险内容（即使是文本中的残留）
-    # 移除各类脚本协议前缀
+    # 4. 只移除真正的HTML标签，但不移除类似<something>的内容
+    # 我们只移除已知的HTML标签
+    html_tags = [
+        # 基本HTML标签
+        r'<script[^>]*>[\s\S]*?</script>',
+        r'<style[^>]*>[\s\S]*?</style>',
+        r'<iframe[^>]*>[\s\S]*?</iframe>',
+        r'<embed[^>]*>[\s\S]*?</embed>',
+        r'<object[^>]*>[\s\S]*?</object>',
+        r'<applet[^>]*>[\s\S]*?</applet>',
+        
+        # 可能危险的标签
+        r'<link[^>]*>',
+        r'<meta[^>]*>',
+        r'<base[^>]*>',
+        
+        # 其他常见HTML标签（可以适当放宽）
+        r'<form[^>]*>[\s\S]*?</form>',
+        r'<input[^>]*>',
+        r'<textarea[^>]*>[\s\S]*?</textarea>',
+        r'<select[^>]*>[\s\S]*?</select>',
+        r'<button[^>]*>[\s\S]*?</button>',
+        
+        # 事件处理属性（移除on事件）
+        r'\bon\w+=\s*"[^"]*"',
+        r"\bon\w+=\s*'[^']*'",
+        r'\bon\w+=\s*[^\s>]+',
+    ]
+    
+    for pattern in html_tags:
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE)
+    
+    # 5. 移除其他潜在的XSS向量
+    # 移除javascript:等协议
     script_protocols = [
         r'javascript:', r'jscript:', r'vbscript:', r'vbs:',
         r'data:', r'blob:', r'file:', r'about:', r'chrome:',
@@ -558,10 +598,10 @@ def sanitize_content(content):
             re.escape(protocol),
             '',
             content,
-            flags=re.IGNORECASE | re.DOTALL
+            flags=re.IGNORECASE
         )
 
-    # 移除危险脚本关键词（避免文本中残留执行逻辑）
+    # 移除危险脚本关键词
     dangerous_keywords = [
         r'eval\(', r'expression\(', r'setTimeout\(', r'setInterval\(',
         r'Function\(', r'alert\(', r'prompt\(', r'confirm\('
@@ -571,18 +611,15 @@ def sanitize_content(content):
             keyword,
             '',
             content,
-            flags=re.IGNORECASE | re.DOTALL
+            flags=re.IGNORECASE
         )
 
-    # 6. 恢复之前保存的安全标签
+    # 6. 恢复之前保存的安全内容
     for key, original in temp_placeholders.items():
         content = content.replace(key, original)
 
-    # 7. 转义其他HTML特殊字符（最终确保安全）
-    content = html.escape(
-        content,
-        quote=True
-    )
+    # 7. 转义其他HTML特殊字符
+    content = html.escape(content, quote=True)
 
     return content
 def update_room_online_count(room_id):
