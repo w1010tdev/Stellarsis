@@ -790,6 +790,42 @@
   color: var(--text-color);
 }
 
+/* 加载更多按钮样式 */
+#chat-load-more-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin: 10px 0;
+  order: -1; /* 确保在flex容器中排在最前面 */
+}
+
+#chat-load-more-btn {
+  padding: 8px 16px;
+  background-color: var(--primary-100);
+  color: var(--primary-700);
+  border: 1px solid var(--primary-200);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+#chat-load-more-btn:hover {
+  background-color: var(--primary-200);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+#chat-load-more-btn:disabled {
+  background-color: var(--neutral-100);
+  color: var(--muted-text-color);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: var(--shadow-sm);
+}
+
 /* Follow / plus button styling */
 .follow-btn {
   display: inline-flex;
