@@ -413,8 +413,14 @@ function loadChatHistory() {
 
                         btn.addEventListener('click', function () {
                             const cur = parseInt(btn.dataset.currentPage || '0', 10);
-                            if (cur <= 0) { btn.style.display = 'none'; return; }
                             const nextPage = cur - 1;
+                            
+                            // Don't request negative page numbers as API will cap them to 0
+                            if (nextPage < 0) {
+                                btn.style.display = 'none';
+                                return;
+                            }
+                            
                             btn.disabled = true; btn.textContent = '加载中...';
                             fetch(`/api/chat/${roomId}/history?page=${nextPage}&limit=${pageSize}`)
                                 .then(r => { if (!r.ok) throw new Error('加载失败'); return r.json(); })
@@ -427,12 +433,21 @@ function loadChatHistory() {
                                         const newScroll = messagesContainer.scrollHeight;
                                         messagesContainer.scrollTop = prevScrollTop;
                                         btn.dataset.currentPage = nextPage;
+                                        
+                                        // Hide the button if we've reached the first page of history
                                         if (nextPage <= 0) btn.style.display = 'none';
+                                        else btn.style.display = '';
                                     } else {
                                         console.error('加载更多返回格式错误');
+                                        // Even if there's an error, if we tried to load a negative page, hide the button
+                                        if (nextPage < 0) btn.style.display = 'none';
                                     }
                                 })
-                                .catch(err => { console.error('加载更多失败', err); })
+                                .catch(err => { 
+                                    console.error('加载更多失败', err); 
+                                    // If we tried to load a negative page, hide the button
+                                    if (nextPage < 0) btn.style.display = 'none';
+                                })
                                 .finally(() => { btn.disabled = false; btn.textContent = '加载更多'; });
                         });
                     }
