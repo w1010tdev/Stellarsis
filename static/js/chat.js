@@ -383,14 +383,6 @@ function loadChatHistory() {
                 messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight
             ) < 5;
 
-            data.messages.forEach(msg => {
-                addMessageToUI(msg, 0, 1);
-                // 记录历史消息ID，防止与随后收到的实时消息重复渲染
-                if (msg.id) {
-                    processedMessageIds.add(msg.id);
-                }
-            });
-
             // 如果服务端返回分页信息，初始化加载更多按钮
             if (typeof data.page !== 'undefined' && typeof data.total_pages !== 'undefined') {
                 chatCurrentPage = data.page;
@@ -428,6 +420,17 @@ function loadChatHistory() {
                         
                         wrap.appendChild(btn);
                         messagesContainer.insertBefore(wrap, messagesContainer.firstChild);
+                    }
+                }
+            }
+
+            data.messages.forEach(msg => {
+                addMessageToUI(msg, 0, 1);
+                // 记录历史消息ID，防止与随后收到的实时消息重复渲染
+                if (msg.id) {
+                    processedMessageIds.add(msg.id);
+                }
+            });
 
                         btn.addEventListener('click', function () {
                             const cur = parseInt(btn.dataset.currentPage || '0', 10);
@@ -440,10 +443,12 @@ function loadChatHistory() {
                                     if (d && Array.isArray(d.messages)) {
                                         // 记录之前的滚动高度以便恢复视图位置
                                         const prevScrollTop = messagesContainer.scrollTop;
+                                        const prevScrollHeight = messagesContainer.scrollHeight;
                                         prependMessages(d.messages);
                                         // 恢复视图：保持之前顶部消息位置不变
-                                        const newScroll = messagesContainer.scrollHeight;
-                                        messagesContainer.scrollTop = prevScrollTop;
+                                        const newScrollHeight = messagesContainer.scrollHeight;
+                                        const heightDiff = newScrollHeight - prevScrollHeight;
+                                        messagesContainer.scrollTop = prevScrollTop + heightDiff;
                                         btn.dataset.currentPage = nextPage;
                                         
                                         // Use the new has_more field to determine if we should show the button
@@ -1177,6 +1182,14 @@ function addMessageToUI(msg, isLocal = false, his = false) {
 function prependMessages(messages) {
     const messagesContainer = document.getElementById('chat-messages');
     if (!messagesContainer || !Array.isArray(messages) || messages.length === 0) return;
+    
+    // 保存加载更多按钮（如果存在）
+    const loadMoreWrap = document.getElementById('chat-load-more-wrap');
+    if (loadMoreWrap) {
+        // 临时移除按钮
+        messagesContainer.removeChild(loadMoreWrap);
+    }
+    
     // 创建文档片段以减少回流
     const frag = document.createDocumentFragment();
     messages.forEach(m => {
@@ -1185,8 +1198,14 @@ function prependMessages(messages) {
         frag.appendChild(el);
         if (m.id) processedMessageIds.add(m.id);
     });
-    // 将片段插入到容器开头
+    
+    // 将新消息插入到容器开头
     messagesContainer.insertBefore(frag, messagesContainer.firstChild);
+    
+    // 重新插入加载更多按钮到最顶部
+    if (loadMoreWrap) {
+        messagesContainer.insertBefore(loadMoreWrap, messagesContainer.firstChild);
+    }
 }
 
 

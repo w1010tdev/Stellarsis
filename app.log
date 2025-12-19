@@ -1,0 +1,7 @@
+nohup: ignoring input
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 734-833-243
+(915) wsgi starting up on http://0.0.0.0:80
+ * Detected change in '/workspace/app.py', reloading
+ * Restarting with stat
