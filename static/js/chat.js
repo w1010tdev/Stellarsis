@@ -769,7 +769,7 @@ function setupWebSocket() {
             // 如果上述都没匹配到，则这是一个新的消息（普通逻辑）
             if (!handled) {
                 console.debug('未匹配到任何 pending，作为新消息添加，serverId=', data.id);
-                addMessageToUI(data);
+                addMessageToUI(data, 0, 0);
                 if (data.id) processedMessageIds.add(data.id);
             }
 
@@ -984,7 +984,7 @@ function sendMessage() {
             isPending: true  // 标记为待确认
         };
 
-        addMessageToUI(localMessage, true);
+        addMessageToUI(localMessage, true, false);
 
         // 使用回调处理服务器响应，直接替换消息ID
         chatSocket.emit('send_message', {
@@ -1042,7 +1042,7 @@ function sendMessage() {
                         badge: currentUserBadge
                     };
 
-                    addMessageToUI(sentMessage, true);
+                    addMessageToUI(sentMessage, true, false);
                 }
             })
             .catch(error => {
@@ -1142,7 +1142,6 @@ function addMessageToUI(msg, isLocal = false, his = false) {
     if (!messagesContainer) return;
     if (his) {
         isLocal = (msg.user_id == userId);
-        his = 0;
     }
     if (msg.user_id == userId && !isLocal) return;
     // 2. 特殊处理系统消息
@@ -1163,7 +1162,7 @@ function addMessageToUI(msg, isLocal = false, his = false) {
     }
 
     // 创建并添加消息元素
-    const messageElement = createMessageElement(msg, isLocal);
+    const messageElement = createMessageElement(msg, isLocal, his);
     // 添加到容器
     messagesContainer.appendChild(messageElement);
     
@@ -1189,7 +1188,7 @@ function prependMessages(messages) {
     const frag = document.createDocumentFragment();
     messages.forEach(m => {
         const isLocal = m.user_id && Number(m.user_id) === Number(userId);
-        const el = createMessageElement(m, isLocal);
+        const el = createMessageElement(m, isLocal, true);
         frag.appendChild(el);
         if (m.id) processedMessageIds.add(m.id);
     });
@@ -1394,7 +1393,6 @@ function updateExistingMessage(clientId, serverMessage) {
                 if (existingDropdown) {
                     // Update any delete handlers in the dropdown to use the new serverId
                     const deleteItem = existingDropdown.querySelector('.message-delete-item');
-                    console.log("GET_WS_update,need to replace", deleteItem);
                     if (deleteItem && serverId) {
                         const newDeleteItem = deleteItem.cloneNode(true);
                         deleteItem.parentNode.replaceChild(newDeleteItem, deleteItem);
@@ -1491,7 +1489,7 @@ function deleteChatMessage(messageId, messageElement) {
 }
 
 // 创建消息元素
-function createMessageElement(msg, isLocal = false) {
+function createMessageElement(msg, isLocal = false, his = false) {
     const messageElement = document.createElement('div');
 
     // 区分消息类型
@@ -1528,9 +1526,17 @@ function createMessageElement(msg, isLocal = false) {
     }
 
     // 用户消息处理
+    // 检查消息是否包含2026，如果是则应用爱心效果
+    const hasHeartEffect = msg.content && msg.content.includes('2026');
+    
     // 用户信息
     const userElement = document.createElement('div');
     userElement.className = 'message-user';
+    
+    // 如果消息包含2026，添加爱心镶边效果（对所有人显示）
+    if (hasHeartEffect) {
+        messageElement.classList.add('heart-border');
+    }
 
     // 用户徽章（如果有）
     if (msg.badge) {
@@ -1571,6 +1577,11 @@ function createMessageElement(msg, isLocal = false) {
         messageElement.dataset.messageId = msg.id;
     } else if (msg.client_id) {
         messageElement.dataset.messageId = msg.client_id;
+    }
+    
+    // 如果是本地消息且包含2026，触发爱心雨效果（仅对自己显示）
+    if (isLocal && hasHeartEffect && (his==false)) {
+        triggerHeartRain();
     }
     try {
         const canDelete = msg.id && (
@@ -1701,6 +1712,66 @@ function tryRenderMessage(element, content) {
         element.innerHTML = `<div class="render-fallback">${escapeHtml(content)}</div>`;
     }
     return false;
+}
+
+// 触发爱心雨效果
+function triggerHeartRain() {
+    // 检查是否启用了爱心雨功能
+    const isHeartRainEnabled = localStorage.getItem('heartRainEnabled') !== 'false';
+    if (!isHeartRainEnabled) {
+        return; // 如果未启用，则不触发爱心雨
+    }
+    
+    // 创建爱心雨容器
+    let container = document.querySelector('.heart-rain-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'heart-rain-container';
+        document.body.appendChild(container);
+    }
+    
+    // 生成多个爱心
+    for (let i = 0; i < 20; i++) {
+        setTimeout(() => {
+            const heart = document.createElement('div');
+            heart.className = 'heart-rain';
+            heart.innerHTML = '<i class="fas fa-heart"></i>';
+            
+            // 随机位置
+            const startPos = Math.random() * window.innerWidth;
+            heart.style.left = startPos + 'px';
+            
+            // 随机大小
+            const size = 16 + Math.random() * 20;
+            heart.style.fontSize = size + 'px';
+            
+            // 随机颜色
+            const colors = ['#ff6b6b', '#ff8e8e', '#ff5252', '#ff1744', '#f50057'];
+            heart.style.color = colors[Math.floor(Math.random() * colors.length)];
+            
+            // 随机动画时长
+            const duration = 2 + Math.random() * 3;
+            heart.style.animationDuration = duration + 's';
+            
+            container.appendChild(heart);
+            
+            // 动画结束后移除元素
+            setTimeout(() => {
+                if (heart.parentNode) {
+                    heart.parentNode.removeChild(heart);
+                }
+            }, duration * 1000);
+        }, i * 100); // 依次延迟生成，营造连续效果
+    }
+    
+    // 5秒后移除容器（如果没有其他爱心在下落）
+    setTimeout(() => {
+        if (container && container.children.length === 0) {
+            if (container.parentNode) {
+                container.parentNode.removeChild(container);
+            }
+        }
+    }, 6000);
 }
 
 // 重新尝试渲染所有消息
@@ -1865,6 +1936,13 @@ document.addEventListener('DOMContentLoaded', function () {
         initializeGlobalOnlineCount();
     }
 
+});
+
+// 监听来自设置页面的爱心雨开关变化事件
+window.addEventListener('heartRainSettingChanged', function(event) {
+    const isEnabled = event.detail;
+    localStorage.setItem('heartRainEnabled', isEnabled);
+    console.log('爱心雨设置已更新:', isEnabled ? '启用' : '禁用');
 });
 
 

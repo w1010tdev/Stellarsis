@@ -1,10 +1,15 @@
-{% extends "base.html" %} {% block additional_css %}
+{% extends "base.html" %}
+{% block additional_css %}
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+  crossorigin="anonymous"
+  referrerpolicy="no-referrer"
+/>
 <link
   rel="stylesheet"
   href="{{ url_for('static', filename='css/chat.css') }}"
 />
-{% endblock %} {% block head %}
-<title>{{ room.name }} - 聊天室</title>
 {% endblock %} {% block content %}
 <div id="online-list-modal" class="modal-backdrop">
   <div class="modal-content">

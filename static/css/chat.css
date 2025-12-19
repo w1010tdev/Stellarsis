@@ -776,6 +776,80 @@
   background: var(--surface-color);
 }
 
+/* 爱心雨效果 */
+.heart-rain-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.heart-rain {
+  position: absolute;
+  top: -50px;
+  font-size: 24px;
+  color: #ff6b6b;
+  animation: fall linear forwards;
+  user-select: none;
+  pointer-events: none;
+}
+
+@keyframes fall {
+  to {
+    transform: translateY(100vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* 消息包含2026时的爱心镶边效果 */
+.chat-message.heart-border {
+  border: 2px solid #ff6b6b;
+  position: relative;
+  overflow: visible;
+}
+
+.chat-message.heart-border::before {
+  content: "\f004";
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  font-size: 16px;
+  color: #ff6b6b;
+  background: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.chat-message.heart-border::after {
+  content: "\f004";
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  position: absolute;
+  bottom: -12px;
+  right: -12px;
+  font-size: 16px;
+  color: #ff6b6b;
+  background: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
 /* 消息悬停效果 */
 .chat-message:hover {
   box-shadow: var(--shadow-md);

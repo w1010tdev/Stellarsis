@@ -35,6 +35,30 @@
                 })();
             </script>
         </div>
+        
+        <div style="margin-top:20px;padding:16px;border-radius:8px;background:var(--surface-color);border:1px solid var(--border-color);">
+            <h3>功能设置</h3>
+            <div style="display:flex;align-items:center;margin-top:10px;">
+                <input type="checkbox" id="heart-rain-toggle" class="toggle-checkbox" onchange="toggleHeartRain(this.checked)">
+                <label for="heart-rain-toggle" style="margin-left:8px;cursor:pointer;">启用爱心雨效果</label>
+            </div>
+            <script>
+                (function(){
+                    // 初始化爱心雨开关状态
+                    const heartRainToggle = document.getElementById('heart-rain-toggle');
+                    if(heartRainToggle) {
+                        const isHeartRainEnabled = localStorage.getItem('heartRainEnabled') !== 'false';
+                        heartRainToggle.checked = isHeartRainEnabled;
+                    }
+                })();
+                
+                function toggleHeartRain(isEnabled) {
+                    localStorage.setItem('heartRainEnabled', isEnabled);
+                    // 发送事件到聊天页面更新设置
+                    window.dispatchEvent(new CustomEvent('heartRainSettingChanged', { detail: isEnabled }));
+                }
+            </script>
+        </div>
     </section>
 </div>
 {% endblock %}
