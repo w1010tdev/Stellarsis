@@ -5,7 +5,7 @@ import json
 import sys
 import shutil
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sqlite3
 import logging
@@ -14,7 +14,11 @@ from flask import (
     flash, session, send_from_directory, send_file, jsonify, abort,
     make_response
 )
-from flask import __version__ as flask_version
+import importlib.metadata
+try:
+    flask_version = importlib.metadata.version("flask")
+except importlib.metadata.PackageNotFoundError:
+    flask_version = "unknown"
 from werkzeug.utils import secure_filename
 try:
     from PIL import Image
@@ -488,41 +492,102 @@ class ProfileForm(FlaskForm):
 # 全局工具函数
 def sanitize_content(content):
     """
-    增强XSS防护 - 完全移除所有HTML标签，输出纯文本
-    核心逻辑：
-    1. 移除所有HTML标签（包括自闭合、多行、嵌套标签）
-    2. 解码并转义HTML实体，避免XSS注入
-    3. 移除脚本相关协议/关键词（即使文本中包含）
-    4. 清理危险字符和多余空白，确保输出纯文本
+    增强XSS防护 - 过滤掉真正的HTML标签，但保留代码中的尖括号
     """
     # 1. 空值/非字符串处理
     if not content:
         return ""
-    # 确保输入为字符串类型（防止非字符串输入导致异常）
+    # 确保输入为字符串类型
     if not isinstance(content, str):
         try:
             content = str(content)
         except Exception:
             return ""
 
-    # 2. 解码HTML实体（避免双重转义）
+    # 2. 解码HTML实体
     try:
         content = html.unescape(content)
     except Exception:
         pass
 
-    # 3. 完全移除所有HTML标签
-    # 匹配所有<开头、>结尾的标签（包括多行、自闭合、注释标签）
-    # 覆盖：<tag>、</tag>、<tag/>、<tag attr="val">、<!-- 注释 --> 等所有HTML标签形式
-    content = re.sub(
-        r'<[^>]*?>',          # 匹配所有<...>结构（非贪婪匹配）
-        '',                   # 直接移除
-        content,
-        flags=re.IGNORECASE | re.DOTALL | re.MULTILINE
-    )
+    # 3. 临时保护代码块和特殊语法
+    temp_placeholders = {}
+    
+    # 首先保护代码块（包括多行代码块和行内代码）
+    # 保护多行代码块：```code```
+    code_block_pattern = r'```[\s\S]*?```'
+    
+    def replace_code_block(match):
+        key = f"__CODEBLOCK_{len(temp_placeholders)}__"
+        temp_placeholders[key] = match.group(0)
+        return key
+    
+    content = re.sub(code_block_pattern, replace_code_block, content, flags=re.MULTILINE)
+    
+    # 保护行内代码：`code`
+    inline_code_pattern = r'`[^`]*`'
+    
+    def replace_inline_code(match):
+        key = f"__INLINECODE_{len(temp_placeholders)}__"
+        temp_placeholders[key] = match.group(0)
+        return key
+    
+    content = re.sub(inline_code_pattern, replace_inline_code, content, flags=re.MULTILINE)
+    
+    # 保存LaTeX表达式：$...$, $$...$$, \(...\), \[...\]
+    latex_pattern = r'\$[^\$]*?\$|\$\$[^\$]*?\$\$|\\\\\(.*?\\\\\)|\\\\\[.*?\\\\\]'
+    
+    def replace_latex(match):
+        key = f"__LATEX_{len(temp_placeholders)}__"
+        temp_placeholders[key] = match.group(0)
+        return key
+    
+    content = re.sub(latex_pattern, replace_latex, content, flags=re.MULTILINE)
 
-    # 4. 移除脚本相关危险内容（即使是文本中的残留）
-    # 移除各类脚本协议前缀
+    # 保存@quote引用
+    quote_pattern = r'@quote\{\d+\}'
+    
+    def replace_quote(match):
+        key = f"__QUOTE_{len(temp_placeholders)}__"
+        temp_placeholders[key] = match.group(0)
+        return key
+    
+    content = re.sub(quote_pattern, replace_quote, content, flags=re.MULTILINE)
+
+    # 4. 只移除真正的HTML标签，但不移除类似<something>的内容
+    # 我们只移除已知的HTML标签
+    html_tags = [
+        # 基本HTML标签
+        r'<script[^>]*>[\s\S]*?</script>',
+        r'<style[^>]*>[\s\S]*?</style>',
+        r'<iframe[^>]*>[\s\S]*?</iframe>',
+        r'<embed[^>]*>[\s\S]*?</embed>',
+        r'<object[^>]*>[\s\S]*?</object>',
+        r'<applet[^>]*>[\s\S]*?</applet>',
+        
+        # 可能危险的标签
+        r'<link[^>]*>',
+        r'<meta[^>]*>',
+        r'<base[^>]*>',
+        
+        # 其他常见HTML标签（可以适当放宽）
+        r'<form[^>]*>[\s\S]*?</form>',
+        r'<input[^>]*>',
+        r'<textarea[^>]*>[\s\S]*?</textarea>',
+        r'<select[^>]*>[\s\S]*?</select>',
+        r'<button[^>]*>[\s\S]*?</button>',
+        
+        # 事件处理属性（移除on事件）
+        r'\bon\w+=\s*"[^"]*"',
+        r"\bon\w+=\s*'[^']*'",
+        r'\bon\w+=\s*[^\s>]+',
+    ]
+    
+    for pattern in html_tags:
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE)
+    
+    # 5. 移除其他潜在的XSS向量
+    # 移除javascript:等协议
     script_protocols = [
         r'javascript:', r'jscript:', r'vbscript:', r'vbs:',
         r'data:', r'blob:', r'file:', r'about:', r'chrome:',
@@ -533,10 +598,10 @@ def sanitize_content(content):
             re.escape(protocol),
             '',
             content,
-            flags=re.IGNORECASE | re.DOTALL
+            flags=re.IGNORECASE
         )
 
-    # 移除危险脚本关键词（避免文本中残留执行逻辑）
+    # 移除危险脚本关键词
     dangerous_keywords = [
         r'eval\(', r'expression\(', r'setTimeout\(', r'setInterval\(',
         r'Function\(', r'alert\(', r'prompt\(', r'confirm\('
@@ -546,15 +611,15 @@ def sanitize_content(content):
             keyword,
             '',
             content,
-            flags=re.IGNORECASE | re.DOTALL
+            flags=re.IGNORECASE
         )
 
-    # 5. 转义所有HTML特殊字符（最终确保纯文本）
-    # quote=True：转义双引号/单引号；escape_slashes=True：转义斜杠
-    content = html.escape(
-        content,
-        quote=True
-    )
+    # 6. 恢复之前保存的安全内容
+    for key, original in temp_placeholders.items():
+        content = content.replace(key, original)
+
+    # 7. 转义其他HTML特殊字符
+    content = html.escape(content, quote=True)
 
     return content
 def update_room_online_count(room_id):
@@ -567,7 +632,7 @@ def get_room_users_data(room_id):
     """获取房间中用户的详细信息"""
     users_data = []
     # 获取在指定聊天室最后活动时间在超时时间内的用户
-    cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
+    cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
     online_users = db_session.query(ChatLastView).filter(
         ChatLastView.room_id == room_id,
         ChatLastView.last_view >= cutoff_time
@@ -623,7 +688,7 @@ def get_image_type(stream):
 def get_online_users(room_id):
     """获取指定房间的在线用户"""
     # 获取最近ONLINE_TIMEOUT秒内在该聊天室有活动的用户
-    cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
+    cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
     
     # 从ChatLastView表中获取最近活动的用户
     online_users = db_session.query(ChatLastView).filter(
@@ -723,7 +788,7 @@ def login():
             return redirect(url_for('login'))
         
         login_user(user)
-        user.last_seen = datetime.utcnow()
+        user.last_seen = datetime.now(timezone.utc)
         db_session.commit()
         log_admin_action(f"用户登录: {user.username}")
         return redirect(url_for('chat_index'))
@@ -804,7 +869,7 @@ def chat_room(room_id):
     # 记录用户最后查看该聊天室的时间（用于未读统计）
     try:
         last = db_session.query(ChatLastView).filter_by(user_id=current_user.id, room_id=room_id).first()
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if last:
             last.last_view = now
         else:
@@ -958,7 +1023,7 @@ def api_delete_chat_message(room_id, message_id):
                     'id': message_id,
                     'room_id': room_id,
                     'deleted_by': getattr(current_user, 'id', None),
-                    'timestamp': datetime.utcnow().isoformat()
+                    'timestamp': datetime.now(timezone.utc).isoformat()
                 }
                 # 某些 socketio/server 版本不接受 broadcast 参数；默认 emit() 不带 to/room 会推送给所有连接
                 socketio.emit('message_deleted', payload)
@@ -1081,7 +1146,7 @@ def api_delete_forum_reply(reply_id):
 @login_required
 def get_online_count():
     """获取全局在线用户数"""
-    cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
+    cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
     
     # 查询最近活动的用户数
     online_count = db_session.query(User).filter(User.last_seen >= cutoff_time).count()
@@ -1648,7 +1713,7 @@ def forum_section(section_id):
     # 记录用户最后查看该分区的时间（用于未读统计）
     try:
         last = db_session.query(ForumLastView).filter_by(user_id=current_user.id, section_id=section_id).first()
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if last:
             last.last_view = now
         else:
@@ -2026,7 +2091,7 @@ def admin_import_users():
             try:
                 # 保证批量导入的用户默认处于离线状态：将 last_seen 设置为比 ONLINE_TIMEOUT 更早的时间
                 cutoff_seconds = app.config.get('ONLINE_TIMEOUT', 300)
-                default_last_seen = datetime.utcnow() - timedelta(seconds=(cutoff_seconds + 1))
+                default_last_seen = datetime.now(timezone.utc) - timedelta(seconds=(cutoff_seconds + 1))
 
                 new_user = User(
                     username=username,
@@ -3189,7 +3254,7 @@ def handle_connect():
         return False  # 拒绝未认证用户
     
     if current_user.is_authenticated:
-        current_user.last_seen = datetime.utcnow()
+        current_user.last_seen = datetime.now(timezone.utc)
         db_session.commit()
     
     session['receive_count'] = session.get('receive_count', 0) + 1
@@ -3217,14 +3282,14 @@ def on_join(data):
     room_name = f"room_{room_id}"
     join_room(room_name)
     # 更新用户最后活动时间
-    current_user.last_seen = datetime.utcnow()
+    current_user.last_seen = datetime.now(timezone.utc)
     
     # 在ChatLastView表中记录用户进入房间的时间
     last = db_session.query(ChatLastView).filter_by(
         user_id=current_user.id,
         room_id=room_id
     ).first()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if last:
         last.last_view = now
     else:
@@ -3494,7 +3559,7 @@ def handle_get_global_online_count(data):
     if not current_user.is_authenticated:
         return
     
-    cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
+    cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
 
     # 查询最近活动的用户数
     online_count = db_session.query(User).filter(User.last_seen >= cutoff_time).count()
@@ -3510,14 +3575,14 @@ def handle_heartbeat_chat(data):
             room_id = int(room_id)
             
             # 更新用户全局最后活动时间
-            current_user.last_seen = datetime.utcnow()
+            current_user.last_seen = datetime.now(timezone.utc)
             
             # 更新房间特定最后查看时间
             last = db_session.query(ChatLastView).filter_by(
                 user_id=current_user.id, 
                 room_id=room_id
             ).first()
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             if last:
                 last.last_view = now
             else:
@@ -3604,7 +3669,7 @@ def on_join(data):
 
     room_name = f"room_{room_id}"
     join_room(room_name)
-    current_user.last_seen = datetime.utcnow()
+    current_user.last_seen = datetime.now(timezone.utc)
     db_session.commit()
     # 广播用户进入（供关注者监听）
     # emit to the room so only users in the room receive it (includes sender)
@@ -3667,7 +3732,7 @@ def on_leave(data):
 def handle_heartbeat():
     """处理客户端心跳，更新用户最后活动时间"""
     if current_user.is_authenticated:
-        current_user.last_seen = datetime.utcnow()
+        current_user.last_seen = datetime.now(timezone.utc)
         db_session.commit()
 # 全局上下文处理器
 @app.context_processor
@@ -3678,7 +3743,7 @@ def inject_user():
 @app.context_processor
 def inject_online_count():
     """注入在线用户数到模板"""
-    cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
+    cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
     
     # 查询最近活动的用户数
     online_count = db_session.query(User).filter(User.last_seen >= cutoff_time).count()
@@ -3758,7 +3823,7 @@ def create_test_data():
             existing_count = db_session.query(ChatMessage).filter_by(room_id=test_room.id).count()
             if existing_count < 100:
                 # 生成从旧到新的时间戳
-                base_time = datetime.utcnow() - timedelta(minutes=100)
+                base_time = datetime.now(timezone.utc) - timedelta(minutes=100)
                 for i in range(1, 101):
                     # 跳过已存在的消息
                     if i <= existing_count:
@@ -3793,13 +3858,13 @@ def create_test_data():
                 content='这个帖子用于测试分页功能',
                 user_id=admin_user.id,
                 section_id=test_section.id,
-                timestamp=datetime.utcnow() - timedelta(minutes=110)
+                timestamp=datetime.now(timezone.utc) - timedelta(minutes=110)
             )
             db_session.add(test_thread)
             db_session.commit()
             
             # 5. 为测试帖子添加505条回复
-            base_reply_time = datetime.utcnow() - timedelta(minutes=100)
+            base_reply_time = datetime.now(timezone.utc) - timedelta(minutes=100)
             for i in range(1, 505):
                 reply_time = base_reply_time + timedelta(minutes=i)
                 reply = ForumReply(

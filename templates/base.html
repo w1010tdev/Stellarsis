@@ -544,29 +544,74 @@
                 }
                 // 处理引用占位符：尝试找到已加载的回复节点或通过接口拉取
                 try {
-                    container.querySelectorAll && container.querySelectorAll('.quote').forEach(function (qel) {
-                        try {
-                            const qid = qel.dataset && qel.dataset.quoteId;
-                            if (!qid) return;
-                            // 通过 API 拉取该回复（降级加载）
-                            let apiaddr = '/api/chat/message/';
-                            fetch(apiaddr + qid)
-                                .then(r => { if (!r.ok) throw new Error('加载引用失败'); return r.json(); })
-                                .then(data => {
-                                    if (data && data.success && data.message) {
-                                        const reply = data.message;
-                                        const uname = reply.nickname || reply.username || ('用户' + (reply.user_id || ''));
-                                        const rendered = (typeof window.renderContent === 'function') ? window.renderContent(reply.content || '') : escapeHtml(reply.content || '');
-                                        qel.innerHTML = '<div class="quote-block"><div class="quote-header">引用来自：' + escapeHtml(uname) + '</div><div class="quote-content">' + rendered + '</div></div>';
-                                        if (typeof window.postProcessRendered === 'function') window.postProcessRendered(qel);
-                                    } else {
-                                        qel.textContent = '引用的消息未知或已删除';
-                                    }
-                                })
-                                .catch(err => { qel.textContent = '引用加载失败'; });
+                    const quoteElements = container.querySelectorAll && container.querySelectorAll('.quote');
+                    if (quoteElements && quoteElements.length > 0) {
+                        let quoteCount = quoteElements.length;
+                        const originalQuoteCount = quoteCount;
+                        
+                        quoteElements.forEach(function (qel) {
+                            try {
+                                const qid = qel.dataset && qel.dataset.quoteId;
+                                if (!qid) {
+                                    quoteCount--;
+                                    return;
+                                }
+                                // 通过 API 拉取该回复（降级加载）
+                                let apiaddr = '/api/chat/message/';
+                                fetch(apiaddr + qid)
+                                    .then(r => { if (!r.ok) throw new Error('加载引用失败'); return r.json(); })
+                                    .then(data => {
+                                        if (data && data.success && data.message) {
+                                            const reply = data.message;
+                                            const uname = reply.nickname || reply.username || ('用户' + (reply.user_id || ''));
+                                            const rendered = (typeof window.renderContent === 'function') ? window.renderContent(reply.content || '') : escapeHtml(reply.content || '');
+                                            qel.innerHTML = '<div class="quote-block"><div class="quote-header">引用来自：' + escapeHtml(uname) + '</div><div class="quote-content">' + rendered + '</div></div>';
+                                            if (typeof window.postProcessRendered === 'function') window.postProcessRendered(qel);
+                                        } else {
+                                            qel.textContent = '引用的消息未知或已删除';
+                                        }
+                                    })
+                                    .catch(err => { 
+                                        qel.textContent = '引用加载失败'; 
+                                    })
+                                    .finally(() => {
+                                        quoteCount--;
+                                        // 当所有引用都处理完毕后，滚动到底部
+                                        if (quoteCount <= 0) {
+                                            setTimeout(() => {
+                                                const chatContainer = document.getElementById('chat-messages');
+                                                if (chatContainer) {
+                                                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                                                }
+                                            }, 100);
+                                        }
+                                    });
 
-                        } catch (e) { console.error('处理引用失败', e); }
-                    });
+                            } catch (e) { 
+                                console.error('处理引用失败', e); 
+                                quoteCount--;
+                                // 当所有引用都处理完毕后，滚动到底部
+                                if (quoteCount <= 0) {
+                                    setTimeout(() => {
+                                        const chatContainer = document.getElementById('chat-messages');
+                                        if (chatContainer) {
+                                            chatContainer.scrollTop = chatContainer.scrollHeight;
+                                        }
+                                    }, 100);
+                                }
+                            }
+                        });
+                        
+                        // 如果没有引用元素，也需要检查是否需要滚动
+                        if (originalQuoteCount === 0) {
+                            setTimeout(() => {
+                                const chatContainer = document.getElementById('chat-messages');
+                                if (chatContainer) {
+                                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                                }
+                            }, 100);
+                        }
+                    }
                 } catch (e) { console.error('引用后处理错误', e); }
             } catch (e) {
                 console.error('postProcessRendered 错误:', e);
