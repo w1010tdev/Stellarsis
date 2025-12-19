@@ -422,7 +422,7 @@
   padding: 0 1.5rem;
   height: var(--chat-input-height);
   background: linear-gradient(135deg, var(--primary-600), var(--primary-500));
-  color: var(--on-surface);
+  color: var(--on-primary);
   border: none;
   border-radius: var(--radius-lg);
   cursor: pointer;
