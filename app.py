@@ -3412,6 +3412,10 @@ def handle_message(data):
             if client_id:
                 payload['client_id'] = client_id
             emit('message_updated', payload, room=f'room_{room_id}', include_self=True)
+            
+            # 对于重复消息，也发送acknowledgement
+            if client_id:
+                emit('message_id_response', {'client_id': client_id, 'server_id': last_msg.id}, to=request.sid)
             return
 
     # 保存到数据库（非重复的常规消息）
@@ -3453,6 +3457,11 @@ def handle_message(data):
 
     # include_self=True 使得发送者也能收到这条消息（用于将本地 pending 更新为服务器ID）
     emit('message', payload, room=room_name, include_self=True)
+    
+    # 发送acknowledgement响应，包含服务器消息ID
+    if client_id:
+        # 发送acknowledgement响应，包含服务器消息ID
+        emit('message_id_response', {'client_id': client_id, 'server_id': message.id}, to=request.sid)
 
 @socketio.on('get_online_users')
 def handle_get_online_users(data):
