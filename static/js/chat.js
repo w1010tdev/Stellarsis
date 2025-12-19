@@ -382,7 +382,13 @@ function loadChatHistory() {
             const isScrolledToBottom = Math.abs(
                 messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight
             ) < 5;
-
+            data.messages.forEach(msg => {
+                addMessageToUI(msg, 0, 1);
+                // 记录历史消息ID，防止与随后收到的实时消息重复渲染
+                if (msg.id) {
+                    processedMessageIds.add(msg.id);
+                }
+            });
             // 如果服务端返回分页信息，初始化加载更多按钮
             if (typeof data.page !== 'undefined' && typeof data.total_pages !== 'undefined') {
                 chatCurrentPage = data.page;
