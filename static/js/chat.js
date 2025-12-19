@@ -420,18 +420,7 @@ function loadChatHistory() {
                         
                         wrap.appendChild(btn);
                         messagesContainer.insertBefore(wrap, messagesContainer.firstChild);
-                    }
-                }
-            }
-
-            data.messages.forEach(msg => {
-                addMessageToUI(msg, 0, 1);
-                // 记录历史消息ID，防止与随后收到的实时消息重复渲染
-                if (msg.id) {
-                    processedMessageIds.add(msg.id);
-                }
-            });
-
+                        
                         btn.addEventListener('click', function () {
                             const cur = parseInt(btn.dataset.currentPage || '0', 10);
                             const nextPage = cur - 1;
@@ -478,6 +467,14 @@ function loadChatHistory() {
                     }
                 }
             }
+
+            data.messages.forEach(msg => {
+                addMessageToUI(msg, 0, 1);
+                // 记录历史消息ID，防止与随后收到的实时消息重复渲染
+                if (msg.id) {
+                    processedMessageIds.add(msg.id);
+                }
+            });
 
             // 更新最后一条消息ID
             if (data.messages.length > 0) {
