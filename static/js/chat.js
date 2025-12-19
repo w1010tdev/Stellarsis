@@ -951,10 +951,29 @@ function sendMessage() {
 
         addMessageToUI(localMessage, true);
 
+        // 使用回调处理服务器响应，直接替换消息ID
         chatSocket.emit('send_message', {
             room_id: roomId,
             message: message,
             client_id: clientId  // 发送客户端ID
+        }, function(response) {
+            // 服务器响应回调，处理返回的消息数据
+            if (response && response.success && response.data && response.data.id) {
+                // 使用服务器返回的真实ID更新本地消息
+                updateExistingMessage(clientId, response.data);
+                
+                // 从待确认消息集合中移除，避免后续广播重复处理
+                pendingMessages.delete(clientId);
+                
+                // 将服务器返回的ID添加到已处理集合，防止广播时重复处理
+                if (response.data.id) {
+                    processedMessageIds.add(response.data.id);
+                }
+            } else {
+                console.warn('消息发送响应格式异常:', response);
+                // 如果响应有问题，仍依赖广播机制作为备用
+                // 广播机制会继续尝试匹配和处理
+            }
         });
     } else {
         // WebSocket不可用，使用AJAX
@@ -1112,7 +1131,11 @@ function addMessageToUI(msg, isLocal = false, his = false) {
     const messageElement = createMessageElement(msg, isLocal);
     // 添加到容器
     messagesContainer.appendChild(messageElement);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    
+    // 自动滚动到最底部 - 使用setTimeout确保DOM渲染完成后再滚动
+    setTimeout(() => {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }, 0);
 }
 
 // 将一组消息插入到消息容器顶部（按时间顺序：最旧在上）
@@ -1363,6 +1386,14 @@ function updateExistingMessage(clientId, serverMessage) {
         }
 
         console.debug('updateExistingMessage: successfully updated', { oldId, newId: serverId || serverClientId });
+        
+        // 在更新消息后，如果消息容器存在，滚动到底部
+        const messagesContainer = document.getElementById('chat-messages');
+        if (messagesContainer) {
+            setTimeout(() => {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }, 0);
+        }
     } catch (e) {
         console.error('updateExistingMessage: error updating element', e);
     }
