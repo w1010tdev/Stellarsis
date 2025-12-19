@@ -488,12 +488,12 @@ class ProfileForm(FlaskForm):
 # 全局工具函数
 def sanitize_content(content):
     """
-    增强XSS防护 - 完全移除所有HTML标签，输出纯文本
+    增强XSS防护 - 使用更智能的过滤方法，保留Markdown和LaTeX标签，但过滤掉HTML标签
     核心逻辑：
-    1. 移除所有HTML标签（包括自闭合、多行、嵌套标签）
-    2. 解码并转义HTML实体，避免XSS注入
-    3. 移除脚本相关协议/关键词（即使文本中包含）
-    4. 清理危险字符和多余空白，确保输出纯文本
+    1. 保留Markdown语法（**bold**, *italic*, , 等）
+    2. 保留LaTeX语法（$...$, 37...37, \\(...\), \\[...\]等）
+    3. 保留@quote{...}等自定义标签
+    4. 过滤掉潜在危险的HTML标签和脚本
     """
     # 1. 空值/非字符串处理
     if not content:
@@ -511,9 +511,19 @@ def sanitize_content(content):
     except Exception:
         pass
 
-    # 3. 完全移除所有HTML标签
-    # 匹配所有<开头、>结尾的标签（包括多行、自闭合、注释标签）
-    # 覆盖：<tag>、</tag>、<tag/>、<tag attr="val">、<!-- 注释 --> 等所有HTML标签形式
+    # 3. 临时替换安全的标签（Markdown、LaTeX、自定义标签）
+    # 存储临时替换的标记
+    temp_placeholders = {}
+    
+    # 保存LaTeX表达式：$...$, 37...37, \\(...\), \\[...\]
+    latex_pattern = r'($[^$]*$|[$]{2}[^......[\s\S]*?[^|@quote\{\d+\})'
+    def replace_code(match):
+        key = f"__CODE_{len(temp_placeholders)}__"
+        temp_placeholders[key] = match.group(0)
+        return key
+    content = re.sub(code_pattern, replace_code, content, flags=re.MULTILINE)
+
+    # 4. 移除所有HTML标签
     content = re.sub(
         r'<[^>]*?>',          # 匹配所有<...>结构（非贪婪匹配）
         '',                   # 直接移除
@@ -521,7 +531,7 @@ def sanitize_content(content):
         flags=re.IGNORECASE | re.DOTALL | re.MULTILINE
     )
 
-    # 4. 移除脚本相关危险内容（即使是文本中的残留）
+    # 5. 移除脚本相关危险内容（即使是文本中的残留）
     # 移除各类脚本协议前缀
     script_protocols = [
         r'javascript:', r'jscript:', r'vbscript:', r'vbs:',
@@ -549,8 +559,11 @@ def sanitize_content(content):
             flags=re.IGNORECASE | re.DOTALL
         )
 
-    # 5. 转义所有HTML特殊字符（最终确保纯文本）
-    # quote=True：转义双引号/单引号；escape_slashes=True：转义斜杠
+    # 6. 恢复之前保存的安全标签
+    for key, original in temp_placeholders.items():
+        content = content.replace(key, original)
+
+    # 7. 转义其他HTML特殊字符（最终确保安全）
     content = html.escape(
         content,
         quote=True
