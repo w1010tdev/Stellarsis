@@ -1,13 +1,3 @@
 ```
-# Backup files
 *.backup
-
-# Editors
-.vscode/
-.idea/
-
-# Logs and temp files
-*.log
-*.tmp
-*.swp
 ```
