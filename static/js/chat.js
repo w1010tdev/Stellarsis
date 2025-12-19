@@ -769,7 +769,7 @@ function setupWebSocket() {
             // 如果上述都没匹配到，则这是一个新的消息（普通逻辑）
             if (!handled) {
                 console.debug('未匹配到任何 pending，作为新消息添加，serverId=', data.id);
-                addMessageToUI(data);
+                addMessageToUI(data, 0, 0);
                 if (data.id) processedMessageIds.add(data.id);
             }
 
@@ -984,7 +984,7 @@ function sendMessage() {
             isPending: true  // 标记为待确认
         };
 
-        addMessageToUI(localMessage, true);
+        addMessageToUI(localMessage, true, false);
 
         // 使用回调处理服务器响应，直接替换消息ID
         chatSocket.emit('send_message', {
@@ -1042,7 +1042,7 @@ function sendMessage() {
                         badge: currentUserBadge
                     };
 
-                    addMessageToUI(sentMessage, true);
+                    addMessageToUI(sentMessage, true, false);
                 }
             })
             .catch(error => {
@@ -1142,7 +1142,6 @@ function addMessageToUI(msg, isLocal = false, his = false) {
     if (!messagesContainer) return;
     if (his) {
         isLocal = (msg.user_id == userId);
-        his = 0;
     }
     if (msg.user_id == userId && !isLocal) return;
     // 2. 特殊处理系统消息
@@ -1163,7 +1162,7 @@ function addMessageToUI(msg, isLocal = false, his = false) {
     }
 
     // 创建并添加消息元素
-    const messageElement = createMessageElement(msg, isLocal);
+    const messageElement = createMessageElement(msg, isLocal, his);
     // 添加到容器
     messagesContainer.appendChild(messageElement);
     
@@ -1189,7 +1188,7 @@ function prependMessages(messages) {
     const frag = document.createDocumentFragment();
     messages.forEach(m => {
         const isLocal = m.user_id && Number(m.user_id) === Number(userId);
-        const el = createMessageElement(m, isLocal);
+        const el = createMessageElement(m, isLocal, true);
         frag.appendChild(el);
         if (m.id) processedMessageIds.add(m.id);
     });
@@ -1394,7 +1393,6 @@ function updateExistingMessage(clientId, serverMessage) {
                 if (existingDropdown) {
                     // Update any delete handlers in the dropdown to use the new serverId
                     const deleteItem = existingDropdown.querySelector('.message-delete-item');
-                    console.log("GET_WS_update,need to replace", deleteItem);
                     if (deleteItem && serverId) {
                         const newDeleteItem = deleteItem.cloneNode(true);
                         deleteItem.parentNode.replaceChild(newDeleteItem, deleteItem);
@@ -1491,7 +1489,7 @@ function deleteChatMessage(messageId, messageElement) {
 }
 
 // 创建消息元素
-function createMessageElement(msg, isLocal = false) {
+function createMessageElement(msg, isLocal = false, his = false) {
     const messageElement = document.createElement('div');
 
     // 区分消息类型
@@ -1582,7 +1580,7 @@ function createMessageElement(msg, isLocal = false) {
     }
     
     // 如果是本地消息且包含2026，触发爱心雨效果（仅对自己显示）
-    if (isLocal && hasHeartEffect) {
+    if (isLocal && hasHeartEffect && (his==false)) {
         triggerHeartRain();
     }
     try {
