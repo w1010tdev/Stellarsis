@@ -77,7 +77,7 @@
         }
     });
 </script>
-    <script src="{{ url_for('static', filename='js/uploads.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/uploads.js') }}" defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', function(){
     var btn = document.getElementById('post-upload-btn');
@@ -85,4 +85,5 @@ document.addEventListener('DOMContentLoaded', function(){
     if (btn && input) btn.addEventListener('click', function(e){ e.preventDefault(); input.click(); });
 });
 </script>
+
 {% endblock %}
