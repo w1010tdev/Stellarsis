@@ -16,6 +16,15 @@
     <section class="settings-main">
         <div class="settings-card">
             <h2>我的图片</h2>
+            <div id="quota-info" style="margin-bottom: 16px; padding: 12px; border-radius: 8px; background-color: var(--neutral-50); border: 1px solid var(--neutral-200);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span>图片配额：</span>
+                    <span id="quota-text">加载中...</span>
+                </div>
+                <div style="width: 100%; height: 12px; background-color: var(--neutral-200); border-radius: 6px; overflow: hidden;">
+                    <div id="quota-bar" style="height: 100%; width: 0%; background-color: var(--primary-500); transition: width 0.3s;"></div>
+                </div>
+            </div>
             <p>此处列出您已上传的图片，您可以复制 Markdown 链接、插入到编辑器或删除图片。</p>
             <div style="display:flex;gap:12px;align-items:center;margin-top:12px;">
                 <button id="images-upload-btn" class="btn btn-primary">上传图片</button>
@@ -37,6 +46,47 @@ document.addEventListener('DOMContentLoaded', function(){
     if (btn && input) {
         btn.addEventListener('click', function(){ input.click(); });
     }
+    
+    // 加载配额信息
+    loadQuotaInfo();
+});
+
+function loadQuotaInfo() {
+    fetch('/api/upload/quota', {
+        method: 'GET',
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const quota = data.quota;
+            const quotaText = document.getElementById('quota-text');
+            const quotaBar = document.getElementById('quota-bar');
+            
+            if (quota.is_admin) {
+                quotaText.textContent = '管理员 - 无限制';
+                quotaBar.style.width = '0%';
+            } else {
+                const usedMB = (quota.used / (1024 * 1024)).toFixed(2);
+                const totalMB = (quota.total / (1024 * 1024)).toFixed(2);
+                const percent = quota.percent;
+                
+                quotaText.textContent = `${usedMB} MB / ${totalMB} MB (${percent.toFixed(1)}%)`;
+                quotaBar.style.width = `${percent}%`;
+            }
+        } else {
+            document.getElementById('quota-text').textContent = '加载失败';
+        }
+    })
+    .catch(error => {
+        console.error('加载配额信息失败:', error);
+        document.getElementById('quota-text').textContent = '加载失败';
+    });
+}
+
+// 定期更新配额信息（上传后）
+document.addEventListener('uploadComplete', function() {
+    setTimeout(loadQuotaInfo, 1000); // 上传完成后延迟更新
 });
 </script>
 {% endblock %}

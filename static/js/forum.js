@@ -46,6 +46,18 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!submitButton || !contentInput) return;
         
+        // 初始化时调整高度
+        if (typeof window.autoResizeTextarea === 'function') {
+            window.autoResizeTextarea(contentInput);
+        }
+        
+        // 监听输入事件以调整高度
+        contentInput.addEventListener('input', function() {
+            if (typeof window.autoResizeTextarea === 'function') {
+                window.autoResizeTextarea(this);
+            }
+        });
+        
         submitButton.addEventListener('click', function(e) {
             e.preventDefault();
             
@@ -88,6 +100,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // 重置表单
                     contentInput.value = '';
+                    if (typeof window.autoResizeTextarea === 'function') {
+                        window.autoResizeTextarea(contentInput); // 重置高度
+                    }
                     submitButton.disabled = false;
                     submitButton.textContent = '回复';
                 } else {
