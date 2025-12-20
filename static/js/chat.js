@@ -1532,9 +1532,9 @@ function createMessageElement(msg, isLocal = false, his = false) {
     // 用户信息
     const userElement = document.createElement('div');
     userElement.className = 'message-user';
-    
+    const isHeartRainEnabled = localStorage.getItem('heartRainEnabled') !== 'false';
     // 如果消息包含2026，添加爱心镶边效果（对所有人显示）
-    if (hasHeartEffect) {
+    if (hasHeartEffect&&isHeartRainEnabled) {
         messageElement.classList.add('heart-border');
     }
 
