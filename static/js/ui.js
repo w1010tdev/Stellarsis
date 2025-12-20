@@ -75,6 +75,16 @@
             createToast(String(typeOrMessage), String(maybeMessage), maybeTimeout);
         }
     };
+    
+    // 自动调整textarea高度的函数
+    window.autoResizeTextarea = function(textarea) {
+        if (!textarea) return;
+        
+        // 重置高度以正确计算滚动高度
+        textarea.style.height = 'auto';
+        // 设置最小高度，然后扩展到内容高度
+        textarea.style.height = Math.max(textarea.scrollHeight, parseInt(getComputedStyle(textarea).minHeight) || 48) + 'px';
+    };
 
     // 可复用的确认/输入模态
     // 用法1: showConfirm(message, options) -> Promise<boolean>

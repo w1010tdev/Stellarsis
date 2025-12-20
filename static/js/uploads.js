@@ -162,6 +162,9 @@ document.addEventListener('DOMContentLoaded', function () {
                                         if (res && res.success) {
                                             container.parentNode && container.parentNode.removeChild(container);
                                             showToast('success', '图片已删除');
+                                            
+                                            // 触发上传完成事件以更新配额信息
+                                            document.dispatchEvent(new CustomEvent('uploadComplete', { detail: data }));
                                         } else {
                                             showToast('danger', res && res.message ? res.message : '删除失败');
                                         }
@@ -170,6 +173,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         });
                         container.appendChild(delBtn);
                         list.insertBefore(container, list.firstChild);
+                        
+                        // 触发上传完成事件以更新配额信息
+                        document.dispatchEvent(new CustomEvent('uploadComplete', { detail: data }));
                     } else if (insertTarget) {
                         // directly insert markdown into editor and optionally auto-send
                         var el = insertTarget;
@@ -192,6 +198,9 @@ document.addEventListener('DOMContentLoaded', function () {
                                 if (sendBtn) sendBtn.click();
                             }
                         }
+                        
+                        // 触发上传完成事件以更新配额信息
+                        document.dispatchEvent(new CustomEvent('uploadComplete', { detail: data }));
                     }
                     showToast('success', '图片上传成功');
                 } else {
@@ -263,6 +272,9 @@ document.addEventListener('DOMContentLoaded', function () {
                                     if (res && res.success) {
                                         container.parentNode && container.parentNode.removeChild(container);
                                         showToast('success', '图片已删除');
+                                        
+                                        // 触发上传完成事件以更新配额信息
+                                        document.dispatchEvent(new CustomEvent('uploadComplete', { detail: item }));
                                     } else {
                                         showToast('danger', res && res.message ? res.message : '删除失败');
                                     }

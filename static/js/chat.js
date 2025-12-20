@@ -1078,6 +1078,9 @@ function setupMessageInput() {
     }
 
     if (messageInput) {
+        // 初始化时调整高度
+        window.autoResizeTextarea(messageInput);
+        
         // 使用 keydown 以便检测 ctrl/meta 键
         messageInput.addEventListener('keydown', function (e) {
             // Ctrl+Enter 或 Meta(Command)+Enter：插入换行
@@ -1100,6 +1103,11 @@ function setupMessageInput() {
                 sendMessage();
                 return;
             }
+        });
+        
+        // 监听输入事件以调整高度
+        messageInput.addEventListener('input', function() {
+            window.autoResizeTextarea(this);
         });
     }
 

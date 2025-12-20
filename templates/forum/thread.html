@@ -62,7 +62,7 @@
         <h2>添加回复</h2>
         <form id="reply-form" data-thread-id="{{ thread.id }}">
             <div class="form-group">
-                <textarea name="content" class="form-control" required placeholder="输入回复内容...（支持Markdown和LaTeX）"></textarea>
+                <textarea name="content" class="form-control auto-resize-textarea" required placeholder="输入回复内容...（支持Markdown和LaTeX）"></textarea>
             </div>
             <button type="submit" class="btn btn-primary">回复</button>
         </form>
