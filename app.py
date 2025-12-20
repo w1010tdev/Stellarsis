@@ -327,13 +327,20 @@ def update_database_schema():
         conn = sqlite3.connect(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
         cursor = conn.cursor()
         
-        # 检查用户表是否已有role列
+        # 检查用户表的所有列
         cursor.execute("PRAGMA table_info(users);")
         columns = [column[1] for column in cursor.fetchall()]
         
         if 'role' not in columns:
             # 添加role列，默认为'user'
             cursor.execute("ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'user';")
+            logger.info("Added 'role' column to users table")
+            conn.commit()
+        
+        if 'upload_used' not in columns:
+            # 添加upload_used列，默认为0
+            cursor.execute("ALTER TABLE users ADD COLUMN upload_used INTEGER DEFAULT 0;")
+            logger.info("Added 'upload_used' column to users table")
             conn.commit()
         
         conn.close()
