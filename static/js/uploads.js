@@ -1,4 +1,48 @@
 document.addEventListener('DOMContentLoaded', function () {
+    
+    // 使用 Cloudflare clipboard-polyfill 库的复制到剪贴板函数
+    function copyToClipboard(text) {
+        // 使用 clipboard-polyfill 提供的兼容性方案
+        clipboardPolyfill.writeText(text).then(function() {
+            showToast('success', '复制成功');
+        }).catch(function(err) {
+            console.error('无法复制到剪贴板:', err);
+            showToast('warning', '复制失败');
+            
+            // 如果 polyfill 也失败，回退到传统方法
+            fallbackCopyTextToClipboard(text);
+        });
+    }
+
+    // 传统的复制文本方法（通过创建临时 textarea）作为最后的备选方案
+    function fallbackCopyTextToClipboard(text) {
+        var textArea = document.createElement("textarea");
+        textArea.value = text;
+        
+        // 避免滚动到底部
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+        
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        try {
+            var successful = document.execCommand('copy');
+            if (successful) {
+                showToast('success', '复制成功');
+            } else {
+                showToast('warning', '复制失败');
+            }
+        } catch (err) {
+            console.error('fallback 复制失败:', err);
+            showToast('warning', '复制失败');
+        }
+
+        document.body.removeChild(textArea);
+    }
     // Upload a single file input with preview and send to server
     function setupUpload(inputId, previewContainerId, listContainerId, insertTargetSelector, displayList, autoSend) {
         // displayList: whether to show/manage the image list UI
@@ -60,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         copyBtn.className = 'btn btn-sm btn-outline image-upload-copy';
                         copyBtn.textContent = '复制 Markdown';
                         copyBtn.addEventListener('click', function () {
-                            try { navigator.clipboard.writeText(container.dataset.markdown); showToast('success', '复制成功'); } catch (e) { showToast('warning', '复制失败'); }
+                            copyToClipboard(container.dataset.markdown);
                         });
                         container.appendChild(copyBtn);
 
@@ -160,7 +204,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     var copyBtn = document.createElement('button');
                     copyBtn.className = 'btn btn-sm btn-outline image-upload-copy';
                     copyBtn.textContent = '复制 Markdown';
-                    copyBtn.addEventListener('click', function () { try { navigator.clipboard.writeText(container.dataset.markdown); showToast('success', '复制成功'); } catch (e) { console.log(e);showToast('warning', '复制失败'); } });
+                    copyBtn.addEventListener('click', function () {
+                        copyToClipboard(container.dataset.markdown);
+                    });
                     container.appendChild(copyBtn);
                     // insert button
                     if (insertTargetSelector) {
