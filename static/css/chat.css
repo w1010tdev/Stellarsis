@@ -403,11 +403,19 @@
   border-radius: var(--radius-lg);
   resize: none;
   min-height: 48px;
-  max-height: 150px;
+  max-height: 200px;
   font-family: var(--font-base);
   font-size: var(--text-base);
   transition: all 0.2s ease;
   background-color: var(--surface-color);
+  overflow-y: auto;
+}
+
+/* 自动缩放输入框相关样式 */
+.auto-resize-textarea {
+  overflow: hidden;
+  resize: none;
+  line-height: 1.5;
 }
 
 #message-text:focus {
@@ -810,6 +818,37 @@
   border: 2px solid #ff6b6b;
   position: relative;
   overflow: visible;
+}
+
+/* 上传配额进度条样式 */
+.quota-container {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: var(--muted-text-color);
+}
+
+.quota-bar {
+  width: 100%;
+  height: 8px;
+  background-color: var(--neutral-200);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 5px 0;
+}
+
+.quota-progress {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-500), var(--primary-400));
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  min-width: 0;
+}
+
+.quota-text {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--muted-text-color);
 }
 
 .chat-message.heart-border::before {
