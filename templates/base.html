@@ -115,8 +115,6 @@
         </div>
     </footer>
     {% block scripts %}
-    <!-- 引入 Cloudflare 的 clipboard 库 -->
-    <script src="https://unpkg.com/clipboard-polyfill/dist/es5/window-var/clipboard-polyfill.window-var.promise.es5.js"></script>
     <script src="{{ url_for('static', filename='js/theme-switcher.js') }}"></script>
     <script src="{{ url_for('static', filename='js/command-palette.js') }}"></script>
     <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
