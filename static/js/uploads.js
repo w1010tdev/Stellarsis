@@ -1,17 +1,41 @@
 document.addEventListener('DOMContentLoaded', function () {
     
-    // 使用 Cloudflare clipboard-polyfill 库的复制到剪贴板函数
+    // 使用 clipboard-polyfill 库（如果存在），否则使用现代 Clipboard API，最后回退到传统方法
     function copyToClipboard(text) {
-        // 使用 clipboard-polyfill 提供的兼容性方案
-        clipboardPolyfill.writeText(text).then(function() {
-            showToast('success', '复制成功');
-        }).catch(function(err) {
-            console.error('无法复制到剪贴板:', err);
-            showToast('warning', '复制失败');
-            
-            // 如果 polyfill 也失败，回退到传统方法
+        // 如果 clipboardPolyfill 存在，优先使用它
+        if (typeof clipboardPolyfill !== 'undefined' && clipboardPolyfill.writeText) {
+            clipboardPolyfill.writeText(text).then(function() {
+                showToast('success', '复制成功');
+            }).catch(function(err) {
+                console.error('无法复制到剪贴板:', err);
+                showToast('warning', '复制失败');
+                
+                // 如果 polyfill 失败，回退到现代 API 或传统方法
+                fallbackCopyToClipboardSafe(text);
+            });
+        } else {
+            // 否则使用现代 API 或传统方法
+            fallbackCopyToClipboardSafe(text);
+        }
+    }
+    
+    // 增强版的回退方法，先尝试现代 API，再使用传统方法
+    function fallbackCopyToClipboardSafe(text) {
+        // 尝试现代 Clipboard API
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(function() {
+                showToast('success', '复制成功');
+            }).catch(function(err) {
+                console.error('现代剪贴板 API 失败:', err);
+                showToast('warning', '复制失败');
+                
+                // 最终回退到传统方法
+                fallbackCopyTextToClipboard(text);
+            });
+        } else {
+            // 直接使用传统方法
             fallbackCopyTextToClipboard(text);
-        });
+        }
     }
 
     // 传统的复制文本方法（通过创建临时 textarea）作为最后的备选方案
