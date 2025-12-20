@@ -121,6 +121,7 @@ class User(UserMixin, Base):
     badge = Column(String(32), default='')
     last_seen = Column(DateTime, default=datetime.utcnow)
     role = Column(String(20), default='user')  # 新增权限字段：user, admin
+    upload_used = Column(Integer, default=0)  # 用户已使用的上传空间（字节）
     
     def is_admin(self):
         """检查用户是否为管理员"""
@@ -1310,6 +1311,20 @@ def api_upload_image():
     if request.content_length and request.content_length > max_size:
         return jsonify(success=False, message='文件过大'), 413
 
+    # 检查用户上传配额（管理员不受限制）
+    if not current_user.is_admin():
+        user_quota = app.config.get('USER_UPLOAD_QUOTA', 50 * 1024 * 1024)  # 默认50MB
+        if current_user.upload_used >= user_quota:
+            return jsonify(success=False, message='上传配额已用完'), 400
+        
+        # 获取文件大小进行预检查
+        file.seek(0, 2)  # 移动到文件末尾
+        file_size = file.tell()
+        file.seek(0)  # 移回文件开头
+        
+        if current_user.upload_used + file_size > user_quota:
+            return jsonify(success=False, message='上传后将超出配额限制'), 400
+
     # 安全文件名及唯一后缀（先用上传文件名的后缀，后面会检测真实类型）
     base = secure_filename(os.path.splitext(filename)[0]) or 'img'
     ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'png'
@@ -1350,15 +1365,42 @@ def api_upload_image():
                 pass
             return jsonify(success=False, message=f'不被允许的图片类型: {detected}'), 400
 
+        # 获取实际文件大小
+        actual_file_size = filepath.stat().st_size
+        
+        # 检查实际文件大小是否超过限制
+        if actual_file_size > max_size:
+            try:
+                filepath.unlink()
+            except Exception:
+                pass
+            return jsonify(success=False, message='文件过大'), 413
+            
+        # 检查用户上传配额（再次确认）
+        if not current_user.is_admin():
+            user_quota = app.config.get('USER_UPLOAD_QUOTA', 50 * 1024 * 1024)
+            if current_user.upload_used + actual_file_size > user_quota:
+                try:
+                    filepath.unlink()
+                except Exception:
+                    pass
+                return jsonify(success=False, message='上传后将超出配额限制'), 400
+
         # 在数据库中记录文件信息
         ui = UserImage(
             user_id=current_user.id,
             filename=unique_name,
             filepath=str(filepath),
-            file_size=filepath.stat().st_size,
+            file_size=actual_file_size,
             file_type=normalized or ext
         )
         db_session.add(ui)
+        
+        # 更新用户已使用配额
+        if not current_user.is_admin():
+            current_user.upload_used += actual_file_size
+            db_session.add(current_user)
+        
         db_session.commit()
 
         # 返回静态资源URL
@@ -1390,6 +1432,27 @@ def api_list_user_images():
         return jsonify(success=False, message='服务器错误'), 500
 
 
+@app.route('/api/upload/quota', methods=['GET'])
+@login_required
+def api_get_upload_quota():
+    """获取当前用户的上传配额信息"""
+    try:
+        user_quota = app.config.get('USER_UPLOAD_QUOTA', 50 * 1024 * 1024)  # 默认50MB
+        is_admin = current_user.is_admin()
+        
+        quota_info = {
+            'used': current_user.upload_used if not is_admin else 0,
+            'total': user_quota if not is_admin else 0,  # 管理员无限制
+            'is_admin': is_admin,
+            'percent': 0 if is_admin else min(100, (current_user.upload_used / user_quota) * 100)
+        }
+        
+        return jsonify(success=True, quota=quota_info)
+    except Exception as e:
+        logger.exception('获取用户上传配额失败')
+        return jsonify(success=False, message='服务器错误'), 500
+
+
 @app.route('/api/upload/image/<int:image_id>', methods=['DELETE'])
 @login_required
 def api_delete_image(image_id):
@@ -1408,6 +1471,13 @@ def api_delete_image(image_id):
                 p.unlink()
         except Exception:
             pass
+
+        # 获取用户信息以便减少配额
+        user = db_session.query(User).get(ui.user_id)
+        if user and not user.is_admin():
+            # 减少用户的已使用配额
+            user.upload_used = max(0, user.upload_used - ui.file_size)
+            db_session.add(user)
 
         db_session.delete(ui)
         db_session.commit()
@@ -1433,10 +1503,25 @@ def api_admin_recalculate_upload_sizes():
                 totals[user_id] = totals.get(user_id, 0) + (size or 0)
             except Exception:
                 totals[user_id] = totals.get(user_id, 0)
+        
+        # 更新所有用户的上传使用量
+        users = db_session.query(User).all()
+        for user in users:
+            if user.is_admin():
+                # 管理员不受配额限制，设为0
+                user.upload_used = 0
+            else:
+                # 非管理员用户设置为统计的配额
+                user.upload_used = totals.get(user.id, 0)
+            db_session.add(user)
+        
+        db_session.commit()
+        
         # 可选：将结果写入日志或数据库；这里返回 JSON
         log_admin_action(f"管理员 {current_user.username} 重新统计了所有用户上传图片大小，共 {len(totals)} 个用户")
         return jsonify(success=True, totals=totals)
     except Exception as e:
+        db_session.rollback()
         logger.exception('重新统计上传大小失败')
         return jsonify(success=False, message='服务器错误'), 500
 

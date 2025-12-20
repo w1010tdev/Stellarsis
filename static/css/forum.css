@@ -672,6 +672,51 @@
   margin: 0 auto;
 }
 
+/* 自动缩放输入框相关样式 */
+.auto-resize-textarea {
+  overflow: hidden;
+  resize: none;
+  line-height: 1.5;
+  min-height: 100px;
+}
+
+.form-control.auto-resize-textarea {
+  min-height: 100px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* 上传配额进度条样式 */
+.quota-container {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: var(--muted-text-color);
+}
+
+.quota-bar {
+  width: 100%;
+  height: 8px;
+  background-color: var(--neutral-200);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 5px 0;
+}
+
+.quota-progress {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-500), var(--primary-400));
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  min-width: 0;
+}
+
+.quota-text {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--muted-text-color);
+}
+
 /* 响应式调整 */
 @media (max-width: 768px) {
   .forum-title {
