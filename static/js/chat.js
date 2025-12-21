@@ -406,7 +406,7 @@ function loadChatHistory() {
                         btn.dataset.currentPage = chatCurrentPage;
                         btn.dataset.totalPages = chatTotalPages;
                         btn.textContent = '加载更多';
-                        
+
                         // Determine initial visibility based on has_more field
                         if (data.has_more !== undefined) {
                             // Use the has_more field to determine visibility
@@ -423,14 +423,14 @@ function loadChatHistory() {
                                 btn.style.display = 'none';
                             }
                         }
-                        
+
                         wrap.appendChild(btn);
                         messagesContainer.insertBefore(wrap, messagesContainer.firstChild);
 
                         btn.addEventListener('click', function () {
                             const cur = parseInt(btn.dataset.currentPage || '0', 10);
                             const nextPage = cur - 1;
-                            
+
                             btn.disabled = true; btn.textContent = '加载中...';
                             fetch(`/api/chat/${roomId}/history?page=${nextPage}&limit=${pageSize}`)
                                 .then(r => { if (!r.ok) throw new Error('加载失败'); return r.json(); })
@@ -445,7 +445,7 @@ function loadChatHistory() {
                                         const heightDiff = newScrollHeight - prevScrollHeight;
                                         messagesContainer.scrollTop = prevScrollTop + heightDiff;
                                         btn.dataset.currentPage = nextPage;
-                                        
+
                                         // Use the new has_more field to determine if we should show the button
                                         if (d.has_more !== undefined) {
                                             // Server provides has_more field, use it
@@ -464,8 +464,8 @@ function loadChatHistory() {
                                         btn.style.display = 'none';
                                     }
                                 })
-                                .catch(err => { 
-                                    console.error('加载更多失败', err); 
+                                .catch(err => {
+                                    console.error('加载更多失败', err);
                                     btn.style.display = 'none';
                                 })
                                 .finally(() => { btn.disabled = false; btn.textContent = '加载更多'; });
@@ -645,6 +645,9 @@ function setupWebSocket() {
                 chatSocket.emit('heartbeat_chat', { room_id: roomId });
             }
         }, 5000);
+        if (chatSocket && chatSocket.connected) {
+            chatSocket.emit('heartbeat_chat', { room_id: roomId });
+        }
         chatSocket.on('connect', () => {
             console.log('WebSocket连接已建立');
             updateConnectionStatus('connected', '已连接');
@@ -991,15 +994,15 @@ function sendMessage() {
             room_id: roomId,
             message: message,
             client_id: clientId  // 发送客户端ID
-        }, function(response) {
+        }, function (response) {
             // 服务器响应回调，处理返回的消息数据
             if (response && response.success && response.data && response.data.id) {
                 // 使用服务器返回的真实ID更新本地消息
                 updateExistingMessage(clientId, response.data);
-                
+
                 // 从待确认消息集合中移除，避免后续广播重复处理
                 pendingMessages.delete(clientId);
-                
+
                 // 将服务器返回的ID添加到已处理集合，防止广播时重复处理
                 if (response.data.id) {
                     processedMessageIds.add(response.data.id);
@@ -1080,7 +1083,7 @@ function setupMessageInput() {
     if (messageInput) {
         // 初始化时调整高度
         window.autoResizeTextarea(messageInput);
-        
+
         // 使用 keydown 以便检测 ctrl/meta 键
         messageInput.addEventListener('keydown', function (e) {
             // Ctrl+Enter 或 Meta(Command)+Enter：插入换行
@@ -1104,9 +1107,9 @@ function setupMessageInput() {
                 return;
             }
         });
-        
+
         // 监听输入事件以调整高度
-        messageInput.addEventListener('input', function() {
+        messageInput.addEventListener('input', function () {
             window.autoResizeTextarea(this);
         });
     }
@@ -1173,7 +1176,7 @@ function addMessageToUI(msg, isLocal = false, his = false) {
     const messageElement = createMessageElement(msg, isLocal, his);
     // 添加到容器
     messagesContainer.appendChild(messageElement);
-    
+
     // 自动滚动到最底部 - 使用setTimeout确保DOM渲染完成后再滚动
     setTimeout(() => {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -1184,14 +1187,14 @@ function addMessageToUI(msg, isLocal = false, his = false) {
 function prependMessages(messages) {
     const messagesContainer = document.getElementById('chat-messages');
     if (!messagesContainer || !Array.isArray(messages) || messages.length === 0) return;
-    
+
     // 保存加载更多按钮（如果存在）
     const loadMoreWrap = document.getElementById('chat-load-more-wrap');
     if (loadMoreWrap) {
         // 临时移除按钮
         messagesContainer.removeChild(loadMoreWrap);
     }
-    
+
     // 创建文档片段以减少回流
     const frag = document.createDocumentFragment();
     messages.forEach(m => {
@@ -1200,10 +1203,10 @@ function prependMessages(messages) {
         frag.appendChild(el);
         if (m.id) processedMessageIds.add(m.id);
     });
-    
+
     // 将新消息插入到容器开头
     messagesContainer.insertBefore(frag, messagesContainer.firstChild);
-    
+
     // 重新插入加载更多按钮到最顶部
     if (loadMoreWrap) {
         messagesContainer.insertBefore(loadMoreWrap, messagesContainer.firstChild);
@@ -1441,7 +1444,7 @@ function updateExistingMessage(clientId, serverMessage) {
         }
 
         console.debug('updateExistingMessage: successfully updated', { oldId, newId: serverId || serverClientId });
-        
+
         // 在更新消息后，如果消息容器存在，滚动到底部
         const messagesContainer = document.getElementById('chat-messages');
         if (messagesContainer) {
@@ -1536,13 +1539,13 @@ function createMessageElement(msg, isLocal = false, his = false) {
     // 用户消息处理
     // 检查消息是否包含2026，如果是则应用爱心效果
     const hasHeartEffect = msg.content && msg.content.includes('2026');
-    
+
     // 用户信息
     const userElement = document.createElement('div');
     userElement.className = 'message-user';
     const isHeartRainEnabled = localStorage.getItem('heartRainEnabled') !== 'false';
     // 如果消息包含2026，添加爱心镶边效果（对所有人显示）
-    if (hasHeartEffect&&isHeartRainEnabled) {
+    if (hasHeartEffect && isHeartRainEnabled) {
         messageElement.classList.add('heart-border');
     }
 
@@ -1586,9 +1589,9 @@ function createMessageElement(msg, isLocal = false, his = false) {
     } else if (msg.client_id) {
         messageElement.dataset.messageId = msg.client_id;
     }
-    
+
     // 如果是本地消息且包含2026，触发爱心雨效果（仅对自己显示）
-    if (isLocal && hasHeartEffect && (his==false)) {
+    if (isLocal && hasHeartEffect && (his == false)) {
         triggerHeartRain();
     }
     try {
@@ -1729,7 +1732,7 @@ function triggerHeartRain() {
     if (!isHeartRainEnabled) {
         return; // 如果未启用，则不触发爱心雨
     }
-    
+
     // 创建爱心雨容器
     let container = document.querySelector('.heart-rain-container');
     if (!container) {
@@ -1737,32 +1740,32 @@ function triggerHeartRain() {
         container.className = 'heart-rain-container';
         document.body.appendChild(container);
     }
-    
+
     // 生成多个爱心
     for (let i = 0; i < 20; i++) {
         setTimeout(() => {
             const heart = document.createElement('div');
             heart.className = 'heart-rain';
             heart.innerHTML = '<i class="fas fa-heart"></i>';
-            
+
             // 随机位置
             const startPos = Math.random() * window.innerWidth;
             heart.style.left = startPos + 'px';
-            
+
             // 随机大小
             const size = 16 + Math.random() * 20;
             heart.style.fontSize = size + 'px';
-            
+
             // 随机颜色
             const colors = ['#ff6b6b', '#ff8e8e', '#ff5252', '#ff1744', '#f50057'];
             heart.style.color = colors[Math.floor(Math.random() * colors.length)];
-            
+
             // 随机动画时长
             const duration = 2 + Math.random() * 3;
             heart.style.animationDuration = duration + 's';
-            
+
             container.appendChild(heart);
-            
+
             // 动画结束后移除元素
             setTimeout(() => {
                 if (heart.parentNode) {
@@ -1771,7 +1774,7 @@ function triggerHeartRain() {
             }, duration * 1000);
         }, i * 100); // 依次延迟生成，营造连续效果
     }
-    
+
     // 5秒后移除容器（如果没有其他爱心在下落）
     setTimeout(() => {
         if (container && container.children.length === 0) {
@@ -1947,7 +1950,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // 监听来自设置页面的爱心雨开关变化事件
-window.addEventListener('heartRainSettingChanged', function(event) {
+window.addEventListener('heartRainSettingChanged', function (event) {
     const isEnabled = event.detail;
     localStorage.setItem('heartRainEnabled', isEnabled);
     console.log('爱心雨设置已更新:', isEnabled ? '启用' : '禁用');
