@@ -290,35 +290,63 @@ function generateContentHash(content, timestamp) {
 
 // 统一时间格式化函数（UTC+8时区）
 function formatTimeDisplay(timestamp) {
-    // 将UTC时间转换为UTC+8（北京时间）
+    // timestamp is in ISO format (UTC), convert to local time (UTC+8)
     const date = new Date(timestamp);
-    const beijingTime = new Date(date.getTime() + 8 * 60 * 60 * 1000);
-
-    // 获取日期部分
-    const year = beijingTime.getFullYear();
-    const month = (beijingTime.getMonth() + 1).toString().padStart(2, '0');
-    const day = beijingTime.getDate().toString().padStart(2, '0');
-
-    // 获取时间部分
-    const hours = beijingTime.getHours().toString().padStart(2, '0');
-    const minutes = beijingTime.getMinutes().toString().padStart(2, '0');
-
-    // 格式化为 "YYYY-MM-DD HH:MM"
+    // Convert to Beijing time by creating a new Date object with the UTC values adjusted
+    const beijingTime = new Date(date.toLocaleString("en-US", {timeZone: "Asia/Shanghai"}));
+    
+    // Alternative approach: use Intl.DateTimeFormat to format in Beijing time
+    const formatter = new Intl.DateTimeFormat('zh-CN', {
+        timeZone: 'Asia/Shanghai',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
+    
+    const parts = formatter.formatToParts(date);
+    const timeParts = {};
+    parts.forEach(part => {
+        timeParts[part.type] = part.value;
+    });
+    
+    const year = timeParts.year;
+    const month = timeParts.month;
+    const day = timeParts.day;
+    const hours = timeParts.hour;
+    const minutes = timeParts.minute;
+    
+    // Format as "YYYY-MM-DD HH:MM"
     return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
 // 获取消息日期部分（仅日期）
 function getMessageDate(timestamp) {
-    // 将UTC时间转换为UTC+8（北京时间）
+    // timestamp is in ISO format (UTC), convert to local date (UTC+8)
     const date = new Date(timestamp);
-    const beijingTime = new Date(date.getTime() + 8 * 60 * 60 * 1000);
-
-    // 获取日期部分
-    const year = beijingTime.getFullYear();
-    const month = (beijingTime.getMonth() + 1).toString().padStart(2, '0');
-    const day = beijingTime.getDate().toString().padStart(2, '0');
-
-    // 格式化为 "YYYY-MM-DD"
+    
+    // Use Intl.DateTimeFormat to format in Beijing time
+    const formatter = new Intl.DateTimeFormat('zh-CN', {
+        timeZone: 'Asia/Shanghai',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour12: false
+    });
+    
+    const parts = formatter.formatToParts(date);
+    const timeParts = {};
+    parts.forEach(part => {
+        timeParts[part.type] = part.value;
+    });
+    
+    const year = timeParts.year;
+    const month = timeParts.month;
+    const day = timeParts.day;
+    
+    // Format as "YYYY-MM-DD"
     return `${year}-${month}-${day}`;
 }
 
