@@ -1939,3 +1939,24 @@ header nav.show {
 .menu-toggle.open span::after {
   transform: rotate(-45deg);
 }
+/* 特别窄的屏幕适配 - 隐藏header和footer中的在线人数 */
+@media (max-height: 400px) {
+  /* 隐藏header */
+  header {
+    display: none !important;
+  }
+  
+  /* 隐藏footer中的在线人数 */
+  footer {
+    display: none !important;
+  }
+  
+  /* 确保菜单按钮仍然可见 */
+  #entry-button {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+    display: block !important;
+  }
+}
