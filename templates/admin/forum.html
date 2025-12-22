@@ -39,10 +39,10 @@
                         主题: {{ sd.thread_count }}, 回复: {{ sd.reply_count }}
                     </td>
                     <td class="action-buttons">
+                        <button class="btn btn-edit" onclick="editSection({{ section.id }}, {{ section.name|tojson }}, {{ (section.description or '')|tojson }})">编辑</button>
+                        <button class="btn btn-secondary" onclick='openSectionUsers({{ section.id }}, {{ section.name|tojson }})'>管理分区用户</button>
                         {% if section.id != 1 %}
-                            <button class="btn btn-edit" onclick="editSection({{ section.id }}, {{ section.name|tojson }}, {{ (section.description or '')|tojson }})">编辑</button>
-                            <button class="btn btn-secondary" onclick='openSectionUsers({{ section.id }}, {{ section.name|tojson }})'>管理分区用户</button>
-                            <button class="btn delete-btn" onclick="deleteSection({{ section.id }}, {{ section.name|tojson }})">删除</button>
+                        <button class="btn delete-btn" onclick="deleteSection({{ section.id }}, {{ section.name|tojson }})">删除</button>
                         {% else %}
                             <span class="default-info">默认分区</span>
                         {% endif %}
