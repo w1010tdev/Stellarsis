@@ -978,7 +978,7 @@ function sendMessage() {
             id: clientId,
             client_id: clientId,
             content: message,
-            timestamp: new Date().toISOString(),
+            timestamp: new Date(new Date().getTime() + 8 * 60 * 60 * 1000).toISOString(),
             user_id: currentUserId,
             username: currentUsername,
             nickname: currentNickname,
@@ -986,7 +986,6 @@ function sendMessage() {
             badge: currentUserBadge,
             isPending: true  // 标记为待确认
         };
-
         addMessageToUI(localMessage, true, false);
 
         // 使用回调处理服务器响应，直接替换消息ID
