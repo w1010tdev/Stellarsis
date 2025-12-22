@@ -77,53 +77,54 @@
                 <button class="btn btn-primary" onclick="submitEditSectionForm()">保存</button>
             </div>
         </div>
-            <!-- 分区用户管理模态框 -->
-            <div class="modal-backdrop" id="sectionUsersModal">
-                <div class="modal-content modal-wide">
-                    <div class="modal-header">
-                        <h3 class="modal-title">管理分区用户 - <span id="sectionUsersTitle"></span></h3>
-                        <button class="modal-close" onclick="closeSectionUsersModal()">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="permission-controls">
-                            <button class="btn btn-primary" onclick="togglePermissionView('list')">权限显示</button>
-                            <button class="btn btn-secondary" onclick="togglePermissionView('quick')">777快速选择</button>
+    </div>
+    
+    <!-- 分区用户管理模态框 -->
+    <div class="modal-backdrop" id="sectionUsersModal">
+        <div class="modal-content modal-wide">
+            <div class="modal-header">
+                <h3 class="modal-title">管理分区用户 - <span id="sectionUsersTitle"></span></h3>
+                <button class="modal-close" onclick="closeSectionUsersModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="permission-controls">
+                    <button class="btn btn-primary" onclick="togglePermissionView('list')">权限显示</button>
+                    <button class="btn btn-secondary" onclick="togglePermissionView('quick')">777快速选择</button>
+                </div>
+                
+                <!-- 权限显示视图 -->
+                <div id="permissionListView" style="display:block;">
+                    <p>按权限类别显示用户</p>
+                    <div style="display:flex;gap:12px;">
+                        <div style="flex:1;">
+                            <h4>SU</h4>
+                            <div id="perm-su" class="perm-column" style="min-height:200px;border:1px solid #eee;padding:8px;border-radius:6px;overflow:auto;"></div>
                         </div>
-                        
-                        <!-- 权限显示视图 -->
-                        <div id="permissionListView" style="display:block;">
-                            <p>按权限类别显示用户</p>
-                            <div style="display:flex;gap:12px;">
-                                <div style="flex:1;">
-                                    <h4>SU</h4>
-                                    <div id="perm-su" class="perm-column" style="min-height:200px;border:1px solid #eee;padding:8px;border-radius:6px;overflow:auto;"></div>
-                                </div>
-                                <div style="flex:1;">
-                                    <h4>77</h4>
-                                    <div id="perm-77" class="perm-column" style="min-height:200px;border:1px solid #eee;padding:8px;border-radius:6px;overflow:auto;"></div>
-                                </div>
-                                <div style="flex:1;">
-                                    <h4>444</h4>
-                                    <div id="perm-444" class="perm-column" style="min-height:200px;border:1px solid #eee;padding:8px;border-radius:6px;overflow:auto;"></div>
-                                </div>
-                                <div style="flex:1;">
-                                    <h4>Null</h4>
-                                    <div id="perm-null" class="perm-column" style="min-height:200px;border:1px dashed #ddd;padding:8px;border-radius:6px;overflow:auto;color:#666;">未设置权限的用户</div>
-                                </div>
-                            </div>
+                        <div style="flex:1;">
+                            <h4>77</h4>
+                            <div id="perm-77" class="perm-column" style="min-height:200px;border:1px solid #eee;padding:8px;border-radius:6px;overflow:auto;"></div>
                         </div>
-                        
-                        <!-- 777快速选择视图 -->
-                        <div id="quickSelectView" style="display:none;">
-                            <p>点击用户切换777权限状态（SU用户不显示）</p>
-                            <div id="perm-777-quick" class="perm-column" style="min-height:300px;border:1px solid #eee;padding:8px;border-radius:6px;overflow:auto;"></div>
+                        <div style="flex:1;">
+                            <h4>444</h4>
+                            <div id="perm-444" class="perm-column" style="min-height:200px;border:1px solid #eee;padding:8px;border-radius:6px;overflow:auto;"></div>
                         </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" onclick="closeSectionUsersModal()">关闭</button>
+                        <div style="flex:1;">
+                            <h4>Null</h4>
+                            <div id="perm-null" class="perm-column" style="min-height:200px;border:1px dashed #ddd;padding:8px;border-radius:6px;overflow:auto;color:#666;">未设置权限的用户</div>
+                        </div>
                     </div>
                 </div>
+                
+                <!-- 777快速选择视图 -->
+                <div id="quickSelectView" style="display:none;">
+                    <p>点击用户切换777权限状态（SU用户不显示）</p>
+                    <div id="perm-777-quick" class="perm-column" style="min-height:300px;border:1px solid #eee;padding:8px;border-radius:6px;overflow:auto;"></div>
+                </div>
             </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeSectionUsersModal()">关闭</button>
+            </div>
+        </div>
     </div>
     <!-- 创建分区模态框 -->
     <div class="modal-backdrop" id="createSectionModal">
@@ -518,11 +519,18 @@
                         body: JSON.stringify({scope: 'forum', target_id: currentSectionId, perm: t})
                     }).then(r=>r.json()).then(res=>{
                         if (res && res.success) {
+                            showToast('success', `用户 ${u.nickname || u.username} 权限已更新为 ${t === 'Null' ? '无权限' : t}`);
                             openSectionUsers(currentSectionId, document.getElementById('sectionUsersTitle').textContent);
                         } else {
-                            alert('更新失败: ' + (res && res.message || ''));
+                            showToast('error', '更新失败: ' + (res && res.message || ''));
+                            // Revert the select value to original
+                            this.value = u.perm || 'Null';
                         }
-                    }).catch(e=>{ alert('请求失败'); });
+                    }).catch(e=>{ 
+                        showToast('error', '请求失败: ' + e.message);
+                        // Revert the select value to original
+                        this.value = u.perm || 'Null';
+                    });
                 });
                 
                 item.appendChild(label);
@@ -530,7 +538,7 @@
 
                 if (u.perm === 'su') su.appendChild(item);
                 else if (u.perm === '77') s77.appendChild(item);
-                else if (u.perm === '777') s77.appendChild(item); // Display 777 under 77 column
+                else if (u.perm === '777') s77.appendChild(item); // Display 777 under 77 column (as per requirements)
                 else if (u.perm === '444') s444.appendChild(item);
                 else snull.appendChild(item);
             });
@@ -572,14 +580,27 @@
                             if(newPerm === '777') {
                                 toggleBtn.textContent = '已有777权限';
                                 toggleBtn.className = 'btn btn-danger';
+                                u.perm = '777'; // Update local user permission
+                                showToast('success', `用户 ${u.nickname || u.username} 已获得777权限`);
                             } else {
                                 toggleBtn.textContent = '设为777权限';
                                 toggleBtn.className = 'btn btn-success';
+                                u.perm = 'Null'; // Update local user permission
+                                showToast('success', `用户 ${u.nickname || u.username} 已取消777权限`);
+                            }
+                            
+                            // Update the permission display view if currently visible
+                            if (currentView === 'list') {
+                                setTimeout(() => {
+                                    openSectionUsers(currentSectionId, document.getElementById('sectionUsersTitle').textContent);
+                                }, 500);
                             }
                         } else {
-                            alert('更新失败: ' + (res && res.message || ''));
+                            showToast('error', '更新失败: ' + (res && res.message || ''));
                         }
-                    }).catch(e=>{ alert('请求失败'); });
+                    }).catch(e=>{ 
+                        showToast('error', '请求失败: ' + e.message);
+                    });
                 });
                 
                 item.appendChild(label);

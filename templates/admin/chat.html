@@ -511,11 +511,18 @@
                         body: JSON.stringify({scope: 'chat', target_id: currentRoomId, perm: t})
                     }).then(r=>r.json()).then(res=>{
                         if (res && res.success) {
+                            showToast('success', `用户 ${u.nickname || u.username} 权限已更新为 ${t === 'Null' ? '无权限' : t}`);
                             openRoomUsers(currentRoomId, document.getElementById('roomUsersTitle').textContent);
                         } else {
-                            alert('更新失败: ' + (res && res.message || ''));
+                            showToast('error', '更新失败: ' + (res && res.message || ''));
+                            // Revert the select value to original
+                            this.value = u.perm || 'Null';
                         }
-                    }).catch(e=>{ alert('请求失败'); });
+                    }).catch(e=>{ 
+                        showToast('error', '请求失败: ' + e.message);
+                        // Revert the select value to original
+                        this.value = u.perm || 'Null';
+                    });
                 });
                 
                 item.appendChild(label);
@@ -523,7 +530,7 @@
 
                 if (u.perm === 'su') su.appendChild(item);
                 else if (u.perm === '77') s77.appendChild(item);
-                else if (u.perm === '777') s77.appendChild(item); // Display 777 under 77 column
+                else if (u.perm === '777') s77.appendChild(item); // Display 777 under 77 column (as per requirements)
                 else if (u.perm === '444') s444.appendChild(item);
                 else snull.appendChild(item);
             });
@@ -565,14 +572,27 @@
                             if(newPerm === '777') {
                                 toggleBtn.textContent = '已有777权限';
                                 toggleBtn.className = 'btn btn-danger';
+                                u.perm = '777'; // Update local user permission
+                                showToast('success', `用户 ${u.nickname || u.username} 已获得777权限`);
                             } else {
                                 toggleBtn.textContent = '设为777权限';
                                 toggleBtn.className = 'btn btn-success';
+                                u.perm = 'Null'; // Update local user permission
+                                showToast('success', `用户 ${u.nickname || u.username} 已取消777权限`);
+                            }
+                            
+                            // Update the permission display view if currently visible
+                            if (currentView === 'list') {
+                                setTimeout(() => {
+                                    openRoomUsers(currentRoomId, document.getElementById('roomUsersTitle').textContent);
+                                }, 500);
                             }
                         } else {
-                            alert('更新失败: ' + (res && res.message || ''));
+                            showToast('error', '更新失败: ' + (res && res.message || ''));
                         }
-                    }).catch(e=>{ alert('请求失败'); });
+                    }).catch(e=>{ 
+                        showToast('error', '请求失败: ' + e.message);
+                    });
                 });
                 
                 item.appendChild(label);
