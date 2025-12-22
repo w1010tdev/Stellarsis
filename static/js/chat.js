@@ -319,7 +319,7 @@ function formatTimeDisplay(timestamp) {
     const minutes = timeParts.minute;
     
     // Format as "YYYY-MM-DD HH:MM"
-    return `${year}-${month}-${day} ${hours}:${minutes}`;
+    return `${year}-${month}-${day} ${hours+8}:${minutes}`;
 }
 
 // 获取消息日期部分（仅日期）
