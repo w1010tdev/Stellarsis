@@ -654,6 +654,28 @@
   }
 }
 
+/* 特别窄的屏幕适配 - 隐藏header和在线人数，只保留菜单 */
+@media (max-height: 400px) {
+  /* 隐藏header */
+  header {
+    display: none !important;
+  }
+  
+  /* 隐藏在线人数显示 */
+  .online-users {
+    display: none !important;
+  }
+  
+  /* 确保菜单按钮仍然可见 */
+  #entry-button {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+    display: block !important;
+  }
+}
+
 /* 桌面端优化 */
 @media (min-width: 1024px) {
   #chat-container {
