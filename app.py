@@ -724,8 +724,67 @@ def log_admin_action(action):
 # 路由定义
 @app.route('/')
 def index():
+    # If user is authenticated, show the homepage; otherwise redirect to login
     if current_user.is_authenticated:
-        return redirect(url_for('chat_index'))
+        # Get unread counts for the homepage
+        chat_counts = {}
+        forum_counts = {}
+        
+        # Chat rooms
+        rooms = db_session.query(ChatRoom).all()
+        accessible_rooms = []
+        for room in rooms:
+            if get_chat_permission_value(current_user, room.id) == 'Null':
+                continue
+            last = db_session.query(ChatLastView).filter_by(user_id=current_user.id, room_id=room.id).first()
+            if last:
+                cnt = db_session.query(ChatMessage).filter(ChatMessage.room_id == room.id, ChatMessage.timestamp > last.last_view).count()
+            else:
+                cnt = db_session.query(ChatMessage).filter_by(room_id=room.id).count()
+            chat_counts[room.id] = cnt
+            accessible_rooms.append(room)
+
+        # Forum sections
+        sections = db_session.query(ForumSection).all()
+        accessible_sections = []
+        for section in sections:
+            if get_forum_permission_value(current_user, section.id) == 'Null':
+                continue
+            last = db_session.query(ForumLastView).filter_by(user_id=current_user.id, section_id=section.id).first()
+            if last:
+                last_time = last.last_view
+                cnt_threads = db_session.query(ForumThread).filter(ForumThread.section_id == section.id, ForumThread.timestamp > last_time).count()
+                cnt_replies = db_session.query(ForumReply).join(ForumThread, ForumReply.thread_id == ForumThread.id) \
+                    .filter(ForumThread.section_id == section.id, ForumReply.timestamp > last_time).count()
+            else:
+                cnt_threads = db_session.query(ForumThread).filter_by(section_id=section.id).count()
+                cnt_replies = db_session.query(ForumReply).join(ForumThread, ForumReply.thread_id == ForumThread.id) \
+                    .filter(ForumThread.section_id == section.id).count()
+            forum_counts[section.id] = cnt_threads + cnt_replies
+            accessible_sections.append(section)
+        
+        # Load quotes from JSON file for the "一言" module
+        import random
+        try:
+            with open('quotes.json', 'r', encoding='utf-8') as f:
+                quotes_data = json.load(f)
+                quotes = quotes_data.get('quotes', [])
+                # Format the quote as "text - author"
+                formatted_quotes = [f"{quote['text']} - {quote['author']}" for quote in quotes if 'text' in quote and 'author' in quote]
+                selected_quote = random.choice(formatted_quotes) if formatted_quotes else "书山有路勤为径，学海无涯苦作舟。 - 韩愈"
+        except FileNotFoundError:
+            # Fallback if JSON file doesn't exist
+            selected_quote = "书山有路勤为径，学海无涯苦作舟。 - 韩愈"
+        except json.JSONDecodeError:
+            # Fallback if JSON is invalid
+            selected_quote = "书山有路勤为径，学海无涯苦作舟。 - 韩愈"
+        
+        return render_template('index.html', 
+                             chat_counts=chat_counts, 
+                             forum_counts=forum_counts,
+                             selected_quote=selected_quote,
+                             accessible_rooms=accessible_rooms,
+                             accessible_sections=accessible_sections)
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
