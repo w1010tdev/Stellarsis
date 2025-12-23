@@ -500,7 +500,7 @@ class ProfileForm(FlaskForm):
 # 全局工具函数
 def sanitize_content(content):
     """
-    增强XSS防护 - 过滤掉真正的HTML标签，但保留代码中的尖括号
+    完全移除HTML标签，但保留代码块、LaTeX公式等内容
     """
     # 1. 空值/非字符串处理
     if not content:
@@ -543,7 +543,7 @@ def sanitize_content(content):
     content = re.sub(inline_code_pattern, replace_inline_code, content, flags=re.MULTILINE)
     
     # 保存LaTeX表达式：$...$, $$...$$, \(...\), \[...\]
-    latex_pattern = r'\$[^\$]*?\$|\$\$[^\$]*?\$\$|\\\\\(.*?\\\\\)|\\\\\[.*?\\\\\]'
+    latex_pattern = r'\$[^\$]*?\$|\$\$[^\$]*?\$\$|\\\(.*?\\\)|\\\[.*?\\\]'
     
     def replace_latex(match):
         key = f"__LATEX_{len(temp_placeholders)}__"
@@ -562,72 +562,17 @@ def sanitize_content(content):
     
     content = re.sub(quote_pattern, replace_quote, content, flags=re.MULTILINE)
 
-    # 4. 只移除真正的HTML标签，但不移除类似<something>的内容
-    # 我们只移除已知的HTML标签
-    html_tags = [
-        # 基本HTML标签
-        r'<script[^>]*>[\s\S]*?</script>',
-        r'<style[^>]*>[\s\S]*?</style>',
-        r'<iframe[^>]*>[\s\S]*?</iframe>',
-        r'<embed[^>]*>[\s\S]*?</embed>',
-        r'<object[^>]*>[\s\S]*?</object>',
-        r'<applet[^>]*>[\s\S]*?</applet>',
-        
-        # 可能危险的标签
-        r'<link[^>]*>',
-        r'<meta[^>]*>',
-        r'<base[^>]*>',
-        
-        # 其他常见HTML标签（可以适当放宽）
-        r'<form[^>]*>[\s\S]*?</form>',
-        r'<input[^>]*>',
-        r'<textarea[^>]*>[\s\S]*?</textarea>',
-        r'<select[^>]*>[\s\S]*?</select>',
-        r'<button[^>]*>[\s\S]*?</button>',
-        
-        # 事件处理属性（移除on事件）
-        r'\bon\w+=\s*"[^"]*"',
-        r"\bon\w+=\s*'[^']*'",
-        r'\bon\w+=\s*[^\s>]+',
-    ]
+    # 4. 移除所有HTML标签（<tag>或<tag/>或</tag>形式）
+    # 这将移除所有类似 <div>, </div>, <p>, <span style="..."> 等标签
+    html_tag_pattern = r'</?[^>]+>'
+    content = re.sub(html_tag_pattern, '', content)
     
-    for pattern in html_tags:
-        content = re.sub(pattern, '', content, flags=re.IGNORECASE)
-    
-    # 5. 移除其他潜在的XSS向量
-    # 移除javascript:等协议
-    script_protocols = [
-        r'javascript:', r'jscript:', r'vbscript:', r'vbs:',
-        r'data:', r'blob:', r'file:', r'about:', r'chrome:',
-        r'ms-script:', r'ms-javascript:'
-    ]
-    for protocol in script_protocols:
-        content = re.sub(
-            re.escape(protocol),
-            '',
-            content,
-            flags=re.IGNORECASE
-        )
-
-    # 移除危险脚本关键词
-    dangerous_keywords = [
-        r'eval\(', r'expression\(', r'setTimeout\(', r'setInterval\(',
-        r'Function\(', r'alert\(', r'prompt\(', r'confirm\('
-    ]
-    for keyword in dangerous_keywords:
-        content = re.sub(
-            keyword,
-            '',
-            content,
-            flags=re.IGNORECASE
-        )
+    # 5. 转义其他HTML特殊字符（如 & < > " '）
+    content = html.escape(content, quote=True)
 
     # 6. 恢复之前保存的安全内容
     for key, original in temp_placeholders.items():
         content = content.replace(key, original)
-
-    # 7. 转义其他HTML特殊字符
-    content = html.escape(content, quote=True)
 
     return content
 def update_room_online_count(room_id):
