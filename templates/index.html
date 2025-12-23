@@ -1,284 +1,74 @@
 {% extends "base.html" %}
 
-{% block head %}
-    <style>
-        .home-container {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-            padding: 1.5rem;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .hero-section {
-            text-align: center;
-            padding: 2rem 1rem;
-            border-radius: 12px;
-            background: var(--surface-color);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            margin-bottom: 1rem;
-        }
-
-        .hero-title {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-            color: var(--text-color);
-        }
-
-        .hero-subtitle {
-            font-size: 1.1rem;
-            color: var(--text-color-secondary, #64748b);
-            margin-bottom: 1.5rem;
-        }
-
-        .quote-module {
-            background: var(--neutral-50);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin: 1.5rem 0;
-            text-align: center;
-            font-style: italic;
-            position: relative;
-            border-left: 4px solid var(--primary-color, #3b82f6);
-        }
-
-        .quote-text {
-            font-size: 1.2rem;
-            line-height: 1.6;
-            color: var(--text-color);
-            margin-bottom: 0.5rem;
-        }
-
-        .quote-author {
-            font-size: 0.9rem;
-            color: var(--text-color-secondary, #64748b);
-            text-align: right;
-        }
-
-        .section-title {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            color: var(--text-color);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .section-title::before {
-            content: "";
-            display: inline-block;
-            width: 4px;
-            height: 1.5rem;
-            background: var(--primary-color, #3b82f6);
-            border-radius: 2px;
-        }
-
-        .cards-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1rem;
-        }
-
-        .card {
-            background: var(--surface-color);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            transition: transform 0.2s, box-shadow 0.2s;
-            border: 1px solid var(--border-color, #e2e8f0);
-        }
-
-        .card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .card-title {
-            font-size: 1.25rem;
-            margin-bottom: 0.75rem;
-            color: var(--text-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .card-title h3 {
-            margin: 0;
-        }
-
-        .unread-count {
-            background: var(--primary-color, #3b82f6);
-            color: white;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
-            font-weight: bold;
-        }
-
-        .no-unread {
-            color: var(--text-color-secondary, #64748b);
-            font-size: 0.9rem;
-        }
-
-        .card-description {
-            color: var(--text-color-secondary, #64748b);
-            margin-bottom: 1rem;
-            line-height: 1.5;
-        }
-
-        .card-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .btn {
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            border: none;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            font-weight: 500;
-            transition: background-color 0.2s;
-            text-align: center;
-        }
-
-        .btn-primary {
-            background: var(--primary-color, #3b82f6);
-            color: white;
-        }
-
-        .btn-outline {
-            background: transparent;
-            border: 1px solid var(--border-color, #e2e8f0);
-            color: var(--text-color);
-        }
-
-        .btn:hover {
-            opacity: 0.9;
-        }
-
-        @media (max-width: 768px) {
-            .home-container {
-                padding: 1rem;
-                gap: 1rem;
-            }
-            
-            .hero-title {
-                font-size: 1.5rem;
-            }
-            
-            .quote-text {
-                font-size: 1.1rem;
-            }
-            
-            .cards-container {
-                grid-template-columns: 1fr;
-            }
-            
-            .section-title {
-                font-size: 1.25rem;
-            }
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 2rem;
-            color: var(--text-color-secondary, #64748b);
-        }
-
-        .empty-state-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            opacity: 0.5;
-        }
-    </style>
+{% block additional_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 {% endblock %}
 
 {% block content %}
-<div class="home-container">
-    <section class="hero-section">
-        <h1 class="hero-title">欢迎来到群星议会</h1>
-        <p class="hero-subtitle">发现新的讨论，参与有趣的聊天</p>
-    </section>
-
-    <section class="quote-module">
-        <div class="quote-text">{{ selected_quote.split(' - ')[0] }}</div>
-        <div class="quote-author">- {{ selected_quote.split(' - ')[1] if '-' in selected_quote else '' }}</div>
-    </section>
-
-    <section class="chat-section">
-        <h2 class="section-title">
-            <span>未读聊天室</span>
-        </h2>
-        
-        {% if accessible_rooms %}
-            <div class="cards-container">
-                {% for room in accessible_rooms %}
-                    {% set unread_count = chat_counts.get(room.id, 0) %}
-                    <div class="card">
-                        <div class="card-title">
-                            <h3>{{ room.name }}</h3>
-                            {% if unread_count > 0 %}
-                                <span class="unread-count">{{ unread_count }}</span>
-                            {% endif %}
+<div class="homepage-layout">
+    <div class="quote-section">
+        <div class="quote-module">
+            <div class="quote-text">{{ selected_quote.split(' - ')[0] }}</div>
+            <div class="quote-author">- {{ selected_quote.split(' - ')[1] if '-' in selected_quote else '' }}</div>
+        </div>
+    </div>
+    
+    <div class="unread-section">
+        <div class="unread-container">
+            <h2 class="section-title">未读聊天室</h2>
+            
+            {% if accessible_rooms %}
+                <div class="rooms-grid">
+                    {% for room in accessible_rooms %}
+                        {% set unread_count = chat_counts.get(room.id, 0) %}
+                        <div class="room-card">
+                            <div class="room-card-header">
+                                <h3>{{ room.name }}</h3>
+                                {% if unread_count > 0 %}
+                                    <span class="unread-badge" title="未读消息">{{ unread_count }}</span>
+                                {% endif %}
+                            </div>
+                            <p class="room-description">{{ room.description or '暂无描述' }}</p>
+                            <div class="room-actions">
+                                <a href="{{ url_for('chat_room', room_id=room.id) }}" class="btn">进入</a>
+                            </div>
                         </div>
-                        <p class="card-description">{{ room.description or '暂无描述' }}</p>
-                        <div class="card-actions">
-                            <a href="{{ url_for('chat_room', room_id=room.id) }}" class="btn btn-primary">进入聊天</a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>暂无可访问的聊天室</p>
+                </div>
+            {% endif %}
+            
+            <h2 class="section-title">未读贴吧分区</h2>
+            
+            {% if accessible_sections %}
+                <div class="rooms-grid">
+                    {% for section in accessible_sections %}
+                        {% set unread_count = forum_counts.get(section.id, 0) %}
+                        <div class="room-card">
+                            <div class="room-card-header">
+                                <h3>{{ section.name }}</h3>
+                                {% if unread_count > 0 %}
+                                    <span class="unread-badge" title="未读消息">{{ unread_count }}</span>
+                                {% endif %}
+                            </div>
+                            <p class="room-description">{{ section.description or '暂无描述' }}</p>
+                            <div class="room-actions">
+                                <a href="{{ url_for('forum_section', section_id=section.id) }}" class="btn">进入</a>
+                            </div>
                         </div>
-                    </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="empty-state">
-                <div class="empty-state-icon">💬</div>
-                <p>您没有可访问的聊天室</p>
-            </div>
-        {% endif %}
-    </section>
-
-    <section class="forum-section">
-        <h2 class="section-title">
-            <span>未读贴吧分区</span>
-        </h2>
-        
-        {% if accessible_sections %}
-            <div class="cards-container">
-                {% for section in accessible_sections %}
-                    {% set unread_count = forum_counts.get(section.id, 0) %}
-                    <div class="card">
-                        <div class="card-title">
-                            <h3>{{ section.name }}</h3>
-                            {% if unread_count > 0 %}
-                                <span class="unread-count">{{ unread_count }}</span>
-                            {% endif %}
-                        </div>
-                        <p class="card-description">{{ section.description or '暂无描述' }}</p>
-                        <div class="card-actions">
-                            <a href="{{ url_for('forum_section', section_id=section.id) }}" class="btn btn-primary">浏览分区</a>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="empty-state">
-                <div class="empty-state-icon">📋</div>
-                <p>您没有可访问的贴吧分区</p>
-            </div>
-        {% endif %}
-    </section>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>暂无可访问的贴吧分区</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Add any interactive functionality here if needed
-        console.log('Homepage loaded');
-    });
-</script>
+
 {% endblock %}
