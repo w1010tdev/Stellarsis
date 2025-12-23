@@ -37,10 +37,16 @@
             border-radius: 12px;
             padding: 1.5rem;
             margin: 1.5rem 0;
-            text-align: center;
             font-style: italic;
             position: relative;
             border-left: 4px solid var(--primary-color, #3b82f6);
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .quote-content {
+            flex: 1;
         }
 
         .quote-text {
@@ -54,6 +60,28 @@
             font-size: 0.9rem;
             color: var(--text-color-secondary, #64748b);
             text-align: right;
+        }
+
+        .unread-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--danger-color, #e74c3c);
+            color: var(--on-primary);
+            font-weight: 700;
+            font-size: 0.8rem;
+            line-height: 1;
+            text-align: center;
+            padding: 0 4px;
+        }
+
+        @media (max-width: 768px) {
+            .quote-module {
+                display: block;
+            }
         }
 
         .section-title {
@@ -208,8 +236,10 @@
     </section>
 
     <section class="quote-module">
-        <div class="quote-text">{{ selected_quote.split(' - ')[0] }}</div>
-        <div class="quote-author">- {{ selected_quote.split(' - ')[1] if '-' in selected_quote else '' }}</div>
+        <div class="quote-content">
+            <div class="quote-text">{{ selected_quote.split(' - ')[0] }}</div>
+            <div class="quote-author">- {{ selected_quote.split(' - ')[1] if '-' in selected_quote else '' }}</div>
+        </div>
     </section>
 
     <section class="chat-section">
@@ -225,7 +255,7 @@
                         <div class="card-title">
                             <h3>{{ room.name }}</h3>
                             {% if unread_count > 0 %}
-                                <span class="unread-count">{{ unread_count }}</span>
+                                <span class="unread-badge">{{ unread_count }}</span>
                             {% endif %}
                         </div>
                         <p class="card-description">{{ room.description or '暂无描述' }}</p>
@@ -256,7 +286,7 @@
                         <div class="card-title">
                             <h3>{{ section.name }}</h3>
                             {% if unread_count > 0 %}
-                                <span class="unread-count">{{ unread_count }}</span>
+                                <span class="unread-badge">{{ unread_count }}</span>
                             {% endif %}
                         </div>
                         <p class="card-description">{{ section.description or '暂无描述' }}</p>
