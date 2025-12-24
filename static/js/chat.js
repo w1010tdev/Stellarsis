@@ -996,137 +996,106 @@ function sendMessage() {
     const message = messageInput.value.trim();
     if (!message) return;
 
-    // 验证引用的消息是否有效
-    validateQuotes(message, roomId).then(isValid => {
-        if (!isValid) {
-            addStatusMessage('引用的消息无效或不存在');
-            return;
-        }
+    // 生成唯一客户端ID
+    const clientId = 'client-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
 
-        // 检查是否引用了自己（通过检查消息内容中的引用ID是否与当前用户最近发送的消息ID相同）
-        const quotePattern = /@quote\{(\d+)\}/g;
-        const matches = [...message.matchAll(quotePattern)];
-        if (matches.length > 0) {
-            const quoteIds = matches.map(match => parseInt(match[1]));
-            // 检查引用ID是否与当前用户最近发送的消息ID相同（防止自引用）
-            // 这里我们检查用户最近发送的消息，而不是使用lastMessageId变量
-            // 我们可以查询本地的processedMessageIds来检查自引用
-            for (const quoteId of quoteIds) {
-                // 获取当前用户最近发送的消息ID来检查自引用
-                // 在实际应用中，我们可能需要查询用户最近发送的消息ID
-                // 由于我们无法直接知道用户最近发送的消息ID，我们依赖后端验证
-                // 但我们可以检查是否引用了当前正在发送的消息（虽然技术上不可能）
-                
-                // 对于更精确的自引用检查，我们依赖后端的验证
-                // 前端可以做的是检查引用ID是否是用户最近发送的消息ID
-                // 但是由于时间关系，我们主要依赖后端验证，前端只做基本检查
-            }
-        }
-
-        // 生成唯一客户端ID
-        const clientId = 'client-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
-
-        // 保存到待确认消息集合
-        pendingMessages.set(clientId, {
-            content: message,
-            timestamp: new Date().toISOString(),
-            sentTime: Date.now()
-        });
-
-        // 清空输入框
-        messageInput.value = '';
-
-        // 通过WebSocket发送
-        if (chatSocket && chatSocket.connected) {
-            // 本地预览
-            // 本地预览
-            // include both id and client_id on the local preview so server echoes can be matched
-            const localMessage = {
-                id: clientId,
-                client_id: clientId,
-                content: message,
-                timestamp: new Date(new Date().getTime() + 8 * 60 * 60 * 1000).toISOString(),
-                user_id: currentUserId,
-                username: currentUsername,
-                nickname: currentNickname,
-                color: currentUserColor,
-                badge: currentUserBadge,
-                isPending: true  // 标记为待确认
-            };
-            addMessageToUI(localMessage, true, false);
-
-            // 使用回调处理服务器响应，直接替换消息ID
-            chatSocket.emit('send_message', {
-                room_id: roomId,
-                message: message,
-                client_id: clientId  // 发送客户端ID
-            }, function (response) {
-                // 服务器响应回调，处理返回的消息数据
-                if (response && response.success && response.data && response.data.id) {
-                    // 使用服务器返回的真实ID更新本地消息
-                    updateExistingMessage(clientId, response.data);
-
-                    // 从待确认消息集合中移除，避免后续广播重复处理
-                    pendingMessages.delete(clientId);
-
-                    // 将服务器返回的ID添加到已处理集合，防止广播时重复处理
-                    if (response.data.id) {
-                        processedMessageIds.add(response.data.id);
-                    }
-                } else {
-                    console.warn('消息发送响应格式异常:', response);
-                    // 如果响应有问题，仍依赖广播机制作为备用
-                    // 广播机制会继续尝试匹配和处理
-                }
-            });
-        } else {
-            // WebSocket不可用，使用AJAX
-            fetch('/api/chat/send', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    room_id: roomId,
-                    message: message
-                })
-            })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('发送消息失败');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        // 消息发送成功后，添加到UI
-                        const sentMessage = {
-                            id: 'sent-' + Date.now(),
-                            content: message,
-                            timestamp: new Date().toISOString(),
-                            user_id: currentUserId,
-                            username: currentUsername,
-                            nickname: currentNickname,
-                            color: currentUserColor,
-                            badge: currentUserBadge
-                        };
-
-                        addMessageToUI(sentMessage, true, false);
-                    }
-                })
-                .catch(error => {
-                    console.error('发送消息失败:', error);
-                    // 显示错误
-                    const errorElement = document.createElement('div');
-                    errorElement.className = 'chat-error';
-                    errorElement.textContent = '消息发送失败，请检查网络连接';
-                    document.getElementById('chat-messages').appendChild(errorElement);
-                });
-        }
-    }).catch(error => {
-        console.error('验证引用失败:', error);
-        addStatusMessage('引用验证失败，请重试');
+    // 保存到待确认消息集合
+    pendingMessages.set(clientId, {
+        content: message,
+        timestamp: new Date().toISOString(),
+        sentTime: Date.now()
     });
+
+    // 清空输入框
+    messageInput.value = '';
+
+    // 通过WebSocket发送
+    if (chatSocket && chatSocket.connected) {
+        // 本地预览
+        // 本地预览
+        // include both id and client_id on the local preview so server echoes can be matched
+        const localMessage = {
+            id: clientId,
+            client_id: clientId,
+            content: message,
+            timestamp: new Date(new Date().getTime() + 8 * 60 * 60 * 1000).toISOString(),
+            user_id: currentUserId,
+            username: currentUsername,
+            nickname: currentNickname,
+            color: currentUserColor,
+            badge: currentUserBadge,
+            isPending: true  // 标记为待确认
+        };
+        addMessageToUI(localMessage, true, false);
+
+        // 使用回调处理服务器响应，直接替换消息ID
+        chatSocket.emit('send_message', {
+            room_id: roomId,
+            message: message,
+            client_id: clientId  // 发送客户端ID
+        }, function (response) {
+            // 服务器响应回调，处理返回的消息数据
+            if (response && response.success && response.data && response.data.id) {
+                // 使用服务器返回的真实ID更新本地消息
+                updateExistingMessage(clientId, response.data);
+
+                // 从待确认消息集合中移除，避免后续广播重复处理
+                pendingMessages.delete(clientId);
+
+                // 将服务器返回的ID添加到已处理集合，防止广播时重复处理
+                if (response.data.id) {
+                    processedMessageIds.add(response.data.id);
+                }
+            } else {
+                console.warn('消息发送响应格式异常:', response);
+                // 如果响应有问题，仍依赖广播机制作为备用
+                // 广播机制会继续尝试匹配和处理
+            }
+        });
+    } else {
+        // WebSocket不可用，使用AJAX
+        fetch('/api/chat/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                room_id: roomId,
+                message: message
+            })
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('发送消息失败');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // 消息发送成功后，添加到UI
+                    const sentMessage = {
+                        id: 'sent-' + Date.now(),
+                        content: message,
+                        timestamp: new Date().toISOString(),
+                        user_id: currentUserId,
+                        username: currentUsername,
+                        nickname: currentNickname,
+                        color: currentUserColor,
+                        badge: currentUserBadge
+                    };
+
+                    addMessageToUI(sentMessage, true, false);
+                }
+            })
+            .catch(error => {
+                console.error('发送消息失败:', error);
+                // 显示错误
+                const errorElement = document.createElement('div');
+                errorElement.className = 'chat-error';
+                errorElement.textContent = '消息发送失败，请检查网络连接';
+                document.getElementById('chat-messages').appendChild(errorElement);
+            });
+    }
 }
 
 // 设置消息输入
@@ -2025,5 +1994,3 @@ window.addEventListener('heartRainSettingChanged', function (event) {
     localStorage.setItem('heartRainEnabled', isEnabled);
     console.log('爱心雨设置已更新:', isEnabled ? '启用' : '禁用');
 });
-
-
