@@ -790,7 +790,7 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('chat_index'))
+        return redirect(url_for('index'))
     
     form = LoginForm()
     if form.validate_on_submit():
@@ -803,7 +803,7 @@ def login():
         user.last_seen = datetime.now(timezone.utc)
         db_session.commit()
         log_admin_action(f"用户登录: {user.username}")
-        return redirect(url_for('chat_index'))
+        return redirect(url_for('index'))
     
     return render_template('login.html', form=form)
 
