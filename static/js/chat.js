@@ -288,6 +288,46 @@ function generateContentHash(content, timestamp) {
     return btoa(encodeURIComponent(`${contentSnippet}|${timeKey}`)).substring(0, 16);
 }
 
+// 验证引用的消息是否在当前聊天室中存在
+function validateQuotes(message, roomId) {
+    // 检查消息中是否有引用
+    const quotePattern = /@quote\{(\d+)\}/g;
+    const matches = [...message.matchAll(quotePattern)];
+    
+    if (matches.length === 0) {
+        return Promise.resolve(true); // 没有引用，直接返回true
+    }
+    
+    // 对每个引用ID进行验证
+    const quoteIds = matches.map(match => parseInt(match[1]));
+    
+    // 向服务器验证这些引用是否在当前聊天室内
+    return fetch('/api/chat/validate_quotes', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            room_id: roomId,
+            quote_ids: quoteIds
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.valid_quotes) {
+            // 检查是否所有引用都是有效的
+            const validIds = new Set(data.valid_quotes);
+            const allValid = quoteIds.every(id => validIds.has(id));
+            return allValid;
+        }
+        return false;
+    })
+    .catch(error => {
+        console.error('验证引用失败:', error);
+        return false; // 验证失败时返回false
+    });
+}
+
 // 统一时间格式化函数（UTC+8时区）
 function formatTimeDisplay(timestamp) {
     // 将UTC时间转换为UTC+8（北京时间）

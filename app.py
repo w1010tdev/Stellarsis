@@ -575,6 +575,93 @@ def sanitize_content(content):
         content = content.replace(key, original)
 
     return content
+
+def sanitize_content_with_quote_validation(content, room_id):
+    """
+    验证并处理@quote引用的函数，确保引用的消息存在且在当前聊天室内
+    """
+    # 1. 空值/非字符串处理
+    if not content:
+        return ""
+    # 确保输入为字符串类型
+    if not isinstance(content, str):
+        try:
+            content = str(content)
+        except Exception:
+            return ""
+
+    # 2. 解码HTML实体
+    try:
+        content = html.unescape(content)
+    except Exception:
+        pass
+
+    # 3. 临时保护代码块和特殊语法
+    temp_placeholders = {}
+
+    # 首先保护代码块（包括多行代码块和行内代码）
+    # 保护多行代码块：```code```
+    code_block_pattern = r'```[\s\S]*?```'
+
+    def replace_code_block(match):
+        key = f"__CODEBLOCK_{len(temp_placeholders)}__"
+        temp_placeholders[key] = match.group(0)
+        return key
+
+    content = re.sub(code_block_pattern, replace_code_block, content, flags=re.MULTILINE)
+
+    # 保护行内代码：`code`
+    inline_code_pattern = r'`[^`]*`'
+
+    def replace_inline_code(match):
+        key = f"__INLINECODE_{len(temp_placeholders)}__"
+        temp_placeholders[key] = match.group(0)
+        return key
+
+    content = re.sub(inline_code_pattern, replace_inline_code, content, flags=re.MULTILINE)
+
+    # 保存LaTeX表达式：$...$, $$...$$, \(...\), \[...\]
+    latex_pattern = r'\$[^\$]*?\$|\$\$[^\$]*?\$\$|\\\(.*?\\\)|\\\[.*?\\\]'
+
+    def replace_latex(match):
+        key = f"__LATEX_{len(temp_placeholders)}__"
+        temp_placeholders[key] = match.group(0)
+        return key
+
+    content = re.sub(latex_pattern, replace_latex, content, flags=re.MULTILINE)
+
+    # 处理@quote引用，验证引用的消息是否存在且在当前聊天室内
+    quote_pattern = r'@quote\{(\d+)\}'
+
+    def replace_quote(match):
+        quote_id = int(match.group(1))
+        # 验证引用的消息是否存在且在当前聊天室内
+        quoted_message = db_session.query(ChatMessage).filter_by(id=quote_id, room_id=room_id).first()
+        if quoted_message:
+            # 消息存在且在同一聊天室内，保留引用
+            key = f"__QUOTE_{len(temp_placeholders)}__"
+            temp_placeholders[key] = match.group(0)
+            return key
+        else:
+            # 消息不存在或不在同一聊天室内，替换为空字符串
+            return ''
+
+    content = re.sub(quote_pattern, replace_quote, content, flags=re.MULTILINE)
+
+    # 4. 移除所有HTML标签（<tag>或<tag/>或</tag>形式）
+    # 这将移除所有类似 <div>, </div>, <p>, <span style="..."> 等标签
+    html_tag_pattern = r'</?[^>]+>'
+    content = re.sub(html_tag_pattern, '', content)
+
+    # 5. 转义其他HTML特殊字符（如 & < > " '）
+    content = html.escape(content, quote=True)
+
+    # 6. 恢复之前保存的安全内容
+    for key, original in temp_placeholders.items():
+        content = content.replace(key, original)
+
+    return content
+
 def update_room_online_count(room_id):
     """更新特定房间的在线人数"""
     socketio.emit('online_users', {
@@ -985,7 +1072,7 @@ def send_chat_message():
 
     # XSS基础防护（保持与 WebSocket 路径一致）
     try:
-        message = sanitize_content(message)
+        message = sanitize_content_with_quote_validation(message, room_id)
     except Exception:
         pass
     # 保存到数据库
@@ -1092,29 +1179,47 @@ def api_search_chat_message():
         try:
             # 尝试解析时间字符串
             timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-            # 考虑到时间可能存在微小差异，允许±1分钟的误差
-            time_lower = timestamp - timedelta(minutes=1)
-            time_upper = timestamp + timedelta(minutes=1)
-            query = query.filter(ChatMessage.timestamp >= time_lower, ChatMessage.timestamp <= time_upper)
+            query = query.filter(ChatMessage.timestamp >= timestamp.replace(tzinfo=None))
         except ValueError:
             return jsonify(success=False, message='时间格式错误'), 400
     
-    # 按时间倒序排列，取最新的消息
-    msg = query.order_by(ChatMessage.timestamp.desc()).first()
+    message = query.first()
     
-    if not msg:
-        return jsonify(success=False, message='消息不存在'), 404
+    if not message:
+        return jsonify(success=False, message='未找到消息'), 404
     
-    user = msg.user
-    return jsonify(success=True, message={
-        'id': msg.id,
-        'content': html.unescape(msg.content) if isinstance(msg.content, str) else msg.content,
-        'timestamp': msg.timestamp.isoformat(),
-        'user_id': msg.user_id,
-        'username': user.username if user else None,
-        'nickname': user.nickname if user else None,
-        'color': user.color if user else None,
-        'badge': user.badge if user else None
+    return jsonify({
+        'success': True,
+        'data': {
+            'id': message.id,
+            'room_id': message.room_id
+        }
+    })
+
+
+@app.route('/api/chat/validate_quotes', methods=['POST'])
+@login_required
+def api_validate_quotes():
+    """验证引用的消息是否存在于当前聊天室"""
+    data = request.get_json()
+    room_id = data.get('room_id')
+    quote_ids = data.get('quote_ids', [])
+    
+    if not room_id or not isinstance(quote_ids, list):
+        return jsonify(success=False, message='参数错误'), 400
+    
+    # 查询当前聊天室中指定ID的消息
+    valid_messages = db_session.query(ChatMessage.id).filter(
+        ChatMessage.id.in_(quote_ids),
+        ChatMessage.room_id == room_id
+    ).all()
+    
+    # 提取有效的消息ID
+    valid_quote_ids = [msg.id for msg in valid_messages]
+    
+    return jsonify({
+        'success': True,
+        'valid_quotes': valid_quote_ids
     })
 
 
@@ -3474,7 +3579,7 @@ def handle_message(data):
         return
     
     # XSS基础防护
-    content = sanitize_content(content)
+    content = sanitize_content_with_quote_validation(content, room_id)
     # 检查发送速度：如果两次发送间隔小于725ms，则触发验证码流程
     now_ts = time.time()
     with captcha_lock:
