@@ -512,7 +512,12 @@
             document.dispatchEvent(event);
         });
         // 在渲染后对插入到 DOM 的内容进行后处理（如代码高亮）
-        window.postProcessRendered = function (container) {
+        window.postProcessRendered = function (container, depth = 0) {
+            // 限制递归深度，防止无限递归
+            if (depth > 10) {
+                console.warn('Quote递归深度超过限制，停止进一步处理');
+                return;
+            }
             try {
                 if (!container || !(container instanceof Element)) return;
                 function applyHighlight() {
@@ -566,7 +571,8 @@
                                             const uname = reply.nickname || reply.username || ('用户' + (reply.user_id || ''));
                                             const rendered = (typeof window.renderContent === 'function') ? window.renderContent(reply.content || '') : escapeHtml(reply.content || '');
                                             qel.innerHTML = '<div class="quote-block"><div class="quote-header">引用来自：' + escapeHtml(uname) + '</div><div class="quote-content">' + rendered + '</div></div>';
-                                            if (typeof window.postProcessRendered === 'function') window.postProcessRendered(qel);
+                                            // 递增深度，防止无限递归
+                                            if (typeof window.postProcessRendered === 'function') window.postProcessRendered(qel, depth + 1);
                                         } else {
                                             qel.textContent = '引用的消息未知或已删除';
                                         }
