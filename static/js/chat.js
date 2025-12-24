@@ -1994,5 +1994,3 @@ window.addEventListener('heartRainSettingChanged', function (event) {
     localStorage.setItem('heartRainEnabled', isEnabled);
     console.log('爱心雨设置已更新:', isEnabled ? '启用' : '禁用');
 });
-
-

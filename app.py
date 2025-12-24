@@ -1072,6 +1072,31 @@ def send_chat_message():
 
     # XSS基础防护（保持与 WebSocket 路径一致）
     try:
+        # 检查引用是否为自引用（引用即将保存的消息ID，这在当前情况下是不可能的，但我们可以检查引用模式）
+        # 首先解析消息中的引用ID
+        import re
+        quote_pattern = r'@quote\{(\d+)\}'
+        quote_matches = re.findall(quote_pattern, message)
+        quote_ids = [int(id) for id in quote_matches if id.isdigit()]
+        
+        # 检查是否有重复的引用ID（这可能表示自引用意图）
+        # 这里我们做更严格的检查：获取用户最近发送的消息ID，确保不引用这些ID
+        if quote_ids:
+            # 获取用户最近几分钟内发送的消息，避免自引用
+            from datetime import datetime, timedelta
+            cutoff_time = datetime.utcnow() - timedelta(minutes=10)  # 检查过去10分钟
+            recent_messages = db_session.query(ChatMessage.id).filter(
+                ChatMessage.user_id == current_user.id,
+                ChatMessage.room_id == room_id,
+                ChatMessage.timestamp >= cutoff_time
+            ).all()
+            recent_message_ids = {msg.id for msg in recent_messages}
+            
+            # 检查是否有引用指向最近的消息（可能是自引用）
+            invalid_quote_ids = [qid for qid in quote_ids if qid in recent_message_ids]
+            if invalid_quote_ids:
+                return jsonify(success=False, message="不能引用自己的消息"), 400
+        
         message = sanitize_content_with_quote_validation(message, room_id)
     except Exception:
         pass
@@ -3577,6 +3602,32 @@ def handle_message(data):
     if len(content) > 2000:
         emit('error', {'message': '消息过长'})
         return
+    
+    # 检查引用是否为自引用（引用即将保存的消息ID，这在当前情况下是不可能的，但我们可以检查引用模式）
+    # 首先解析消息中的引用ID
+    import re
+    quote_pattern = r'@quote\{(\d+)\}'
+    quote_matches = re.findall(quote_pattern, content)
+    quote_ids = [int(id) for id in quote_matches if id.isdigit()]
+    
+    # 检查是否有重复的引用ID（这可能表示自引用意图）
+    # 这里我们做更严格的检查：获取用户最近发送的消息ID，确保不引用这些ID
+    if quote_ids:
+        # 获取用户最近几分钟内发送的消息，避免自引用
+        from datetime import datetime, timedelta
+        cutoff_time = datetime.utcnow() - timedelta(minutes=10)  # 检查过去10分钟
+        recent_messages = db_session.query(ChatMessage.id).filter(
+            ChatMessage.user_id == current_user.id,
+            ChatMessage.room_id == room_id,
+            ChatMessage.timestamp >= cutoff_time
+        ).all()
+        recent_message_ids = {msg.id for msg in recent_messages}
+        
+        # 检查是否有引用指向最近的消息（可能是自引用）
+        invalid_quote_ids = [qid for qid in quote_ids if qid in recent_message_ids]
+        if invalid_quote_ids:
+            emit('error', {'message': '不能引用自己的消息'})
+            return
     
     # XSS基础防护
     content = sanitize_content_with_quote_validation(content, room_id)
