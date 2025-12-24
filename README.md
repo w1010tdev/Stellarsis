@@ -90,6 +90,7 @@ Main Branch也可以使用，但是不保证Bug解决
    ```bash
    pip install -r requirements.txt -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
    # 如果您被清华站点爆炸了，请自行去掉-i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
+   # 如果您是在因为不可抗力无法自行安装，提供下载：https://pan.huang1111.cn/s/zMm6ZcM   自行访问Scripts内的activate.bat
    ```
 2. 请根据需要，修改`app.py`的密码加密方式和`config.py`
 
