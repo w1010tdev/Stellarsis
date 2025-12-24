@@ -597,7 +597,7 @@ function setupPolling() {
 
                         if (!matched) {
                             // New message for UI
-                            addMessageToUI(msg, 0, 1);
+                            addMessageToUI(msg, 0, 0);
                             if (msg.id) processedMessageIds.add(msg.id);
                             hasNewMessages = true;
                         } else {
@@ -1230,30 +1230,27 @@ function addMessageToUI(msg, isLocal = false, his = false) {
             }
         }
     }
-
+    const currentScrollTop = messagesContainer.scrollTop;
+    const currentScrollHeight = messagesContainer.scrollHeight;
+    const currentClientHeight = messagesContainer.clientHeight;
+    const wasScrolledToBottom = Math.abs(currentScrollHeight - currentScrollTop - currentClientHeight) < 5;
     // 创建并添加消息元素
     const messageElement = createMessageElement(msg, isLocal, his);
     // 添加到容器
     messagesContainer.appendChild(messageElement);
-
-    // 检查是否滚动到底部
-    const currentScrollTop = messagesContainer.scrollTop;
-    const currentScrollHeight = messagesContainer.scrollHeight;
-    const currentClientHeight = messagesContainer.clientHeight;
-    const isCurrentlyAtBottom = Math.abs(currentScrollHeight - currentScrollTop - currentClientHeight) < 5;
-    
-    // 更新滚动状态
-    isScrolledToBottom = isCurrentlyAtBottom;
+    const newScrollHeight = messagesContainer.scrollHeight;
+    isScrolledToBottom = Math.abs(newScrollHeight - messagesContainer.scrollTop - currentClientHeight) < 5;
 
     // 如果是历史消息（his=1），则滚动到底部
     if (his) {
         // 自动滚动到最底部 - 使用setTimeout确保DOM渲染完成后再滚动
         setTimeout(() => {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            isScrolledToBottom = true;
         }, 0);
     } else {
         // 如果不是历史消息（新消息），则不自动滚动，但显示新消息提示
-        if (!isScrolledToBottom) {
+        if (!wasScrolledToBottom) {
             newMessagesCount++;
             showNewMessageNotification();
         }
