@@ -7,6 +7,8 @@ let followedUserIds = new Set();  // 关注的用户ID集合
 let lastMessageId = 0;
 let onlineUsers = [];
 let roomPermission = 'Null';
+let isScrolledToBottom = true; // 跟踪是否滚动到底部
+let newMessagesCount = 0; // 新消息计数
 
 
 // 添加变量来跟踪最后的消息日期
@@ -419,7 +421,7 @@ function loadChatHistory() {
             lastMessageDate = null;
 
             // 保存当前滚动位置
-            const isScrolledToBottom = Math.abs(
+            isScrolledToBottom = Math.abs(
                 messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight
             ) < 5;
             data.messages.forEach(msg => {
@@ -524,6 +526,7 @@ function loadChatHistory() {
             // 如果之前滚动到底部，则滚动到底部
             // 加载最后一页默认滚动到底部
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            isScrolledToBottom = true; // 更新滚动状态
             chatHistoryLoaded = true;
         })
         .catch(error => {
@@ -630,7 +633,23 @@ function setupPolling() {
                     } catch (e) { console.debug('轮询删除检测失败', e); }
 
                     if (hasNewMessages) {
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        // 检查当前是否滚动到底部
+                        const currentScrollTop = messagesContainer.scrollTop;
+                        const currentScrollHeight = messagesContainer.scrollHeight;
+                        const currentClientHeight = messagesContainer.clientHeight;
+                        const isCurrentlyAtBottom = Math.abs(currentScrollHeight - currentScrollTop - currentClientHeight) < 5;
+                        
+                        // 更新滚动状态
+                        isScrolledToBottom = isCurrentlyAtBottom;
+
+                        // 如果当前滚动到底部，则滚动到最新消息
+                        if (isScrolledToBottom) {
+                            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        } else {
+                            // 如果未滚动到底部，显示新消息提示
+                            newMessagesCount++;
+                            showNewMessageNotification();
+                        }
                     }
                 })
                 .catch(error => {
@@ -1160,6 +1179,7 @@ function setupMessageInput() {
         // 延迟以等待软键盘或布局调整
         setTimeout(() => {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            isScrolledToBottom = true; // 更新滚动状态
         }, 150);
     }
 
@@ -1216,10 +1236,28 @@ function addMessageToUI(msg, isLocal = false, his = false) {
     // 添加到容器
     messagesContainer.appendChild(messageElement);
 
-    // 自动滚动到最底部 - 使用setTimeout确保DOM渲染完成后再滚动
-    setTimeout(() => {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }, 0);
+    // 检查是否滚动到底部
+    const currentScrollTop = messagesContainer.scrollTop;
+    const currentScrollHeight = messagesContainer.scrollHeight;
+    const currentClientHeight = messagesContainer.clientHeight;
+    const isCurrentlyAtBottom = Math.abs(currentScrollHeight - currentScrollTop - currentClientHeight) < 5;
+    
+    // 更新滚动状态
+    isScrolledToBottom = isCurrentlyAtBottom;
+
+    // 如果是历史消息（his=1），则滚动到底部
+    if (his) {
+        // 自动滚动到最底部 - 使用setTimeout确保DOM渲染完成后再滚动
+        setTimeout(() => {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }, 0);
+    } else {
+        // 如果不是历史消息（新消息），则不自动滚动，但显示新消息提示
+        if (!isScrolledToBottom) {
+            newMessagesCount++;
+            showNewMessageNotification();
+        }
+    }
 }
 
 // 将一组消息插入到消息容器顶部（按时间顺序：最旧在上）
@@ -1285,7 +1323,20 @@ function addStatusMessage(msg) {
     statusElement.textContent = msg;
 
     messagesContainer.appendChild(statusElement);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    
+    // 检查当前是否滚动到底部
+    const currentScrollTop = messagesContainer.scrollTop;
+    const currentScrollHeight = messagesContainer.scrollHeight;
+    const currentClientHeight = messagesContainer.clientHeight;
+    const isCurrentlyAtBottom = Math.abs(currentScrollHeight - currentScrollTop - currentClientHeight) < 5;
+    
+    // 如果当前滚动到底部，则滚动到最新消息
+    if (isCurrentlyAtBottom) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        isScrolledToBottom = true;
+    } else {
+        isScrolledToBottom = false;
+    }
 }
 
 // 更新现有消息
@@ -1484,11 +1535,23 @@ function updateExistingMessage(clientId, serverMessage) {
 
         console.debug('updateExistingMessage: successfully updated', { oldId, newId: serverId || serverClientId });
 
-        // 在更新消息后，如果消息容器存在，滚动到底部
+        // 在更新消息后，如果消息容器存在，根据滚动状态决定是否滚动到底部
         const messagesContainer = document.getElementById('chat-messages');
         if (messagesContainer) {
             setTimeout(() => {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                // 检查当前是否滚动到底部
+                const currentScrollTop = messagesContainer.scrollTop;
+                const currentScrollHeight = messagesContainer.scrollHeight;
+                const currentClientHeight = messagesContainer.clientHeight;
+                const isCurrentlyAtBottom = Math.abs(currentScrollHeight - currentScrollTop - currentClientHeight) < 5;
+                
+                // 更新滚动状态
+                isScrolledToBottom = isCurrentlyAtBottom;
+
+                // 如果当前滚动到底部，则滚动到最新消息
+                if (isScrolledToBottom) {
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }
             }, 0);
         }
     } catch (e) {
@@ -1499,6 +1562,85 @@ function updateExistingMessage(clientId, serverMessage) {
     function normalizeWhitespace(s) {
         return (s || '').replace(/\s+/g, ' ').trim();
     }
+}
+
+// 显示新消息提示
+function showNewMessageNotification() {
+    const messagesContainer = document.getElementById('chat-messages');
+    if (!messagesContainer) return;
+
+    // 移除现有的新消息提示（如果存在）
+    const existingNotification = document.getElementById('new-messages-notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+
+    // 创建新消息提示元素
+    const notification = document.createElement('div');
+    notification.id = 'new-messages-notification';
+    notification.className = 'new-messages-notification';
+    
+    // 使用Font Awesome图标
+    notification.innerHTML = `
+        <div class="new-messages-content">
+            <i class="fas fa-bell"></i>
+            <span>${newMessagesCount} 条新消息</span>
+            <button id="scroll-to-bottom-btn" class="btn btn-sm">
+                <i class="fas fa-arrow-down"></i> 查看
+            </button>
+        </div>
+    `;
+
+    // 添加到消息容器顶部
+    messagesContainer.appendChild(notification);
+
+    // 为滚动按钮添加事件监听器
+    const scrollBtn = document.getElementById('scroll-to-bottom-btn');
+    if (scrollBtn) {
+        scrollBtn.addEventListener('click', function() {
+            scrollToBottom();
+            // 重置新消息计数
+            newMessagesCount = 0;
+            // 移除通知
+            const notification = document.getElementById('new-messages-notification');
+            if (notification) {
+                notification.remove();
+            }
+        });
+    }
+}
+
+// 滚动到底部的函数
+function scrollToBottom() {
+    const messagesContainer = document.getElementById('chat-messages');
+    if (!messagesContainer) return;
+    
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    isScrolledToBottom = true;
+}
+
+// 监听滚动事件以更新滚动状态
+function setupScrollListener() {
+    const messagesContainer = document.getElementById('chat-messages');
+    if (!messagesContainer) return;
+
+    messagesContainer.addEventListener('scroll', function() {
+        const currentScrollTop = messagesContainer.scrollTop;
+        const currentScrollHeight = messagesContainer.scrollHeight;
+        const currentClientHeight = messagesContainer.clientHeight;
+        const isCurrentlyAtBottom = Math.abs(currentScrollHeight - currentScrollTop - currentClientHeight) < 5;
+        
+        isScrolledToBottom = isCurrentlyAtBottom;
+
+        // 如果滚动到底部，清除新消息提示
+        if (isScrolledToBottom) {
+            newMessagesCount = 0;
+            const notification = document.getElementById('new-messages-notification');
+            if (notification) {
+                notification.remove();
+            }
+        }
+    });
 }
 
 // 删除聊天室消息
@@ -1866,6 +2008,7 @@ window.initChat = function () {
 
 
         setupMessageInput();
+        setupScrollListener(); // 设置滚动监听器
 
         // 2. 然后连接WebSocket
         setupWebSocket();

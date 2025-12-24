@@ -992,3 +992,82 @@
 #online-users-list .follow-btn {
   margin-left: auto;
 }
+
+/* 新消息提示样式 */
+.new-messages-notification {
+  position: sticky;
+  top: 10px;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  margin: 10px 0;
+}
+
+.new-messages-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+  color: white;
+  border-radius: 50px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: slideInDown 0.3s ease;
+}
+
+.new-messages-content i {
+  font-size: 14px;
+}
+
+.new-messages-content span {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+#scroll-to-bottom-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+#scroll-to-bottom-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+@keyframes slideInDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .new-messages-content {
+    padding: 8px 16px;
+    gap: 8px;
+    margin: 8px 16px;
+  }
+  
+  .new-messages-content span {
+    font-size: 13px;
+  }
+  
+  #scroll-to-bottom-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+}
