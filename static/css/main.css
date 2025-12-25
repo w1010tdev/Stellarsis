@@ -723,11 +723,35 @@ footer {
 /* 首页四栏布局样式 */
 .homepage-layout {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: var(--spacing-xl);
   max-width: 1400px;
   margin: 0 auto;
   padding: var(--spacing-xl);
+}
+
+.third-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+  height: fit-content;
+}
+
+/* 调整名言字体大小 */
+.quote-text {
+  font-size: var(--text-lg);
+  line-height: 1.6;
+  color: var(--text-color);
+  margin-bottom: var(--spacing-md);
+  font-weight: 500;
+}
+
+.quote-author {
+  font-size: var(--text-base);
+  color: var(--muted-text-color);
+  text-align: right;
+  font-style: normal;
+  font-weight: 400;
 }
 
 .quote-section {
@@ -753,21 +777,7 @@ footer {
   align-items: center;
 }
 
-.quote-text {
-  font-size: var(--text-xl);
-  line-height: 1.6;
-  color: var(--text-color);
-  margin-bottom: var(--spacing-md);
-  font-weight: 500;
-}
 
-.quote-author {
-  font-size: var(--text-xl);
-  color: var(--muted-text-color);
-  text-align: right;
-  font-style: normal;
-  font-weight: 400;
-}
 
 /* Change Log 样式 */
 .changelog-section {
