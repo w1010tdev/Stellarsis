@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+{% block additional_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+    .quotes-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .quotes-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .add-quote-form {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .quote-item {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        box-shadow: var(--shadow-sm);
+        border-left: 4px solid #007bff;
+    }
+    
+    .quote-text {
+        font-size: 1.1em;
+        margin-bottom: 8px;
+        line-height: 1.5;
+    }
+    
+    .quote-author {
+        font-style: italic;
+        color: #6c757d;
+        margin-bottom: 10px;
+    }
+    
+    .quote-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+    
+    .quote-actions button {
+        margin-right: 5px;
+        margin-bottom: 5px;
+    }
+    
+    .edit-form {
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #eee;
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    
+    .form-group input, .form-group textarea {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-sizing: border-box;
+    }
+    
+    .form-group textarea {
+        min-height: 80px;
+        resize: vertical;
+    }
+    
+    .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 14px;
+        text-align: center;
+    }
+    
+    .btn-primary {
+        background-color: #007bff;
+        color: white;
+    }
+    
+    .btn-success {
+        background-color: #28a745;
+        color: white;
+    }
+    
+    .btn-warning {
+        background-color: #ffc107;
+        color: #212529;
+    }
+    
+    .btn-danger {
+        background-color: #dc3545;
+        color: white;
+    }
+    
+    .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+    }
+    
+    @media (max-width: 768px) {
+        .quotes-container {
+            padding: 10px;
+        }
+        
+        .quotes-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .quotes-header > * {
+            margin-bottom: 10px;
+        }
+    }
+</style>
+{% endblock %}
+{% block head %}
+<title>名言管理 - 管理面板</title>
+{% endblock %}
+{% block content %}
+<div class="quotes-container">
+    <div class="quotes-header">
+        <h1>名言管理</h1>
+        <button onclick="toggleAddForm()" class="btn btn-primary">添加新名言</button>
+    </div>
+    
+    <!-- 添加名言表单 -->
+    <div id="add-quote-form" class="add-quote-form" style="display: none;">
+        <h3>添加新名言</h3>
+        <div class="form-group">
+            <label for="new-quote-text">名言内容:</label>
+            <textarea id="new-quote-text" placeholder="请输入名言内容"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="new-quote-author">作者:</label>
+            <input type="text" id="new-quote-author" placeholder="请输入作者姓名">
+        </div>
+        <button onclick="addQuote()" class="btn btn-success">添加名言</button>
+        <button onclick="toggleAddForm()" class="btn btn-secondary">取消</button>
+    </div>
+    
+    <!-- 名言列表 -->
+    <div id="quotes-list">
+        <!-- 动态加载的名言将显示在这里 -->
+    </div>
+</div>
+
+<script>
+    // 页面加载时获取名言列表
+    document.addEventListener('DOMContentLoaded', function() {
+        loadQuotes();
+    });
+    
+    // 切换添加表单显示/隐藏
+    function toggleAddForm() {
+        const form = document.getElementById('add-quote-form');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    }
+    
+    // 加载名言列表
+    function loadQuotes() {
+        fetch('/api/admin/quotes')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayQuotes(data.quotes);
+                } else {
+                    alert('加载名言失败: ' + (data.message || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('加载名言失败');
+            });
+    }
+    
+    // 显示名言列表
+    function displayQuotes(quotes) {
+        const container = document.getElementById('quotes-list');
+        container.innerHTML = '';
+        
+        if (!quotes || quotes.length === 0) {
+            container.innerHTML = '<p>暂无名言数据</p>';
+            return;
+        }
+        
+        quotes.forEach((quote, index) => {
+            const quoteElement = document.createElement('div');
+            quoteElement.className = 'quote-item';
+            quoteElement.id = `quote-${index}`;
+            
+            quoteElement.innerHTML = `
+                <div class="quote-content">
+                    <div class="quote-text">${escapeHtml(quote.text)}</div>
+                    <div class="quote-author">作者: ${escapeHtml(quote.author)}</div>
+                    <div class="quote-actions">
+                        <button onclick="showEditForm(${index}, ${JSON.stringify(quote).replace(/"/g, '&quot;')})" class="btn btn-warning">编辑</button>
+                        <button onclick="deleteQuote(${index}, '${escapeHtml(quote.text)}')" class="btn btn-danger">删除</button>
+                    </div>
+                </div>
+                <div id="edit-form-${index}" class="edit-form" style="display: none;">
+                    <div class="form-group">
+                        <label for="edit-text-${index}">名言内容:</label>
+                        <textarea id="edit-text-${index}">${escapeHtml(quote.text)}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-author-${index}">作者:</label>
+                        <input type="text" id="edit-author-${index}" value="${escapeHtml(quote.author)}">
+                    </div>
+                    <button onclick="updateQuote(${index})" class="btn btn-success">保存修改</button>
+                    <button onclick="hideEditForm(${index})" class="btn btn-secondary">取消</button>
+                </div>
+            `;
+            
+            container.appendChild(quoteElement);
+        });
+    }
+    
+    // 显示编辑表单
+    function showEditForm(index, quote) {
+        // 隐藏所有编辑表单
+        document.querySelectorAll('.edit-form').forEach(form => {
+            form.style.display = 'none';
+        });
+        
+        // 显示当前编辑表单
+        document.getElementById(`edit-form-${index}`).style.display = 'block';
+    }
+    
+    // 隐藏编辑表单
+    function hideEditForm(index) {
+        document.getElementById(`edit-form-${index}`).style.display = 'none';
+    }
+    
+    // 添加名言
+    function addQuote() {
+        const text = document.getElementById('new-quote-text').value.trim();
+        const author = document.getElementById('new-quote-author').value.trim();
+        
+        if (!text || !author) {
+            alert('请输入名言内容和作者');
+            return;
+        }
+        
+        fetch('/api/admin/quotes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                text: text,
+                author: author
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('new-quote-text').value = '';
+                document.getElementById('new-quote-author').value = '';
+                loadQuotes(); // 重新加载列表
+                alert('名言添加成功');
+            } else {
+                alert('添加名言失败: ' + (data.message || '未知错误'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('添加名言失败');
+        });
+    }
+    
+    // 更新名言
+    function updateQuote(index) {
+        const text = document.getElementById(`edit-text-${index}`).value.trim();
+        const author = document.getElementById(`edit-author-${index}`).value.trim();
+        
+        if (!text || !author) {
+            alert('请输入名言内容和作者');
+            return;
+        }
+        
+        fetch(`/api/admin/quotes/${index}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                text: text,
+                author: author
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadQuotes(); // 重新加载列表
+                alert('名言更新成功');
+            } else {
+                alert('更新名言失败: ' + (data.message || '未知错误'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('更新名言失败');
+        });
+    }
+    
+    // 删除名言
+    function deleteQuote(index, text) {
+        if (!confirm(`确定要删除以下名言吗？\n\n${text}`)) {
+            return;
+        }
+        
+        fetch(`/api/admin/quotes/${index}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadQuotes(); // 重新加载列表
+                alert('名言删除成功');
+            } else {
+                alert('删除名言失败: ' + (data.message || '未知错误'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('删除名言失败');
+        });
+    }
+    
+    // HTML转义函数
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>
+{% endblock %}
