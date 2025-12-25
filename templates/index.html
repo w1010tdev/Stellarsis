@@ -5,80 +5,149 @@
 {% endblock %}
 
 {% block content %}
-<div class="homepage-layout">
-    <div class="quote-section">
-        <div class="quote-module">
-            <div class="quote-text">{{ selected_quote.split(' - ')[0] }}</div>
-            <div class="quote-author">- {{ selected_quote.split(' - ')[1] if '-' in selected_quote else '' }}</div>
+<div class="container">
+    <div class="homepage-layout">
+        <div class="quote-section">
+            <div class="quote-module" id="quote-module">
+                <div class="quote-text" id="quote-text">{{ selected_quote.split(' - ')[0] }}</div>
+                <div class="quote-author" id="quote-author">- {{ selected_quote.split(' - ')[1] if '-' in selected_quote else '' }}</div>
+                <div class="quote-change-hint">点击更换名言</div>
+            </div>
         </div>
-    </div>
-    
-    <div class="unread-section">
-        <div class="unread-container">
-            <h2 class="section-title">未读聊天室</h2>
-            
-            {% set unread_rooms = [] %}
-            {% for room in accessible_rooms %}
-                {% if chat_counts.get(room.id, 0) > 0 %}
-                    {% set _ = unread_rooms.append(room) %}
+        
+        <div class="unread-section">
+            <div class="unread-container">
+                <h2 class="section-title">未读聊天室</h2>
+                
+                {% set unread_rooms = [] %}
+                {% for room in accessible_rooms %}
+                    {% if chat_counts.get(room.id, 0) > 0 %}
+                        {% set _ = unread_rooms.append(room) %}
+                    {% endif %}
+                {% endfor %}
+                
+                {% if unread_rooms %}
+                    <div class="rooms-grid">
+                        {% for room in unread_rooms %}
+                            {% set unread_count = chat_counts.get(room.id, 0) %}
+                            <div class="room-card">
+                                <div class="room-card-header">
+                                    <h3>{{ room.name }}</h3>
+                                    <span class="unread-badge" title="未读消息">{{ unread_count }}</span>
+                                </div>
+                                <p class="room-description">{{ room.description or '暂无描述' }}</p>
+                                <div class="room-actions">
+                                    <a href="{{ url_for('chat_room', room_id=room.id) }}" class="btn">进入</a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <p>暂无未读消息的聊天室</p>
+                    </div>
                 {% endif %}
-            {% endfor %}
-            
-            {% if unread_rooms %}
-                <div class="rooms-grid">
-                    {% for room in unread_rooms %}
-                        {% set unread_count = chat_counts.get(room.id, 0) %}
-                        <div class="room-card">
-                            <div class="room-card-header">
-                                <h3>{{ room.name }}</h3>
-                                <span class="unread-badge" title="未读消息">{{ unread_count }}</span>
+                
+                <h2 class="section-title">未读贴吧分区</h2>
+                
+                {% set unread_sections = [] %}
+                {% for section in accessible_sections %}
+                    {% if forum_counts.get(section.id, 0) > 0 %}
+                        {% set _ = unread_sections.append(section) %}
+                    {% endif %}
+                {% endfor %}
+                
+                {% if unread_sections %}
+                    <div class="rooms-grid">
+                        {% for section in unread_sections %}
+                            {% set unread_count = forum_counts.get(section.id, 0) %}
+                            <div class="room-card">
+                                <div class="room-card-header">
+                                    <h3>{{ section.name }}</h3>
+                                    <span class="unread-badge" title="未读消息">{{ unread_count }}</span>
+                                </div>
+                                <p class="room-description">{{ section.description or '暂无描述' }}</p>
+                                <div class="room-actions">
+                                    <a href="{{ url_for('forum_section', section_id=section.id) }}" class="btn">进入</a>
+                                </div>
                             </div>
-                            <p class="room-description">{{ room.description or '暂无描述' }}</p>
-                            <div class="room-actions">
-                                <a href="{{ url_for('chat_room', room_id=room.id) }}" class="btn">进入</a>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="empty-state">
-                    <p>暂无未读消息的聊天室</p>
-                </div>
-            {% endif %}
-            
-            <h2 class="section-title">未读贴吧分区</h2>
-            
-            {% set unread_sections = [] %}
-            {% for section in accessible_sections %}
-                {% if forum_counts.get(section.id, 0) > 0 %}
-                    {% set _ = unread_sections.append(section) %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <p>暂无未读消息的贴吧分区</p>
+                    </div>
                 {% endif %}
-            {% endfor %}
-            
-            {% if unread_sections %}
-                <div class="rooms-grid">
-                    {% for section in unread_sections %}
-                        {% set unread_count = forum_counts.get(section.id, 0) %}
-                        <div class="room-card">
-                            <div class="room-card-header">
-                                <h3>{{ section.name }}</h3>
-                                <span class="unread-badge" title="未读消息">{{ unread_count }}</span>
-                            </div>
-                            <p class="room-description">{{ section.description or '暂无描述' }}</p>
-                            <div class="room-actions">
-                                <a href="{{ url_for('forum_section', section_id=section.id) }}" class="btn">进入</a>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="empty-state">
-                    <p>暂无未读消息的贴吧分区</p>
-                </div>
-            {% endif %}
+            </div>
         </div>
     </div>
 </div>
 
 
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<style>
+.quote-module {
+    transition: all 0.3s ease;
+}
+
+.quote-module:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.quote-change-hint {
+    position: absolute;
+    bottom: 10px;
+    right: 15px;
+    font-size: 0.8em;
+    color: var(--muted-text-color);
+    font-style: italic;
+    opacity: 0.6;
+}
+
+.quote-module:hover .quote-change-hint {
+    opacity: 1;
+}
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const quoteModule = document.getElementById('quote-module');
+    const quoteText = document.getElementById('quote-text');
+    const quoteAuthor = document.getElementById('quote-author');
+    
+    if (quoteModule) {
+        quoteModule.style.cursor = 'pointer';
+        quoteModule.title = '点击更换名言';
+        
+        quoteModule.addEventListener('click', function() {
+            // 显示加载状态
+            quoteText.textContent = '加载中...';
+            quoteAuthor.textContent = '';
+            
+            // 调用API获取新的名言
+            fetch('/api/random_quote')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const quoteParts = data.quote.split(' - ');
+                        quoteText.textContent = quoteParts[0] || data.quote;
+                        quoteAuthor.textContent = '- ' + (quoteParts[1] || '');
+                    } else {
+                        quoteText.textContent = '获取名言失败';
+                        quoteAuthor.textContent = '';
+                    }
+                })
+                .catch(error => {
+                    console.error('获取随机名言失败:', error);
+                    quoteText.textContent = '网络错误';
+                    quoteAuthor.textContent = '';
+                });
+        });
+    }
+});
+</script>
 {% endblock %}

@@ -1298,6 +1298,32 @@ def get_online_count():
     online_count = db_session.query(User).filter(User.last_seen >= cutoff_time).count()
     
     return jsonify(count=online_count)
+
+
+@app.route('/api/random_quote')
+@login_required
+def get_random_quote():
+    """获取随机名言"""
+    import random
+    try:
+        with open('quotes.json', 'r', encoding='utf-8') as f:
+            quotes_data = json.load(f)
+            quotes = quotes_data.get('quotes', [])
+            # Format the quote as "text - author"
+            formatted_quotes = [f"{quote['text']} - {quote['author']}" for quote in quotes if 'text' in quote and 'author' in quote]
+            if formatted_quotes:
+                selected_quote = random.choice(formatted_quotes)
+                return jsonify(success=True, quote=selected_quote)
+            else:
+                return jsonify(success=False, message="没有找到名言")
+    except FileNotFoundError:
+        # Fallback if JSON file doesn't exist
+        return jsonify(success=False, message="quotes.json文件不存在")
+    except json.JSONDecodeError:
+        # Fallback if JSON is invalid
+        return jsonify(success=False, message="quotes.json文件格式错误")
+
+
 @app.route('/api/chat/<int:room_id>/online_count')
 @login_required
 def get_room_online_count(room_id):
