@@ -1588,8 +1588,8 @@ function showNewMessageNotification() {
         </div>
     `;
 
-    // 添加到消息容器顶部
-    messagesContainer.appendChild(notification);
+    // 添加到消息容器的上方，这样它始终可见
+    messagesContainer.parentNode.insertBefore(notification, messagesContainer);
 
     // 为滚动按钮添加事件监听器
     const scrollBtn = document.getElementById('scroll-to-bottom-btn');
