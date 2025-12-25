@@ -1065,12 +1065,22 @@ function sendMessage() {
                 if (response.data.id) {
                     processedMessageIds.add(response.data.id);
                 }
+                
+                // 在消息成功发送后，自动滚动到底部
+                setTimeout(() => {
+                    scrollToBottom();
+                }, 100);
             } else {
                 console.warn('消息发送响应格式异常:', response);
                 // 如果响应有问题，仍依赖广播机制作为备用
                 // 广播机制会继续尝试匹配和处理
             }
         });
+        
+        // 在发送消息后立即滚动到底部，确保用户能看到自己发送的消息
+        setTimeout(() => {
+            scrollToBottom();
+        }, 50);
     } else {
         // WebSocket不可用，使用AJAX
         fetch('/api/chat/send', {
@@ -1104,6 +1114,11 @@ function sendMessage() {
                     };
 
                     addMessageToUI(sentMessage, true, false);
+                    
+                    // 在消息成功发送后，自动滚动到底部
+                    setTimeout(() => {
+                        scrollToBottom();
+                    }, 50);
                 }
             })
             .catch(error => {
