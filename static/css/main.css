@@ -720,10 +720,10 @@ footer {
   margin-top: var(--spacing-md);
 }
 
-/* 首页双栏布局样式 */
+/* 首页四栏布局样式 */
 .homepage-layout {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: var(--spacing-xl);
   max-width: 1400px;
   margin: 0 auto;
@@ -733,7 +733,7 @@ footer {
 .quote-section {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start; /* 修改为顶部对齐 */
 }
 
 .quote-module {
@@ -746,10 +746,10 @@ footer {
   position: relative;
   box-shadow: var(--shadow-md);
   border: 1px solid var(--neutral-200);
-  min-height: 400px;
+  min-height: 250px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start; /* 修改为顶部对齐 */
   align-items: center;
 }
 
@@ -769,8 +769,71 @@ footer {
   font-weight: 400;
 }
 
+/* Change Log 样式 */
+.changelog-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.changelog-module {
+  background: var(--surface-color);
+  border-radius: var(--border-radius-2xl);
+  padding: var(--spacing-xl);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--neutral-200);
+  height: 100%;
+  overflow: auto;
+  max-height: 500px;
+}
+
+.changelog-title {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  margin-bottom: var(--spacing-md);
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.changelog-content {
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--muted-text-color);
+  overflow-y: auto;
+}
+
+.changelog-item {
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--neutral-100);
+}
+
+.changelog-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.commit-hash {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  color: var(--primary-600);
+  background: var(--primary-50);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  margin-right: var(--spacing-sm);
+}
+
+.commit-date {
+  color: var(--muted-weak);
+  font-size: 0.85em;
+  margin-top: var(--spacing-xs);
+}
+
 .unread-section {
-  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
 }
 
 .unread-container {
@@ -930,11 +993,10 @@ footer {
   .unread-container {
     padding: calc(var(--spacing-xl) * 0.75);
   }
-}
-  border-top: 1px solid var(--neutral-200);
-  text-align: center;
-  font-size: var(--text-sm);
-  color: var(--muted-weak);
+  
+  .changelog-module {
+    max-height: none;
+  }
 }
 
 /* 卡片通用样式 */
