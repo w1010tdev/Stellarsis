@@ -49,6 +49,12 @@
             <button id="btn-optimize-db" class="btn btn">优化数据库</button>
         </div>
         <div class="dashboard-card">
+            <h2>名言管理</h2>
+            <p>管理首页显示的名言内容</p>
+            <button onclick="window.location.replace('{{ url_for('admin_quotes') }}')"
+                class="btn btn-primary">进入名言管理</button>
+        </div>
+        <div class="dashboard-card">
             <h2>图片相关</h2>
             <p class="warning-text">图片重新统计</p>
             <button id="btn-recalc-uploads" class="btn btn">重新统计图片大小</button>

@@ -4012,6 +4012,143 @@ def handle_heartbeat():
     if current_user.is_authenticated:
         current_user.last_seen = datetime.now(timezone.utc)
         db_session.commit()
+
+
+# 管理员：名言管理相关路由
+@app.route('/admin/quotes')
+@login_required
+def admin_quotes():
+    """名言管理页面"""
+    if not current_user.is_admin():
+        abort(403)
+    return render_template('admin/quotes.html')
+
+
+@app.route('/api/admin/quotes', methods=['GET'])
+@login_required
+def api_get_quotes():
+    """获取所有名言"""
+    if not current_user.is_admin():
+        return jsonify(success=False, message="权限不足"), 403
+    
+    try:
+        with open('quotes.json', 'r', encoding='utf-8') as f:
+            quotes_data = json.load(f)
+            quotes = quotes_data.get('quotes', [])
+        return jsonify(success=True, quotes=quotes)
+    except FileNotFoundError:
+        return jsonify(success=False, message="quotes.json文件不存在")
+    except json.JSONDecodeError:
+        return jsonify(success=False, message="quotes.json文件格式错误")
+
+
+@app.route('/api/admin/quotes', methods=['POST'])
+@login_required
+def api_add_quote():
+    """添加名言"""
+    if not current_user.is_admin():
+        return jsonify(success=False, message="权限不足"), 403
+    
+    data = request.get_json()
+    text = data.get('text', '').strip()
+    author = data.get('author', '').strip()
+    
+    if not text or not author:
+        return jsonify(success=False, message="名言内容和作者不能为空")
+    
+    try:
+        # 读取现有名言
+        with open('quotes.json', 'r', encoding='utf-8') as f:
+            quotes_data = json.load(f)
+        
+        # 添加新名言
+        new_quote = {
+            'text': text,
+            'author': author
+        }
+        quotes_data['quotes'].append(new_quote)
+        
+        # 写回文件
+        with open('quotes.json', 'w', encoding='utf-8') as f:
+            json.dump(quotes_data, f, ensure_ascii=False, indent=2)
+        
+        log_admin_action(f"添加名言: {text} - {author}")
+        return jsonify(success=True, message="名言添加成功")
+    except Exception as e:
+        logger.error(f"添加名言失败: {str(e)}")
+        return jsonify(success=False, message=f"添加名言失败: {str(e)}")
+
+
+@app.route('/api/admin/quotes/<int:quote_index>', methods=['PUT'])
+@login_required
+def api_update_quote(quote_index):
+    """更新名言"""
+    if not current_user.is_admin():
+        return jsonify(success=False, message="权限不足"), 403
+    
+    data = request.get_json()
+    text = data.get('text', '').strip()
+    author = data.get('author', '').strip()
+    
+    if not text or not author:
+        return jsonify(success=False, message="名言内容和作者不能为空")
+    
+    try:
+        # 读取现有名言
+        with open('quotes.json', 'r', encoding='utf-8') as f:
+            quotes_data = json.load(f)
+        
+        quotes = quotes_data.get('quotes', [])
+        if quote_index < 0 or quote_index >= len(quotes):
+            return jsonify(success=False, message="名言索引超出范围")
+        
+        # 更新名言
+        old_quote = quotes[quote_index]
+        quotes[quote_index] = {
+            'text': text,
+            'author': author
+        }
+        
+        # 写回文件
+        with open('quotes.json', 'w', encoding='utf-8') as f:
+            json.dump(quotes_data, f, ensure_ascii=False, indent=2)
+        
+        log_admin_action(f"更新名言: {old_quote['text']} -> {text}")
+        return jsonify(success=True, message="名言更新成功")
+    except Exception as e:
+        logger.error(f"更新名言失败: {str(e)}")
+        return jsonify(success=False, message=f"更新名言失败: {str(e)}")
+
+
+@app.route('/api/admin/quotes/<int:quote_index>', methods=['DELETE'])
+@login_required
+def api_delete_quote(quote_index):
+    """删除名言"""
+    if not current_user.is_admin():
+        return jsonify(success=False, message="权限不足"), 403
+    
+    try:
+        # 读取现有名言
+        with open('quotes.json', 'r', encoding='utf-8') as f:
+            quotes_data = json.load(f)
+        
+        quotes = quotes_data.get('quotes', [])
+        if quote_index < 0 or quote_index >= len(quotes):
+            return jsonify(success=False, message="名言索引超出范围")
+        
+        deleted_quote = quotes.pop(quote_index)
+        
+        # 写回文件
+        with open('quotes.json', 'w', encoding='utf-8') as f:
+            json.dump(quotes_data, f, ensure_ascii=False, indent=2)
+        
+        log_admin_action(f"删除名言: {deleted_quote['text']} - {deleted_quote['author']}")
+        return jsonify(success=True, message="名言删除成功")
+    except Exception as e:
+        logger.error(f"删除名言失败: {str(e)}")
+        return jsonify(success=False, message=f"删除名言失败: {str(e)}")
+
+
 # 全局上下文处理器
 @app.context_processor
 def inject_user():
