@@ -754,7 +754,7 @@ footer {
 }
 
 .quote-text {
-  font-size: var(--text-4xl);
+  font-size: var(--text-xl);
   line-height: 1.6;
   color: var(--text-color);
   margin-bottom: var(--spacing-md);

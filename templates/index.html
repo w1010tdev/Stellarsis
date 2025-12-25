@@ -210,11 +210,17 @@ function loadGitHubCommits() {
                 let html = '';
                 commits.slice(0, 10).forEach(commit => { // 只显示最近10个commit
                     const date = new Date(commit.commit.author.date).toLocaleDateString('zh-CN');
+                    // 获取提交信息的第一行
+                    let message = commit.commit.message.split('\n')[0];
+                    // 如果超过20个字符则截断
+                    if (message.length > 20) {
+                        message = message.substring(0, 20) + '...';
+                    }
                     html += `
                         <div class="changelog-item">
                             <div>
                                 <span class="commit-hash">${commit.sha.substring(0, 7)}</span>
-                                <strong>${commit.commit.message.split('\\n')[0]}</strong>
+                                <strong>${message}</strong>
                             </div>
                             <div class="commit-date">${date} by ${commit.commit.author.name}</div>
                         </div>
