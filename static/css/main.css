@@ -739,7 +739,7 @@ footer {
 
 /* 调整名言字体大小 */
 .quote-text {
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   line-height: 1.6;
   color: var(--text-color);
   margin-bottom: var(--spacing-md);
@@ -747,7 +747,7 @@ footer {
 }
 
 .quote-author {
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   color: var(--muted-text-color);
   text-align: right;
   font-style: normal;
@@ -997,7 +997,7 @@ footer {
   }
   
   .quote-text {
-    font-size: calc(var(--text-4xl) * 0.83);
+    font-size: calc(var(--text-xl) * 0.83);
   }
   
   .unread-container {
