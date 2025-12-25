@@ -205,14 +205,24 @@ function loadGitHubCommits() {
     const changelogContent = document.getElementById('changelog-content');
     if (!changelogContent) return;
     
-    // 示例：从GitHub API获取最新的commits
-    // 实际使用时，可以使用GitHub的API：https://api.github.com/repos/w1010tdev/stellarsis/commits
-    fetch('https://api.github.com/repos/w1010tdev/stellarsis/commits')
+    // 使用代理访问GitHub API
+    fetch('https://proxy.wenzixi.top/https://api.github.com/repos/w1010tdev/stellarsis/commits')
         .then(response => response.json())
         .then(commits => {
             if (commits && commits.length > 0) {
                 let html = '';
-                commits.slice(0, 10).forEach(commit => { // 只显示最近10个commit
+                
+                // 过滤掉包含"Delete"和"Update"的.db或.gitignore的提交消息
+                const filteredCommits = commits.filter(commit => {
+                    const message = commit.commit.message.toLowerCase();
+                    // 检查是否包含Delete或Update以及.db或.gitignore
+                    const hasDeleteUpdate = /delete|update/.test(message);
+                    const hasDbOrGitignore = /\.db|\.gitignore/.test(message);
+                    // 如果同时包含Delete/Update和.db/.gitignore，则过滤掉
+                    return !(hasDeleteUpdate && hasDbOrGitignore);
+                });
+                
+                filteredCommits.slice(0, 10).forEach(commit => { // 只显示最近10个commit
                     const date = new Date(commit.commit.author.date).toLocaleDateString('zh-CN');
                     // 获取提交信息的第一行
                     let message = commit.commit.message.split('\n')[0];
