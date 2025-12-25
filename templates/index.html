@@ -15,6 +15,42 @@
             </div>
         </div>
         
+        <!-- Change Log 模块 -->
+        <div class="changelog-section">
+            <div class="changelog-module">
+                <div class="changelog-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+                    </svg>
+                    Change Log
+                </div>
+                <div class="changelog-content" id="changelog-content">
+                    <div class="changelog-item">
+                        <div>
+                            <span class="commit-hash">a1b2c3d</span>
+                            <strong>Initial commit</strong>
+                        </div>
+                        <div class="commit-date">2025-01-01</div>
+                    </div>
+                    <div class="changelog-item">
+                        <div>
+                            <span class="commit-hash">e4f5g6h</span>
+                            <strong>Add new feature</strong>
+                        </div>
+                        <div class="commit-date">2025-01-02</div>
+                    </div>
+                    <div class="changelog-item">
+                        <div>
+                            <span class="commit-hash">i7j8k9l</span>
+                            <strong>Fix bug in main module</strong>
+                        </div>
+                        <div class="commit-date">2025-01-03</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 未读聊天室模块 -->
         <div class="unread-section">
             <div class="unread-container">
                 <h2 class="section-title">未读聊天室</h2>
@@ -47,7 +83,12 @@
                         <p>暂无未读消息的聊天室</p>
                     </div>
                 {% endif %}
-                
+            </div>
+        </div>
+        
+        <!-- 未读贴吧分区模块 -->
+        <div class="unread-section">
+            <div class="unread-container">
                 <h2 class="section-title">未读贴吧分区</h2>
                 
                 {% set unread_sections = [] %}
@@ -148,6 +189,50 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
         });
     }
+    
+    // 加载GitHub commit信息
+    loadGitHubCommits();
 });
+
+// 加载GitHub commit信息的函数
+function loadGitHubCommits() {
+    // 这里可以实现从GitHub API获取commit信息的逻辑
+    // 暂时使用模拟数据，实际部署时可以替换为真实的API调用
+    const changelogContent = document.getElementById('changelog-content');
+    if (!changelogContent) return;
+    
+    // 示例：从GitHub API获取最新的commits
+    // 实际使用时，可以使用GitHub的API：https://api.github.com/repos/w1010tdev/stellarsis/commits
+    fetch('https://api.github.com/repos/w1010tdev/stellarsis/commits')
+        .then(response => response.json())
+        .then(commits => {
+            if (commits && commits.length > 0) {
+                let html = '';
+                commits.slice(0, 10).forEach(commit => { // 只显示最近10个commit
+                    const date = new Date(commit.commit.author.date).toLocaleDateString('zh-CN');
+                    // 获取提交信息的第一行
+                    let message = commit.commit.message.split('\n')[0];
+                    // 如果超过20个字符则截断
+                    if (message.length > 20) {
+                        message = message.substring(0, 20) + '...';
+                    }
+                    html += `
+                        <div class="changelog-item">
+                            <div>
+                                <span class="commit-hash">${commit.sha.substring(0, 7)}</span>
+                                <strong>${message}</strong>
+                            </div>
+                            <div class="commit-date">${date} by ${commit.commit.author.name}</div>
+                        </div>
+                    `;
+                });
+                changelogContent.innerHTML = html;
+            }
+        })
+        .catch(error => {
+            console.error('获取GitHub commits失败:', error);
+            // 保持默认的示例内容
+        });
+}
 </script>
 {% endblock %}
