@@ -27,6 +27,7 @@ Stellarsis is a feature-rich real-time chat and forum system that combines chat 
 4. **Markdown和LaTeX支持 (Markdown and LaTeX Support)**
    - 聊天消息和论坛帖子支持Markdown格式
    - 支持LaTeX数学公式渲染
+   - 代码块语法高亮显示
 
 5. **多房间聊天系统 (Multi-Room Chat System)**
    - 支持多个独立的聊天室
@@ -37,9 +38,52 @@ Stellarsis is a feature-rich real-time chat and forum system that combines chat 
    - 提供大量的样式可供选择
    - 可以通过命令或者设置修改
 
-7. **命令面板 (Command Plaette)**
+7. **命令面板 (Command Palette)**
    - 通过命令快捷操作
    - 良好的兼容性
+   - 支持命令补全和帮助系统
+
+8. **实时通信与降级支持**
+   - 基于Flask-SocketIO的WebSocket实时通信
+   - 支持轮询降级以确保在各种网络环境下正常工作
+
+9. **图片上传与管理**
+   - 用户可上传多种格式图片（PNG, JPG, JPEG, GIF, WebP）
+   - 支持配额管理，防止过度占用存储空间
+   - 提供图片管理界面
+   - 支持图片预览和Markdown链接复制
+
+10. **内容审核与防刷机制**
+    - 验证码系统防止机器人刷屏
+    - 消息发送频率限制
+    - 消息内容验证机制
+
+11. **智能消息处理**
+    - 消息防重复机制
+    - 消息哈希验证确保完整性
+    - 消息队列处理机制
+    - 消息渲染重试机制
+    - 消息内容验证（如验证引用消息是否在当前聊天室中存在）
+
+12. **用户体验优化**
+    - 智能滚动行为处理
+    - 消息状态追踪（发送、接收、确认）
+    - 安全HTML转义防止XSS攻击
+    - 多重实体解码处理历史数据
+    - 响应式设计适配不同设备
+
+13. **交互功能**
+    - Toast通知系统
+    - 自动文本框高度调整
+    - 可复用的确认和输入模态框
+    - 心跳雨动画效果
+    - 消息编辑和撤回功能
+
+14. **系统功能**
+    - 实时搜索功能
+    - 主题切换API
+    - 渲染系统降级方案
+    - 用户搜索和关注功能
 
 ### 基础功能 / Basic Features
 
@@ -47,29 +91,44 @@ Stellarsis is a feature-rich real-time chat and forum system that combines chat 
    - 用户注册/登录
    - 密码修改
    - 个人资料管理
+   - 个性化设置（昵称、颜色、徽章等）
+   - 在线用户列表
+   - 消息编辑功能
+   - 消息撤回功能
+   - 心跳动画效果
+   - 命令面板功能
+   - 用户关注功能
+   - 上传配额管理
+   - 图片预览功能
 
 2. **论坛系统 (Forum System)**
    - 创建/删除分区
    - 发布/回复帖子
    - 帖子管理
+   - 分区权限控制
 
 3. **聊天功能 (Chat Functions)**
    - 实时消息发送
-   - 消息历史记录
+   - 消息历史记录与分页加载
    - 用户昵称和颜色设置
+   - 消息引用功能
 
 4. **管理后台 (Admin Panel)**
    - 用户管理
    - 房间管理
    - 内容管理
+   - 数据库管理
+   - 文件管理
+   - 系统监控
 
 ## 技术栈 / Tech Stack
 
-- **后端**: Python Flask
-- **实时通信**: Flask-SocketIO
-- **数据库**: SQLite
+- **后端**: Python Flask 3.1.2
+- **实时通信**: Flask-SocketIO 5.5.1, eventlet 0.40.3
+- **数据库**: SQLAlchemy 3.1.1, SQLite
 - **前端**: HTML/CSS/JavaScript
 - **实时消息**: WebSocket (降级到轮询)
+- **其他依赖**: Flask-Login, Flask-WTF, Flask-CORS, python-dotenv, Werkzeug, psutil, Pillow
 
 ## 管理与维护 / Admin & Maintenance
 
@@ -116,6 +175,7 @@ MIT License
 - `UPLOAD_FOLDER`：文件保存目录，默认 `static/uploads`。
 - `ALLOWED_IMAGE_EXTENSIONS`：允许的图片扩展名列表，默认 `{'png', 'jpg', 'jpeg', 'gif', 'webp'}`。
 - `IMAGE_MAX_SIZE`：单张图片最大大小（字节），默认值为 5MB。
+- `USER_UPLOAD_QUOTA`：每个用户默认上传配额 50MB。
 
 前端上传接口： `POST /api/upload/image`（multipart/form-data, 字段 `file`），返回 JSON 包含 `url` 和 `markdown` 字段，便于复制与插入。
 
