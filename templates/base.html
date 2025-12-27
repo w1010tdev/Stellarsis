@@ -115,6 +115,10 @@
         </div>
     </footer>
     {% block scripts %}
+    <script>
+        // 前端可读的配置：上传是否为文件模式
+        window.ENABLE_FILE_UPLOADS = {{ app_info.config.ENABLE_FILE_UPLOADS|tojson }};
+    </script>
     <script src="{{ url_for('static', filename='js/theme-switcher.js') }}"></script>
     <script src="{{ url_for('static', filename='js/command-palette.js') }}"></script>
     <script src="{{ url_for('static', filename='js/ui.js') }}"></script>

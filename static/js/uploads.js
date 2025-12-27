@@ -154,14 +154,15 @@ document.addEventListener('DOMContentLoaded', function () {
                         delBtn.className = 'btn btn-sm btn-danger image-upload-delete';
                         delBtn.textContent = '删除';
                         delBtn.addEventListener('click', function () {
-                            showConfirm('确认删除图片？此操作不可恢复。', { title: '删除图片', danger: true }).then(function (ok) {
+                            var isFileMode = !!window.ENABLE_FILE_UPLOADS;
+                            showConfirm((isFileMode ? '确认删除文件？此操作不可恢复。' : '确认删除图片？此操作不可恢复。'), { title: (isFileMode ? '删除文件' : '删除图片'), danger: true }).then(function (ok) {
                                 if (!ok) return;
                                 fetch('/api/upload/image/' + (data.id || data.image_id || 0), { method: 'DELETE', credentials: 'same-origin' })
                                     .then(function (r) { return r.json(); })
                                     .then(function (res) {
                                         if (res && res.success) {
                                             container.parentNode && container.parentNode.removeChild(container);
-                                            showToast('success', '图片已删除');
+                                            showToast('success', isFileMode ? '文件已删除' : '图片已删除');
                                             
                                             // 触发上传完成事件以更新配额信息
                                             document.dispatchEvent(new CustomEvent('uploadComplete', { detail: data }));
@@ -186,7 +187,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         var md = data.markdown || data.url;
                         el.value = before + '\n' + md + '\n' + after;
                         el.dispatchEvent(new Event('input'));
-                        showToast('success', '图片已插入到编辑器');
+                        var isFileMode = !!window.ENABLE_FILE_UPLOADS;
+                        showToast('success', isFileMode ? '文件已插入到编辑器' : '图片已插入到编辑器');
                         if (autoSend) {
                             // If it is a forum form, submit it; otherwise try to click send button
                             var form = el.closest('form');
@@ -202,7 +204,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         // 触发上传完成事件以更新配额信息
                         document.dispatchEvent(new CustomEvent('uploadComplete', { detail: data }));
                     }
-                    showToast('success', '图片上传成功');
+                    var isFileMode = !!window.ENABLE_FILE_UPLOADS;
+                    showToast('success', isFileMode ? '文件上传成功' : '图片上传成功');
                 } else {
                     showToast('danger', data && data.message ? data.message : '上传失败');
                 }
@@ -264,14 +267,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     delBtn.className = 'btn btn-sm btn-danger image-upload-delete';
                     delBtn.textContent = '删除';
                     delBtn.addEventListener('click', function () {
-                        showConfirm('确认删除图片？此操作不可恢复。', { title: '删除图片', danger: true }).then(function (ok) {
+                        var isFileMode = !!window.ENABLE_FILE_UPLOADS;
+                        showConfirm((isFileMode ? '确认删除文件？此操作不可恢复。' : '确认删除图片？此操作不可恢复。'), { title: (isFileMode ? '删除文件' : '删除图片'), danger: true }).then(function (ok) {
                             if (!ok) return;
                             fetch('/api/upload/image/' + item.id, { method: 'DELETE', credentials: 'same-origin' })
                                 .then(function (r) { return r.json(); })
                                 .then(function (res) {
                                     if (res && res.success) {
                                         container.parentNode && container.parentNode.removeChild(container);
-                                        showToast('success', '图片已删除');
+                                        showToast('success', isFileMode ? '文件已删除' : '图片已删除');
                                         
                                         // 触发上传完成事件以更新配额信息
                                         document.dispatchEvent(new CustomEvent('uploadComplete', { detail: item }));

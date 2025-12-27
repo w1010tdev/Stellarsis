@@ -49,9 +49,9 @@
             <button id="btn-optimize-db" class="btn btn">优化数据库</button>
         </div>
         <div class="dashboard-card">
-            <h2>图片相关</h2>
-            <p class="warning-text">图片重新统计</p>
-            <button id="btn-recalc-uploads" class="btn btn">重新统计图片大小</button>
+            <h2>{% if app_info.config.ENABLE_FILE_UPLOADS %}文件相关{% else %}图片相关{% endif %}</h2>
+            <p class="warning-text">{% if app_info.config.ENABLE_FILE_UPLOADS %}文件重新统计{% else %}图片重新统计{% endif %}</p>
+            <button id="btn-recalc-uploads" class="btn btn">{% if app_info.config.ENABLE_FILE_UPLOADS %}重新统计文件大小{% else %}重新统计图片大小{% endif %}</button>
             <button id="btn-recount-files" class="btn btn">重新按文件统计大小</button>
         </div>
         <div class="dashboard-card">
@@ -194,7 +194,8 @@
 
     var btnRecalc = document.getElementById('btn-recalc-uploads');
     if (btnRecalc) btnRecalc.addEventListener('click', async function () {
-        const ok = await showConfirm('是否重新统计所有用户的上传图片大小？此操作仅统计并返回JSON。', { title: '重新统计图片大小' });
+        const what = '{{ '文件' if app_info.config.ENABLE_FILE_UPLOADS else '图片' }}';
+        const ok = await showConfirm(`是否重新统计所有用户的上传${what}大小？此操作仅统计并返回JSON。`, { title: `重新统计${what}大小` });
         if (!ok) return;
         fetch('/api/admin/recalculate-upload-sizes', { method: 'POST' })
             .then(res => res.json())
@@ -224,7 +225,8 @@
 
     var btnDownloadImages = document.getElementById('btn-download-images');
     if (btnDownloadImages) btnDownloadImages.addEventListener('click', async function () {
-        const ok = await showConfirm('将创建一个静态图片压缩包并下载，可能会占用较多磁盘空间。是否继续？', { title: '下载静态图片压缩包' });
+        const what2 = '{{ '文件' if app_info.config.ENABLE_FILE_UPLOADS else '图片' }}';
+        const ok = await showConfirm(`将创建一个静态${what2}压缩包并下载，可能会占用较多磁盘空间。是否继续？`, { title: `下载静态${what2}压缩包` });
         if (!ok) return;
         // Start download by navigating to the admin route; this is a GET that returns a zip
         window.location.href = '/admin/download-images-zip';

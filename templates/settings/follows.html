@@ -8,7 +8,7 @@
         <h3>设置</h3>
         <a href="{{ url_for('settings_index') }}">总览</a>
         <a href="{{ url_for('profile') }}">修改个人资料</a>
-        <a href="{{ url_for('settings_images') }}">我的图片</a>
+        <a href="{{ url_for('settings_images') }}">{% if app_info.config.ENABLE_FILE_UPLOADS %}我的文件{% else %}我的图片{% endif %}</a>
         <a href="{{ url_for('change_password') }}">修改密码</a>
         <a href="{{ url_for('settings_follows') }}" class="active">关注管理</a>
         <a href="{{ url_for('logout') }}" style="color:var(--danger-color);">退出登录</a>

@@ -9,7 +9,7 @@
         <h3>设置</h3>
         <a href="{{ url_for('settings_index') }}">总览</a>
         <a href="{{ url_for('profile') }}" class="active">修改个人资料</a>
-            <a href="{{ url_for('settings_images') }}">我的图片</a>
+            <a href="{{ url_for('settings_images') }}">{% if app_info.config.ENABLE_FILE_UPLOADS %}我的文件{% else %}我的图片{% endif %}</a>
         <a href="{{ url_for('change_password') }}">修改密码</a>
         <a href="{{ url_for('settings_follows') }}">关注管理</a>
         <a href="{{ url_for('logout') }}" style="color:var(--danger-color);">退出登录</a>
@@ -63,12 +63,12 @@
                 </div>
             </form>
             <div style="margin-top:18px;">
-                <h3>上传图片（仅支持图片）</h3>
+                <h3>{% if app_info.config.ENABLE_FILE_UPLOADS %}上传文件（支持多种文件类型）{% else %}上传图片（仅支持图片）{% endif %}</h3>
                 <div class="form-group">
-                    <input id="profile-image-input" type="file" accept="image/*" class="form-control" style="display:none;" />
+                    <input id="profile-image-input" type="file" accept="{% if app_info.config.ENABLE_FILE_UPLOADS %}*/*{% else %}image/*{% endif %}" class="form-control" style="display:none;" />
                     <div style="display:flex;gap:8px;align-items:center;">
-                        <button id="profile-upload-btn" class="btn btn-primary">上传图片</button>
-                        <button id="profile-open-list" class="btn btn-outline">我的图片</button>
+                        <button id="profile-upload-btn" class="btn btn-primary">{% if app_info.config.ENABLE_FILE_UPLOADS %}上传文件{% else %}上传图片{% endif %}</button>
+                        <button id="profile-open-list" class="btn btn-outline">{% if app_info.config.ENABLE_FILE_UPLOADS %}我的文件{% else %}我的图片{% endif %}</button>
                     </div>
                     <div id="profile-image-preview" style="margin-top:8px"></div>
                 </div>

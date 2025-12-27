@@ -8,14 +8,14 @@
         <h3>设置</h3>
         <a href="{{ url_for('settings_index') }}">总览</a>
         <a href="{{ url_for('profile') }}">修改个人资料</a>
-        <a href="{{ url_for('settings_images') }}" class="active">我的图片</a>
+        <a href="{{ url_for('settings_images') }}" class="active">{% if app_info.config.ENABLE_FILE_UPLOADS %}我的文件{% else %}我的图片{% endif %}</a>
         <a href="{{ url_for('change_password') }}">修改密码</a>
         <a href="{{ url_for('settings_follows') }}">关注管理</a>
         <a href="{{ url_for('logout') }}" style="color:var(--danger-color);">退出登录</a>
     </aside>
     <section class="settings-main">
         <div class="settings-card">
-            <h2>我的图片</h2>
+            <h2>{% if app_info.config.ENABLE_FILE_UPLOADS %}我的文件{% else %}我的图片{% endif %}</h2>
             <div id="quota-info" style="margin-bottom: 16px; padding: 12px; border-radius: 8px; background-color: var(--neutral-50); border: 1px solid var(--neutral-200);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                     <span>图片配额：</span>
@@ -25,10 +25,10 @@
                     <div id="quota-bar" style="height: 100%; width: 0%; background-color: var(--primary-500); transition: width 0.3s;"></div>
                 </div>
             </div>
-            <p>此处列出您已上传的图片，您可以复制 Markdown 链接、插入到编辑器或删除图片。</p>
+            <p>{% if app_info.config.ENABLE_FILE_UPLOADS %}此处列出您已上传的文件，您可以复制 Markdown 链接、插入到编辑器或删除文件。{% else %}此处列出您已上传的图片，您可以复制 Markdown 链接、插入到编辑器或删除图片。{% endif %}</p>
             <div style="display:flex;gap:12px;align-items:center;margin-top:12px;">
-                <button id="images-upload-btn" class="btn btn-primary">上传图片</button>
-                <input id="settings-images-input" type="file" accept="image/*" style="display:none;" />
+                <button id="images-upload-btn" class="btn btn-primary">{% if app_info.config.ENABLE_FILE_UPLOADS %}上传文件{% else %}上传图片{% endif %}</button>
+                <input id="settings-images-input" type="file" accept="{% if app_info.config.ENABLE_FILE_UPLOADS %}*/*{% else %}image/*{% endif %}" style="display:none;" />
             </div>
             <div id="settings-images-list" style="margin-top:16px"></div>
         </div>

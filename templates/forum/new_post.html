@@ -28,10 +28,10 @@
             </div>
         </div>
             <div class="form-group">
-                <label for="post-image-input">上传图片 (可插入 Markdown)</label>
-                <input id="post-image-input" type="file" accept="image/*" class="form-control" style="display:none;" {% if not can_post %}disabled{% endif %} />
+                <label for="post-image-input">{% if app_info.config.ENABLE_FILE_UPLOADS %}上传文件 (可插入 Markdown){% else %}上传图片 (可插入 Markdown){% endif %}</label>
+                <input id="post-image-input" type="file" accept="{% if app_info.config.ENABLE_FILE_UPLOADS %}*/*{% else %}image/*{% endif %}" class="form-control" style="display:none;" {% if not can_post %}disabled{% endif %} />
                 <div style="display:flex;gap:8px;align-items:center;">
-                    <button id="post-upload-btn" class="btn btn-primary" {% if not can_post %}disabled{% endif %}>上传图片</button>
+                    <button id="post-upload-btn" class="btn btn-primary" {% if not can_post %}disabled{% endif %}>{% if app_info.config.ENABLE_FILE_UPLOADS %}上传文件{% else %}上传图片{% endif %}</button>
                 </div>
                 <div id="post-image-preview" style="margin-top:8px"></div>
                 <div id="post-image-list" style="margin-top:12px"></div>
