@@ -498,169 +498,98 @@ class ProfileForm(FlaskForm):
     submit = SubmitField('保存设置')
 
 # 全局工具函数
-def sanitize_content(content):
+
+def sanitize_content(content, room_id=None):
     """
-    完全移除HTML标签，但保留代码块、LaTeX公式等内容
+    移除HTML标签，保留代码块、LaTeX、@quote等内容。
+    room_id: 若提供则校验@quote引用的消息是否在该房间内。
     """
-    # 1. 空值/非字符串处理
     if not content:
         return ""
-    # 确保输入为字符串类型
     if not isinstance(content, str):
         try:
             content = str(content)
         except Exception:
             return ""
-
-    # 2. 解码HTML实体
     try:
         content = html.unescape(content)
     except Exception:
         pass
 
-    # 3. 临时保护代码块和特殊语法
     temp_placeholders = {}
+
+    # 表达式树解析代码块（支持```和`嵌套，优先多行）
+    def parse_code_blocks(text):
+        result = []
+        i = 0
+        n = len(text)
+        buf = []
+        while i < n:
+            if text[i:i+3] == '```':
+                # 多行代码块
+                end = text.find('```', i+3)
+                if end == -1:
+                    buf.append(text[i:])
+                    break
+                key = f"__CODEBLOCK_{len(temp_placeholders)}__"
+                temp_placeholders[key] = text[i:end+3]
+                buf.append(key)
+                i = end + 3
+            elif text[i] == '`':
+                # 行内代码
+                j = i+1
+                while j < n and text[j] != '`':
+                    j += 1
+                if j < n:
+                    key = f"__INLINECODE_{len(temp_placeholders)}__"
+                    temp_placeholders[key] = text[i:j+1]
+                    buf.append(key)
+                    i = j+1
+                else:
+                    buf.append(text[i:])
+                    break
+            else:
+                buf.append(text[i])
+                i += 1
+        return ''.join(buf)
+    # 读取所有HTML标签（静态列表，实际部署可直接硬编码）
+    html_tags = [
+        'a','abbr','acronym','address','applet','area','article','aside','audio','b','base','basefont','bdi','bdo','big','blockquote','body','br','button','canvas','caption','center','cite','code','col','colgroup','data','datalist','dd','del','details','dfn','dialog','dir','div','dl','dt','em','embed','fieldset','figcaption','figure','font','footer','form','frame','frameset','h1','h2','h3','h4','h5','h6','head','header','hgroup','hr','html','i','iframe','img','input','ins','kbd','label','legend','li','link','main','map','mark','menu','meta','meter','nav','noframes','noscript','object','ol','optgroup','option','output','p','param','picture','pre','progress','q','rp','rt','ruby','s','samp','script','search','section','select','small','source','span','strike','strong','style','sub','summary','sup','svg','table','tbody','td','template','textarea','tfoot','th','thead','time','title','tr','track','tt','u','ul','var','video','wbr','!DOCTYPE'
+    ]
+    # 构造严格的正则，移除所有这些标签（包括自闭合、带属性、大小写、h1-h6等）
+    tag_regex = r'</?(' + '|'.join(html_tags) + r')(\s+[^>]*?|)\s*/?>'
+    content = re.sub(tag_regex, '', content, flags=re.IGNORECASE)
     
-    # 首先保护代码块（包括多行代码块和行内代码）
-    # 保护多行代码块：```code```
-    code_block_pattern = r'```[\s\S]*?```'
-    
-    def replace_code_block(match):
-        key = f"__CODEBLOCK_{len(temp_placeholders)}__"
-        temp_placeholders[key] = match.group(0)
-        return key
-    
-    content = re.sub(code_block_pattern, replace_code_block, content, flags=re.MULTILINE)
-    
-    # 保护行内代码：`code`
-    inline_code_pattern = r'`[^`]*`'
-    
-    def replace_inline_code(match):
-        key = f"__INLINECODE_{len(temp_placeholders)}__"
-        temp_placeholders[key] = match.group(0)
-        return key
-    
-    content = re.sub(inline_code_pattern, replace_inline_code, content, flags=re.MULTILINE)
-    
-    # 保存LaTeX表达式：$...$, $$...$$, \(...\), \[...\]
+    content = parse_code_blocks(content)
+
+    # LaTeX表达式保护
     latex_pattern = r'\$[^\$]*?\$|\$\$[^\$]*?\$\$|\\\(.*?\\\)|\\\[.*?\\\]'
-    
     def replace_latex(match):
         key = f"__LATEX_{len(temp_placeholders)}__"
         temp_placeholders[key] = match.group(0)
         return key
-    
     content = re.sub(latex_pattern, replace_latex, content, flags=re.MULTILINE)
 
-    # 保存@quote引用
-    quote_pattern = r'@quote\{\d+\}'
-    
+    # @quote引用保护/校验
+    quote_pattern = r'@quote\{(\d+)\}'
     def replace_quote(match):
+        quote_id = int(match.group(1))
+        if room_id is not None:
+            quoted_message = db_session.query(ChatMessage).filter_by(id=quote_id, room_id=room_id).first()
+            if not quoted_message:
+                return ''
         key = f"__QUOTE_{len(temp_placeholders)}__"
         temp_placeholders[key] = match.group(0)
         return key
-    
     content = re.sub(quote_pattern, replace_quote, content, flags=re.MULTILINE)
 
-    # 4. 移除所有HTML标签（<tag>或<tag/>或</tag>形式）
-    # 这将移除所有类似 <div>, </div>, <p>, <span style="..."> 等标签
-    html_tag_pattern = r'</?[^>]+>'
-    content = re.sub(html_tag_pattern, '', content)
-    
-    # 5. 转义其他HTML特殊字符（如 & < > " '）
     content = html.escape(content, quote=True)
-
-    # 6. 恢复之前保存的安全内容
     for key, original in temp_placeholders.items():
         content = content.replace(key, original)
-
     return content
 
-def sanitize_content_with_quote_validation(content, room_id):
-    """
-    验证并处理@quote引用的函数，确保引用的消息存在且在当前聊天室内
-    """
-    # 1. 空值/非字符串处理
-    if not content:
-        return ""
-    # 确保输入为字符串类型
-    if not isinstance(content, str):
-        try:
-            content = str(content)
-        except Exception:
-            return ""
 
-    # 2. 解码HTML实体
-    try:
-        content = html.unescape(content)
-    except Exception:
-        pass
-
-    # 3. 临时保护代码块和特殊语法
-    temp_placeholders = {}
-
-    # 首先保护代码块（包括多行代码块和行内代码）
-    # 保护多行代码块：```code```
-    code_block_pattern = r'```[\s\S]*?```'
-
-    def replace_code_block(match):
-        key = f"__CODEBLOCK_{len(temp_placeholders)}__"
-        temp_placeholders[key] = match.group(0)
-        return key
-
-    content = re.sub(code_block_pattern, replace_code_block, content, flags=re.MULTILINE)
-
-    # 保护行内代码：`code`
-    inline_code_pattern = r'`[^`]*`'
-
-    def replace_inline_code(match):
-        key = f"__INLINECODE_{len(temp_placeholders)}__"
-        temp_placeholders[key] = match.group(0)
-        return key
-
-    content = re.sub(inline_code_pattern, replace_inline_code, content, flags=re.MULTILINE)
-
-    # 保存LaTeX表达式：$...$, $$...$$, \(...\), \[...\]
-    latex_pattern = r'\$[^\$]*?\$|\$\$[^\$]*?\$\$|\\\(.*?\\\)|\\\[.*?\\\]'
-
-    def replace_latex(match):
-        key = f"__LATEX_{len(temp_placeholders)}__"
-        temp_placeholders[key] = match.group(0)
-        return key
-
-    content = re.sub(latex_pattern, replace_latex, content, flags=re.MULTILINE)
-
-    # 处理@quote引用，验证引用的消息是否存在且在当前聊天室内
-    quote_pattern = r'@quote\{(\d+)\}'
-
-    def replace_quote(match):
-        quote_id = int(match.group(1))
-        # 验证引用的消息是否存在且在当前聊天室内
-        quoted_message = db_session.query(ChatMessage).filter_by(id=quote_id, room_id=room_id).first()
-        if quoted_message:
-            # 消息存在且在同一聊天室内，保留引用
-            key = f"__QUOTE_{len(temp_placeholders)}__"
-            temp_placeholders[key] = match.group(0)
-            return key
-        else:
-            # 消息不存在或不在同一聊天室内，替换为空字符串
-            return ''
-
-    content = re.sub(quote_pattern, replace_quote, content, flags=re.MULTILINE)
-
-    # 4. 移除所有HTML标签（<tag>或<tag/>或</tag>形式）
-    # 这将移除所有类似 <div>, </div>, <p>, <span style="..."> 等标签
-    html_tag_pattern = r'</?[^>]+>'
-    content = re.sub(html_tag_pattern, '', content)
-
-    # 5. 转义其他HTML特殊字符（如 & < > " '）
-    content = html.escape(content, quote=True)
-
-    # 6. 恢复之前保存的安全内容
-    for key, original in temp_placeholders.items():
-        content = content.replace(key, original)
-
-    return content
+# 已合并到sanitize_content
 
 def update_room_online_count(room_id):
     """更新特定房间的在线人数"""
@@ -1093,7 +1022,7 @@ def send_chat_message():
             if invalid_quote_ids:
                 return jsonify(success=False, message="不能引用不存在的消息"), 400
         
-        message = sanitize_content_with_quote_validation(message, room_id)
+        message = sanitize_content(message, room_id)
     except Exception:
         pass
     # 保存到数据库
@@ -3648,7 +3577,7 @@ def handle_message(data):
             return
     
     # XSS基础防护
-    content = sanitize_content_with_quote_validation(content, room_id)
+    content = sanitize_content(content, room_id)
     # 检查发送速度：如果两次发送间隔小于725ms，则触发验证码流程
     now_ts = time.time()
     with captcha_lock:
