@@ -12,7 +12,7 @@
   --neutral-600: #9f7e4e !important;
   --neutral-700: #7b5b38 !important;
   --neutral-800: #5a3f28 !important;
-  --neutral-900: #073642 !important;
+  --neutral-900: #164e57 !important;
   /* primary (amber) */
   --primary-50: #fff9e6 !important;
   --primary-100: #fff2cc !important;
@@ -23,12 +23,13 @@
   --primary-600: #b58900 !important;
   --primary-700: #9a6f00 !important;
   --primary-800: #7d5500 !important;
-  --primary-900: #5f3f00 !important;
-  --primary-color: var(--primary-600);
-  --background-image: linear-gradient(135deg,#fff8e6 0%,#f6ecd0 100%);
-  --header-bg: linear-gradient(135deg, rgba(255,248,230,0.95), rgba(246,236,208,0.98)) !important;
-  --header-border-color: rgba(230,220,200,0.4);
-  --site-logo-text-gradient: linear-gradient(135deg, var(--primary-color), var(--accent-start));
+    /* Soften dark primary shades to be closer to primary-400 */
+    --primary-600: #f0ad34 !important;
+    --primary-700: #e9992e !important;
+    --primary-800: #e28628 !important;
+    --primary-900: #db7422 !important;
+    /* Use the lighter primary-400 for main accents/gradients to reduce harsh contrast */
+    --primary-color: var(--primary-400);
   --site-logo-icon-bg: linear-gradient(135deg, var(--primary-color), var(--accent-end));
   --nav-underline-gradient: linear-gradient(90deg, var(--primary-color), var(--accent-start));
   --settings-sidebar-bg: linear-gradient(180deg, rgba(255,248,230,0.95), rgba(250,244,230,0.9));
@@ -46,7 +47,7 @@
   --input-text-color: var(--text-color);
   --chat-username-bg: var(--primary-100);
   --profile-title-color: var(--primary-700);
-  --danger-700: var(--danger-500);
+  --danger-700: var(--danger-500) !important;
   --success-50: var(--accent-teal-50);
   --success-100: var(--accent-teal-100);
   --success-200: var(--accent-teal-200);
@@ -54,9 +55,9 @@
   --success-400: var(--accent-teal-400);
   --success-500: var(--accent-teal-500);
   --success-600: var(--accent-teal-600);
-  --success-700: var(--accent-teal-700);
-  --success-800: var(--accent-teal-800);
-  --success-900: var(--accent-teal-900);
+  --success-700: var(--accent-teal-700) !important;
+  --success-800: var(--accent-teal-800) !important;
+  --success-900: var(--accent-teal-900) !important;
   /* accent-teal scale */
   --accent-teal-50: #ecfdf5;
   --accent-teal-100: #d1fae5;
@@ -65,9 +66,9 @@
   --accent-teal-400: #34d399;
   --accent-teal-500: #10b981;
   --accent-teal-600: #059669;
-  --accent-teal-700: #047857;
-  --accent-teal-800: #065f46;
-  --accent-teal-900: #064e3b;
+  --accent-teal-700: #047857 !important;
+  --accent-teal-800: #065f46 !important;
+  --accent-teal-900: #064e3b !important;
 }
 body {
   background-image: var(--background-image) !important;
@@ -99,7 +100,7 @@ body {
   --accent-teal-400: #34d399;
   --accent-teal-500: #10b981;
   --accent-teal-600: #059669;
-  --accent-teal-700: #047857;
-  --accent-teal-800: #065f46;
-  --accent-teal-900: #064e3b;
+  --accent-teal-700: #047857 !important;
+  --accent-teal-800: #065f46 !important;
+  --accent-teal-900: #064e3b !important;
 }

@@ -930,6 +930,8 @@ footer {
   text-transform: uppercase;
   color: var(--on-primary);
   gap: var(--spacing-xs);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.06), inset 0 -1px 0 rgba(255,255,255,0.03);
+  text-shadow: 0 1px 0 rgba(0,0,0,0.08);
 }
 
 .perm-badge::before {
@@ -1007,6 +1009,37 @@ footer {
   text-align: center;
   margin-left: 8px;
   padding: 0 4px;
+}
+
+/* message badge tweaks */
+.message-badge {
+  color: var(--on-primary);
+  border-radius: 10px;
+  padding-left: 8px;
+  padding-right: 8px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.06);
+}
+
+/* merge badge for duplicate/merged messages */
+.message-merge-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--primary-600), var(--primary-400));
+  color: var(--on-primary);
+  font-weight: 700;
+  margin-left: 8px;
+  box-shadow: 0 4px 10px rgba(15,23,42,0.06);
+  transform-origin: center;
+  animation: mergeBadgePop 0.35s ease;
+}
+@keyframes mergeBadgePop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 /* 模态框通用样式 */

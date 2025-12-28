@@ -118,3 +118,19 @@ MIT License
 前端上传接口： `POST /api/upload/image`（multipart/form-data, 字段 `file`），返回 JSON 包含 `url` 和 `markdown` 字段，便于复制与插入。
 
 注意：为支持内存受限的部署（例如 2GB 内存）且用户可能上传非常大的图片集合，服务端已实现流式写入：上传文件直接保存到磁盘后再做文件头检测与入库，避免将整个文件读入内存。
+
+## 可上传任意文件（可选）
+项目新增配置 `ENABLE_FILE_UPLOADS`（在 `config.py` 中或通过环境变量 `ENABLE_FILE_UPLOADS` 设置为 `1`/`true`/`yes` 启用），开启后：
+
+- 前端与界面中的“上传图片/我的图片”将显示为“上传文件/我的文件”。
+- 服务端 `/api/upload/image` 接口在非图片文件时会根据扩展名和 `ALLOWED_FILE_EXTENSIONS` 校验并保存；返回的 `markdown` 字段会根据文件类型自动生成图片 `![]()` 或普通文件 `[]()` 的 Markdown 语法。
+- 在 `config.py` 中可以配置 `ALLOWED_FILE_EXTENSIONS`（默认包含常见文档、压缩包和媒体格式）。
+
+示例：在开发环境启用文件上传并本地运行
+```bash
+# 在 Windows PowerShell 中：
+$env:ENABLE_FILE_UPLOADS = 'true'
+python app.py
+```
+
+开发模式下程序会默认监听 `127.0.0.1:5000`（无需管理员权限）。生产部署时可通过 `HOST`/`PORT` 环境变量或反向代理配置端口。

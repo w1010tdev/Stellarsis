@@ -13,25 +13,25 @@
             <h2>用户管理</h2>
             <p>管理平台用户，包括创建、删除和修改用户权限</p>
             <button onclick="window.location.replace('{{ url_for('user_management') }}')"
-                class="btn btn-primary">进入用户管理</a>
+                class="btn btn-primary">进入用户管理</button>
         </div>
         <div class="dashboard-card">
             <h2>聊天管理</h2>
             <p>管理聊天室和聊天消息</p>
             <button onclick="window.location.replace('{{ url_for('chat_management') }}')"
-                class="btn btn-primary">进入聊天管理</a>
+                class="btn btn-primary">进入聊天管理</button>
         </div>
         <div class="dashboard-card">
             <h2>帖子管理</h2>
             <p>管理贴吧分区和帖子内容</p>
-            <button onclick="window.location.replace(' {{ url_for('forum_management') }}')"
-                class="btn btn-primary">进入帖子管理</a>
+            <button onclick="window.location.replace('{{ url_for('forum_management') }}')"
+                class="btn btn-primary">进入帖子管理</button>
         </div>
         <div class="dashboard-card">
             <h2>文件管理</h2>
             <p class="warning-text">警告：仅用于开发环境</p>
-            <button onclick="window.location.replace(' {{ url_for('file_manager_view') }}')"
-                class="btn btn-primary">进入文件管理</a>
+            <button onclick="window.location.replace('{{ url_for('file_manager_view') }}')"
+                class="btn btn-primary">进入文件管理</button>
         </div>
         <div class="dashboard-card">
             <h2>系统信息与管理</h2>
@@ -49,6 +49,12 @@
             <button id="btn-optimize-db" class="btn btn">优化数据库</button>
         </div>
         <div class="dashboard-card">
+            <h2>名言管理</h2>
+            <p>管理首页显示的名言内容</p>
+            <button onclick="window.location.replace('{{ url_for('admin_quotes') }}')"
+                class="btn btn-primary">进入名言管理</button>
+        </div>
+        <div class="dashboard-card">
             <h2>{% if app_info.config.ENABLE_FILE_UPLOADS %}文件相关{% else %}图片相关{% endif %}</h2>
             <p class="warning-text">{% if app_info.config.ENABLE_FILE_UPLOADS %}文件重新统计{% else %}图片重新统计{% endif %}</p>
             <button id="btn-recalc-uploads" class="btn btn">{% if app_info.config.ENABLE_FILE_UPLOADS %}重新统计文件大小{% else %}重新统计图片大小{% endif %}</button>
@@ -59,7 +65,7 @@
             <p class="warning-text">下载备份</p>
             <button id="btn-download-root" class="btn btn">下载项目根目录(zip)</button>
             <button id="btn-download-dbfile" class="btn btn">下载数据库文件</button>
-            <button id="btn-download-images" class="btn btn">下载图片压缩包</button>
+            <button id="btn-download-images" class="btn btn">{% if app_info.config.ENABLE_FILE_UPLOADS %}下载文件压缩包{% else %}下载图片压缩包{% endif %}</button>
         </div>
     </div>
     <!-- 管理工具区域 -->
@@ -194,8 +200,7 @@
 
     var btnRecalc = document.getElementById('btn-recalc-uploads');
     if (btnRecalc) btnRecalc.addEventListener('click', async function () {
-        const what = '{{ '文件' if app_info.config.ENABLE_FILE_UPLOADS else '图片' }}';
-        const ok = await showConfirm(`是否重新统计所有用户的上传${what}大小？此操作仅统计并返回JSON。`, { title: `重新统计${what}大小` });
+        const ok = await showConfirm('是否重新统计所有用户的上传图片大小？此操作仅统计并返回JSON。', { title: '重新统计图片大小' });
         if (!ok) return;
         fetch('/api/admin/recalculate-upload-sizes', { method: 'POST' })
             .then(res => res.json())
@@ -225,8 +230,7 @@
 
     var btnDownloadImages = document.getElementById('btn-download-images');
     if (btnDownloadImages) btnDownloadImages.addEventListener('click', async function () {
-        const what2 = '{{ '文件' if app_info.config.ENABLE_FILE_UPLOADS else '图片' }}';
-        const ok = await showConfirm(`将创建一个静态${what2}压缩包并下载，可能会占用较多磁盘空间。是否继续？`, { title: `下载静态${what2}压缩包` });
+        const ok = await showConfirm('将创建一个静态图片压缩包并下载，可能会占用较多磁盘空间。是否继续？', { title: '下载静态图片压缩包' });
         if (!ok) return;
         // Start download by navigating to the admin route; this is a GET that returns a zip
         window.location.href = '/admin/download-images-zip';

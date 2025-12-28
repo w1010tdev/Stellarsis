@@ -1673,6 +1673,33 @@ function createMessageElement(msg, isLocal = false, his = false) {
     } catch (e) {
         console.error('添加操作菜单失败:', e);
     }
+
+    // Detect server-side merged/duplicate markers like "(... * N)" at end of content
+    try {
+        const contentRaw = (msg.content || msg.message || '');
+        const mergeMatch = contentRaw.match(/\(\s*.*\*\s*(\d+)\s*\)\s*$/);
+        if (mergeMatch) {
+            const count = mergeMatch[1];
+            // add a prominent merge badge next to the time element
+            const mergeBadge = document.createElement('span');
+            mergeBadge.className = 'message-merge-badge';
+            mergeBadge.textContent = '×' + count;
+            // append after time element
+            if (timeElement && timeElement.parentNode) {
+                timeElement.parentNode.insertBefore(mergeBadge, timeElement.nextSibling);
+            } else if (userElement) {
+                userElement.appendChild(mergeBadge);
+            }
+            // Also clean the trailing "(... * N)" from displayed content for clarity
+            const cleaned = contentRaw.replace(/\(\s*.*\*\s*\d+\s*\)\s*$/, '').trim();
+            const contentEl = messageElement.querySelector('.message-content');
+            if (contentEl) {
+                tryRenderMessage(contentEl, cleaned);
+            }
+        }
+    } catch (e) {
+        console.debug('merge badge check failed', e);
+    }
     return messageElement;
 }
 

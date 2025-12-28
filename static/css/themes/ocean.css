@@ -41,6 +41,8 @@
   --mobile-nav-bg: linear-gradient(135deg, rgba(233,246,255,0.95), rgba(208,238,252,0.9));
   --avatar-bg: var(--site-logo-icon-bg);
   --mobile-nav-shadow: rgba(0,0,0,0.06);
+  /* Ensure readable text on primary backgrounds */
+  --on-primary: #ffffff;
 }
 body { background-image: var(--background-image) !important; color: var(--text-color) !important; }
 
