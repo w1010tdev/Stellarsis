@@ -566,15 +566,7 @@ def sanitize_content(content, room_id=None):
                 buf.append(text[i])
                 i += 1
         return ''.join(buf)
-    '''如果您想要在后端过滤html tags，可以取消注释
-    # 读取所有HTML标签（静态列表，实际部署可直接硬编码）
-    html_tags = [
-        'a','abbr','acronym','address','applet','area','article','aside','audio','b','base','basefont','bdi','bdo','big','blockquote','body','br','button','canvas','caption','center','cite','code','col','colgroup','data','datalist','dd','del','details','dfn','dialog','dir','div','dl','dt','em','embed','fieldset','figcaption','figure','font','footer','form','frame','frameset','h1','h2','h3','h4','h5','h6','head','math','header','hgroup','hr','html','i','iframe','img','input','ins','kbd','label','legend','li','link','main','map','mark','menu','meta','meter','nav','noframes','noscript','object','ol','optgroup','option','output','p','param','picture','pre','progress','q','rp','rt','ruby','s','samp','script','search','section','select','small','source','span','strike','strong','style','sub','summary','sup','svg','table','tbody','td','template','textarea','tfoot','th','thead','time','title','tr','track','tt','u','ul','var','video','wbr','!DOCTYPE','rb','rtc'
-    ]
-    # 构造严格的正则，移除所有这些标签（包括自闭合、带属性、大小写、h1-h6等）
-    tag_regex = r'</?(' + '|'.join(html_tags) + r')(\s+[^>]*?|)\s*/?>'
-    content = re.sub(tag_regex, '', content, flags=re.IGNORECASE)
-    '''
+
     content = parse_code_blocks(content)
 
     # LaTeX表达式保护
