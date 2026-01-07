@@ -68,7 +68,6 @@
 | `/api/forum/reply` | POST | form: `thread_id`, `content` | 回复主题帖 |
 | `/api/follow/following` | GET | — | 获取当前用户关注的人列表 |
 | `/api/follow/toggle` | POST | JSON: `user_id` | 关注或取消关注某用户 |
-| `/api/search_user` | GET | query: `username` | 精确查找用户 |
 | `/api/search_users` | GET | query: `username` | 模糊搜索用户，最多返回20条 |
 
 ---
@@ -126,26 +125,7 @@
 | `leave` | `{ 'room': <room_id> }` | 离开聊天室，广播 `user_leave`，更新在线数。|
 | `send_message` | `{ 'room_id': <int>, 'message': <str>, optional 'client_id', optional captcha fields }` | 处理发送消息：验证权限、验证码、速度限制、合并重复消息，保存并广播 `message`，并发送 `message_id_response` 给发送者（含 server id）。|
 | `get_online_users` | `{ 'room_id': <int> }` | 返回当前房间在线用户列表（`online_users` 事件） |
-| `get_global_online_count` | — or `{}` | 返回全局在线人数 via `global_online_count` 事件 |
 | `heartbeat_chat` | `{ 'room_id': <int> }` | 聊天房间心跳，更新最后活动时间并更新房间在线数 |
 | `heartbeat` | (无 / 简短心跳) | 通用心跳，更新用户 last_seen |
 | `get_online_users` (HTTP对应) | — | 也存在 HTTP 轮询对应接口 `/api/chat/<room>/online_count` |
 
-> 注意：代码中有重复注册 `join`/`leave` 处理器（用于不同的广播逻辑），文档中合并为单个事件描述，实际行为为：有局部 emit/room emit 两种广播方式，最终都发送 `user_join` / `user_leave`。
-
----
-
-## 6. 附注 / 推荐 📝
-- 我把路由/事件与常见参数列出并放入本文件：`docs/ROUTES_AND_WEBSOCKETS.md`。
-- 如果你希望我将这些接口转为 OpenAPI (YAML/JSON) 或者生成带示例请求/响应的更详细文档（包括返回字段类型与状态码），我可以继续完成。🔧
-
----
-
-如果需要，我可以：
-- 生成 OpenAPI 3.0 文档并放到 `docs/openapi.yaml`；
-- 自动提取函数 docstring 来补充每个接口的详细描述；
-- 或把路由整理为 CSV/表格供导入其他工具。💡
-
----
-
-最后更新：此文档基于 `app.py` 中当前实现（截至生成时）。如有新路由或修改，我可以重新生成或把这个过程自动化。✅

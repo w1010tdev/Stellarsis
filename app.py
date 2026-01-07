@@ -2852,22 +2852,6 @@ def create_user():
         logger.error(f"创建用户失败: {str(e)}")
         return jsonify(success=False, message=f"创建用户失败: {str(e)}"), 500
 
-
-@app.route('/api/search_user')
-@login_required
-def api_search_user():
-    q = request.args.get('username', '').strip()
-    if not q:
-        return jsonify(success=False, message='缺少查询字符串'), 400
-    user = db_session.query(User).filter_by(username=q).first()
-    if not user:
-        # 支持昵称搜索
-        user = db_session.query(User).filter(User.nickname == q).first()
-    if not user:
-        return jsonify(success=True, user=None)
-    return jsonify(success=True, user={'id': user.id, 'username': user.username, 'nickname': user.nickname})
-
-
 @app.route('/api/search_users')
 @login_required
 def api_search_users():
@@ -3724,20 +3708,6 @@ def handle_get_online_users(data):
     
     emit('online_users', {'users': online_users})
 
-
-@socketio.on('get_global_online_count')
-def handle_get_global_online_count(data):
-    """获取全局在线用户数"""
-    if not current_user.is_authenticated:
-        return
-    
-    cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
-
-    # 查询最近活动的用户数
-    online_count = db_session.query(User).filter(User.last_seen >= cutoff_time).count()
-    # 发送全局在线人数到客户端
-    emit('global_online_count', {'count': online_count})
-
 @socketio.on('heartbeat_chat')
 def handle_heartbeat_chat(data):
     """处理聊天室客户端心跳，更新用户最后活动时间"""
@@ -3820,85 +3790,6 @@ def toggle_follow():
     log_admin_action(f"{current_user.username} {'关注' if action == 'follow' else '取消关注'} 用户 {target_user.username}")
     return jsonify(success=True, action=action)
 
-
-# 广播用户进入
-@socketio.on('join')
-def on_join(data):
-    if not current_user.is_authenticated:
-        return
-    room_id = data.get('room')
-    if not room_id:
-        return
-
-    try:
-        room_id = int(room_id)
-    except (TypeError, ValueError):
-        return
-
-    if not user_can_view_chat(current_user, room_id):
-        emit('permission_denied', {'message': '当前权限无法进入该聊天室', 'room_id': room_id})
-        return
-
-    room_name = f"room_{room_id}"
-    join_room(room_name)
-    current_user.last_seen = datetime.now(timezone.utc)
-    db_session.commit()
-    # 广播用户进入（供关注者监听）
-    # emit to the room so only users in the room receive it (includes sender)
-    try:
-        socketio.emit('user_join', {
-            'user_id': current_user.id,
-            'username': current_user.username,
-            'nickname': current_user.nickname or current_user.username,
-            'room_id': room_id
-        }, room=room_name)
-    except Exception:
-        # fallback to emit without room if socketio.emit signature differs
-        try:
-            emit('user_join', {
-                'user_id': current_user.id,
-                'username': current_user.username,
-                'nickname': current_user.nickname or current_user.username,
-                'room_id': room_id
-            })
-        except Exception:
-            pass
-
-
-# 广播用户离开
-@socketio.on('leave')
-def on_leave(data):
-    if not current_user.is_authenticated:
-        return
-    room_id = data.get('room')
-    if not room_id:
-        return
-
-    try:
-        room_id = int(room_id)
-    except (TypeError, ValueError):
-        return
-
-    room_name = f"room_{room_id}"
-    leave_room(room_name)
-    # 广播用户离开
-    try:
-        socketio.emit('user_leave', {
-            'user_id': current_user.id,
-            'username': current_user.username,
-            'nickname': current_user.nickname or current_user.username,
-            'room_id': room_id
-        }, room=room_name)
-    except Exception:
-        try:
-            emit('user_leave', {
-                'user_id': current_user.id,
-                'username': current_user.username,
-                'nickname': current_user.nickname or current_user.username,
-                'room_id': room_id
-            })
-        except Exception:
-            pass
 
 @socketio.on('heartbeat')
 def handle_heartbeat():
