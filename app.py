@@ -67,9 +67,10 @@ try:
     # 确保新日志使用UTF-8
     handler = RotatingFileHandler(
         log_file, 
+        # CanChange
         maxBytes=10*1024*1024,  # 10 MB
         backupCount=5,
-        encoding='utf-8'  # 关键：强制使用UTF-8编码
+        encoding='utf-8'  # 强制使用UTF-8编码
     )
     
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -108,7 +109,7 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 # 初始化限流器
 limiter = Limiter(
-    app=app,  # 使用关键字参数指定 app
+    app=app,
     key_func=get_remote_address,
     storage_uri="memory://"  # 内存存储，重启失效
 )
@@ -127,8 +128,8 @@ class User(UserMixin, Base):
     color = Column(String(7), default='#000000')
     badge = Column(String(32), default='')
     last_seen = Column(DateTime, default=datetime.utcnow)
-    role = Column(String(20), default='user')  # 新增权限字段：user, admin
-    upload_used = Column(Integer, default=0)  # 用户已使用的上传空间（字节）
+    role = Column(String(20), default='user') 
+    upload_used = Column(Integer, default=0) 
     
     def is_admin(self):
         """检查用户是否为管理员"""
@@ -137,7 +138,7 @@ class User(UserMixin, Base):
     def set_password(self, password):
         # 实际应用中应使用安全的哈希算法
         # 这里仅演示，实际应使用werkzeug.security.generate_password_hash
-        self.password_hash = password #Need to change
+        self.password_hash = password #CanChange
     
     def check_password(self, password):
         return self.password_hash == password
@@ -153,7 +154,7 @@ class ChatMessage(Base):
     __tablename__ = 'chat_messages'
     
     id = Column(Integer, primary_key=True)
-    content = Column(Text)  # 只存储原始Markdown
+    content = Column(Text)
     timestamp = Column(DateTime, index=True, default=datetime.utcnow)
     user_id = Column(Integer, ForeignKey('users.id'))
     room_id = Column(Integer, ForeignKey('chat_rooms.id'))
@@ -173,7 +174,7 @@ class ForumThread(Base):
     
     id = Column(Integer, primary_key=True)
     title = Column(String(128))
-    content = Column(Text)  # 只存储原始Markdown
+    content = Column(Text) 
     timestamp = Column(DateTime, index=True, default=datetime.utcnow)
     user_id = Column(Integer, ForeignKey('users.id'))
     section_id = Column(Integer, ForeignKey('forum_sections.id'))
@@ -186,7 +187,7 @@ class ForumReply(Base):
     __tablename__ = 'forum_replies'
     
     id = Column(Integer, primary_key=True)
-    content = Column(Text)  # 只存储原始Markdown
+    content = Column(Text)
     timestamp = Column(DateTime, index=True, default=datetime.utcnow)
     user_id = Column(Integer, ForeignKey('users.id'))
     thread_id = Column(Integer, ForeignKey('forum_threads.id'))
@@ -227,7 +228,7 @@ class UserFollow(Base):
     follower = relationship('User', foreign_keys=[follower_id], backref='following')
     followed = relationship('User', foreign_keys=[followed_id], backref='followers')
 
-# 记录用户最后查看时间的表：聊天室与贴吧分区
+
 class ChatLastView(Base):
     __tablename__ = 'chat_last_views'
     id = Column(Integer, primary_key=True)
@@ -254,11 +255,11 @@ class UserImage(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    filename = Column(String(255), nullable=False)  # 存储文件名
-    filepath = Column(String(512), nullable=False)  # 存储完整路径
-    file_size = Column(Integer, nullable=False)  # 文件大小（字节）
-    upload_time = Column(DateTime, default=datetime.utcnow)  # 上传时间
-    file_type = Column(String(50), nullable=False)  # 文件类型
+    filename = Column(String(255), nullable=False) 
+    filepath = Column(String(512), nullable=False)
+    file_size = Column(Integer, nullable=False)
+    upload_time = Column(DateTime, default=datetime.utcnow)
+    file_type = Column(String(50), nullable=False)
 
     user = relationship('User', backref='images')
 
@@ -270,6 +271,10 @@ CHAT_SEND_PERMISSIONS = {'su', '777'}
 CHAT_VIEW_PERMISSIONS = {'su', '777', '444'}
 FORUM_POST_PERMISSIONS = {'su', '777'}
 FORUM_VIEW_PERMISSIONS = {'su', '777', '444'}
+
+# ----------
+# 权限管理函数
+# ----------
 
 
 def normalize_permission_value(value):
@@ -289,47 +294,51 @@ def normalize_permission_value(value):
 
 def get_chat_permission_value(user, room_id):
     """获取用户在指定聊天室的权限"""
-    # 明确只对 None 做空值判断，避免 0 或者其他可判断值被错误当作空
     if not user or room_id is None:
         return 'Null'
     if user.is_admin():
         return 'su'
     perm = db_session.query(ChatPermission).filter_by(user_id=user.id, room_id=room_id).first()
-    # 规范化权限值以避免数据库中存储格式差异导致的比较失败
     return normalize_permission_value(perm.perm) if perm else 'Null'
 
 
 def get_forum_permission_value(user, section_id):
     """获取用户在指定贴吧分区的权限"""
-    # 明确只对 None 做空值判断，避免 0 或者其他可判断值被错误当作空
     if not user or section_id is None:
         return 'Null'
     if user.is_admin():
         return 'su'
     perm = db_session.query(ForumPermission).filter_by(user_id=user.id, section_id=section_id).first()
-    # 规范化权限值以避免数据库中存储格式差异导致的比较失败
     return normalize_permission_value(perm.perm) if perm else 'Null'
 
 
 def user_can_view_chat(user, room_id):
+    """检查用户是否有权限查看指定聊天室"""
     return get_chat_permission_value(user, room_id) in CHAT_VIEW_PERMISSIONS
 
 
 def user_can_send_chat(user, room_id):
+    """检查用户是否有权限发送消息到指定聊天室"""
     return get_chat_permission_value(user, room_id) in CHAT_SEND_PERMISSIONS
 
 
 def user_can_view_forum(user, section_id):
+    """检查用户是否有权限查看指定贴吧分区"""
     return get_forum_permission_value(user, section_id) in FORUM_VIEW_PERMISSIONS
 
 
 def user_can_post_forum(user, section_id):
+    """检查用户是否有权限在指定贴吧分区发帖"""
     return get_forum_permission_value(user, section_id) in FORUM_POST_PERMISSIONS
 
+# ----------
+# 工具函数
+# ----------
 
 # 检查并更新数据库结构
 def update_database_schema():
     """检查并更新数据库结构，添加缺失的列"""
+    """仅仅用于数据库更新"""
     try:
         conn = sqlite3.connect(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
         cursor = conn.cursor()
@@ -339,13 +348,11 @@ def update_database_schema():
         columns = [column[1] for column in cursor.fetchall()]
         
         if 'role' not in columns:
-            # 添加role列，默认为'user'
             cursor.execute("ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'user';")
             logger.info("Added 'role' column to users table")
             conn.commit()
         
         if 'upload_used' not in columns:
-            # 添加upload_used列，默认为0
             cursor.execute("ALTER TABLE users ADD COLUMN upload_used INTEGER DEFAULT 0;")
             logger.info("Added 'upload_used' column to users table")
             conn.commit()
@@ -389,13 +396,6 @@ def ensure_permission_tables():
     except Exception as e:
         logger.error(f"确保权限表失败: {str(e)}")
 
-
-# 确保权限表存在
-ensure_permission_tables()
-
-# 应用启动时更新数据库结构
-update_database_schema()
-
 # 确保admin用户是管理员
 def ensure_admin_user():
     """确保admin用户是管理员角色"""
@@ -419,9 +419,6 @@ def ensure_admin_user():
             db_session.commit()
     except Exception as e:
         logger.error(f"设置管理员用户失败: {str(e)}")
-
-# 应用启动时确保admin用户是管理员
-ensure_admin_user()
 
 # 自动为所有管理员用户分配所有分区的 su 权限
 def grant_su_to_admins():
@@ -451,9 +448,18 @@ def grant_su_to_admins():
     except Exception as e:
         logger.error(f"为管理员分配权限失败: {str(e)}")
 
+# 确保权限表存在
+ensure_permission_tables()
+
+# 应用启动时更新数据库结构
+update_database_schema()
+
+# 应用启动时确保admin用户是管理员
+ensure_admin_user()
 
 grant_su_to_admins()
-# 用户加载函数
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return db_session.query(User).get(int(user_id))
@@ -467,6 +473,7 @@ def inject_app_info():
             'config': app.config
         }
     }
+
 # 表单定义
 class LoginForm(FlaskForm):
     username = StringField('用户名', validators=[
@@ -504,8 +511,8 @@ class ProfileForm(FlaskForm):
     ])
     submit = SubmitField('保存设置')
 
-# 全局工具函数
 
+# 全局工具函数
 def sanitize_content(content, room_id=None):
     """
     移除HTML标签，保留代码块、LaTeX、@quote等内容。
@@ -597,8 +604,6 @@ def sanitize_content(content, room_id=None):
     return content
 
 
-# 已合并到sanitize_content
-
 def update_room_online_count(room_id):
     """更新特定房间的在线人数"""
     socketio.emit('online_users', {
@@ -629,6 +634,7 @@ def get_room_users_data(room_id):
     return users_data
 
 def allowed_image_extension(filename):
+    """检查文件扩展名是否允许上传为图片"""
     if '.' not in filename:
         return False
     ext = filename.rsplit('.', 1)[1].lower()
@@ -636,11 +642,7 @@ def allowed_image_extension(filename):
 
 
 def get_image_type(stream):
-    """Detect image type in a stream without reading the whole file into memory.
-
-    Prefer a lightweight header-based detection using `imghdr` on the first
-    few kilobytes. This avoids loading large uploads into memory.
-    """
+    """检测图片类型，优先使用imghdr，其次使用Pillow"""
     try:
         import imghdr
         stream.seek(0)
@@ -664,10 +666,7 @@ def get_image_type(stream):
 
 def get_online_users(room_id):
     """获取指定房间的在线用户"""
-    # 获取最近ONLINE_TIMEOUT秒内在该聊天室有活动的用户
     cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
-    
-    # 从ChatLastView表中获取最近活动的用户
     online_users = db_session.query(ChatLastView).filter(
         ChatLastView.room_id == room_id,
         ChatLastView.last_view >= cutoff_time
@@ -721,7 +720,7 @@ def get_recent_logs(limit=10):
     return logs[:limit]
 
 def log_admin_action(action):
-    """记录管理员操作 - 安全版本"""
+    """记录管理员操作"""
     try:
         log_dir = Path(app.root_path) / 'logs'
         log_dir.mkdir(exist_ok=True)
@@ -748,13 +747,9 @@ def log_admin_action(action):
 # 路由定义
 @app.route('/')
 def index():
-    # If user is authenticated, show the homepage; otherwise redirect to login
     if current_user.is_authenticated:
-        # Get unread counts for the homepage
         chat_counts = {}
         forum_counts = {}
-        
-        # Chat rooms
         rooms = db_session.query(ChatRoom).all()
         accessible_rooms = []
         for room in rooms:
@@ -767,8 +762,6 @@ def index():
                 cnt = db_session.query(ChatMessage).filter_by(room_id=room.id).count()
             chat_counts[room.id] = cnt
             accessible_rooms.append(room)
-
-        # Forum sections
         sections = db_session.query(ForumSection).all()
         accessible_sections = []
         for section in sections:
@@ -786,8 +779,6 @@ def index():
                     .filter(ForumThread.section_id == section.id).count()
             forum_counts[section.id] = cnt_threads + cnt_replies
             accessible_sections.append(section)
-        
-        # Load quotes from JSON file for the "一言" module
         import random
         try:
             with open('quotes.json', 'r', encoding='utf-8') as f:
@@ -797,10 +788,8 @@ def index():
                 formatted_quotes = [f"{quote['text']} - {quote['author']}" for quote in quotes if 'text' in quote and 'author' in quote]
                 selected_quote = random.choice(formatted_quotes) if formatted_quotes else "书山有路勤为径，学海无涯苦作舟。 - 韩愈"
         except FileNotFoundError:
-            # Fallback if JSON file doesn't exist
             selected_quote = "书山有路勤为径，学海无涯苦作舟。 - 韩愈"
         except json.JSONDecodeError:
-            # Fallback if JSON is invalid
             selected_quote = "书山有路勤为径，学海无涯苦作舟。 - 韩愈"
         
         return render_template('index.html', 
@@ -812,7 +801,7 @@ def index():
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
-@limiter.limit("5 per minute", methods=["POST"])  # 限制每分钟5次登录尝试
+@limiter.limit("5 per minute", methods=["POST"])  # CanChange
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
@@ -875,6 +864,7 @@ def profile():
         form.badge.data = current_user.badge
     
     return render_template('settings/profile.html', form=form)
+
 
 # 聊天相关路由
 @app.route('/chat')
@@ -1122,40 +1112,6 @@ def api_get_chat_message(message_id):
     })
 
 
-@app.route('/api/chat/message/search', methods=['GET'])
-@login_required
-def api_search_chat_message():
-    """通过内容和时间查询自己发送的消息ID"""
-    content = request.args.get('content', '').strip()
-    timestamp_str = request.args.get('timestamp', '').strip()  # ISO格式时间字符串
-    
-    if not content:
-        return jsonify(success=False, message='内容不能为空'), 400
-    
-    query = db_session.query(ChatMessage).filter_by(user_id=current_user.id, content=content)
-    
-    if timestamp_str:
-        try:
-            # 尝试解析时间字符串
-            timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-            query = query.filter(ChatMessage.timestamp >= timestamp.replace(tzinfo=None))
-        except ValueError:
-            return jsonify(success=False, message='时间格式错误'), 400
-    
-    message = query.first()
-    
-    if not message:
-        return jsonify(success=False, message='未找到消息'), 404
-    
-    return jsonify({
-        'success': True,
-        'data': {
-            'id': message.id,
-            'room_id': message.room_id
-        }
-    })
-
-
 @app.route('/api/chat/validate_quotes', methods=['POST'])
 @login_required
 def api_validate_quotes():
@@ -1181,6 +1137,7 @@ def api_validate_quotes():
         'valid_quotes': valid_quote_ids
     })
 
+# 论坛相关路由
 
 @app.route('/api/forum/reply/<int:reply_id>', methods=['DELETE'])
 @login_required
@@ -1225,6 +1182,7 @@ def api_delete_forum_reply(reply_id):
         logger.exception('删除回复时发生错误')
         return jsonify({'success': False, 'message': '服务器错误'}), 500
 
+# API相关路由
 
 @app.route('/api/online_count')
 @login_required
@@ -1247,7 +1205,6 @@ def get_random_quote():
         with open('quotes.json', 'r', encoding='utf-8') as f:
             quotes_data = json.load(f)
             quotes = quotes_data.get('quotes', [])
-            # Format the quote as "text - author"
             formatted_quotes = [f"{quote['text']} - {quote['author']}" for quote in quotes if 'text' in quote and 'author' in quote]
             if formatted_quotes:
                 selected_quote = random.choice(formatted_quotes)
@@ -1255,10 +1212,8 @@ def get_random_quote():
             else:
                 return jsonify(success=False, message="没有找到名言")
     except FileNotFoundError:
-        # Fallback if JSON file doesn't exist
         return jsonify(success=False, message="quotes.json文件不存在")
     except json.JSONDecodeError:
-        # Fallback if JSON is invalid
         return jsonify(success=False, message="quotes.json文件格式错误")
 
 
@@ -1390,6 +1345,8 @@ def api_unfollow(followed_id):
 def settings_index():
     return render_template('settings.html')
 
+
+# 图床相关路由
 
 @app.route('/api/upload/image', methods=['POST'])
 @login_required
@@ -1671,13 +1628,12 @@ def admin_download_images_zip():
         return jsonify(success=False, message=str(e)), 500
 
 
+# 管理员相关路由
+
 @app.route('/down', methods=['GET'])
 @login_required
 def download_root_zip():
-    """Admin-only: download a zip of the project root. Excludes common large folders.
-
-    This writes the zip to a temporary file on disk (streaming) and serves it.
-    """
+    """下载项目根目录为 ZIP 文件，供管理员使用。"""
     if not current_user.is_admin():
         abort(403)
     try:

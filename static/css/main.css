@@ -557,7 +557,6 @@ main {
   margin: 8px 6px;
   margin-left: 12px;
   /* align under header */
-  color: var(--text-color);
   border-radius: 10px;
   text-decoration: none;
   transition: all 0.18s ease;
