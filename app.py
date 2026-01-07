@@ -2114,7 +2114,9 @@ def admin_index():
                          python_version=python_version,
                          flask_version=flask_version,
                          database_path=database_path,
-                         recent_logs=recent_logs)
+                         recent_logs=recent_logs,
+                         enable_file_manager=app.config.get('ENABLE_FILE_MANAGER', False),
+                         enable_server_control=app.config.get('ENABLE_SERVER_CONTROL', False))
 
 
 
@@ -2262,6 +2264,9 @@ def admin_import_users():
 def file_manager_view():
     if not current_user.is_admin():
         abort(403)
+    # 根据配置决定是否允许访问文件管理
+    if not app.config.get('ENABLE_FILE_MANAGER', False):
+        abort(403)
     
     path = request.args.get('path', '')
     try:
@@ -2397,6 +2402,9 @@ def clear_cache():
 def restart_server():
     if not current_user.is_admin():
         return jsonify(success=False, message="权限不足"), 403
+    # 根据配置决定是否允许重启/关停
+    if not app.config.get('ENABLE_SERVER_CONTROL', False):
+        return jsonify(success=False, message="服务器重启已被管理员禁用"), 403
     
     try:
         log_admin_action("管理员请求重启服务器")
@@ -2551,6 +2559,9 @@ def download_database_file():
 def shutdown_server():
     if not current_user.is_admin():
         return jsonify(success=False, message="权限不足"), 403
+    # 检查是否允许远程关停
+    if not app.config.get('ENABLE_SERVER_CONTROL', False):
+        return jsonify(success=False, message="服务器关停已被管理员禁用"), 403
     
     try:
         data = request.get_json()

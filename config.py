@@ -16,3 +16,7 @@ class Config:
     ALLOWED_IMAGE_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif', 'webp'])
     IMAGE_MAX_SIZE = 5 * 1024 * 1024  # 单张图片最大 5MB
     USER_UPLOAD_QUOTA = 50 * 1024 * 1024  # 每个用户默认上传配额 50MB
+
+    # 管理面板开关：用于在生产环境中禁用高风险功能
+    ENABLE_FILE_MANAGER = os.environ.get('ENABLE_FILE_MANAGER', 'False').lower() in ('1','true','yes')
+    ENABLE_SERVER_CONTROL = os.environ.get('ENABLE_SERVER_CONTROL', 'False').lower() in ('1','true','yes')

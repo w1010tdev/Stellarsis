@@ -38,6 +38,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // 截断文件名，超出 maxLen 用 ... 代替
+    function truncateFilename(str, maxLen) {
+        if (!str) return '';
+        maxLen = maxLen || 30;
+        if (str.length <= maxLen) return str;
+        return str.slice(0, maxLen - 3) + '...';
+    }
+
     // 传统的复制文本方法（通过创建临时 textarea）作为最后的备选方案
     function fallbackCopyTextToClipboard(text) {
         var textArea = document.createElement("textarea");
@@ -121,7 +129,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         var fname = document.createElement('div');
                         fname.className = 'image-upload-filename';
-                        fname.textContent = data.filename || (data.url || '').split('/').pop();
+                        var fullName = data.filename || (data.url || '').split('/').pop() || '';
+                        fname.textContent = truncateFilename(fullName, 30);
+                        fname.title = fullName;
                         container.appendChild(fname);
 
                         var copyBtn = document.createElement('button');
@@ -232,7 +242,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     container.dataset.markdown = item.markdown;
                     var fname = document.createElement('div');
                     fname.className = 'image-upload-filename';
-                    fname.textContent = item.filename;
+                    var fullName = item.filename || '';
+                    fname.textContent = truncateFilename(fullName, 30);
+                    fname.title = fullName;
                     container.appendChild(fname);
                     var copyBtn = document.createElement('button');
                     copyBtn.className = 'btn btn-sm btn-outline image-upload-copy';

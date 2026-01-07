@@ -27,18 +27,31 @@
             <button onclick="window.location.replace(' {{ url_for('forum_management') }}')"
                 class="btn btn-primary">进入帖子管理</a>
         </div>
+        {% if enable_file_manager %}
         <div class="dashboard-card">
             <h2>文件管理</h2>
             <p class="warning-text">警告：仅用于开发环境</p>
             <button onclick="window.location.replace(' {{ url_for('file_manager_view') }}')"
                 class="btn btn-primary">进入文件管理</a>
         </div>
+        {% else %}
+        <div class="dashboard-card">
+            <h2>文件管理</h2>
+            <p class="warning-text">已禁用（由配置控制）</p>
+            <button class="btn" disabled>已禁用</button>
+        </div>
+        {% endif %}
         <div class="dashboard-card">
             <h2>系统信息与管理</h2>
             <p class="warning-text">查看系统相关信息</p>
             <button id="btn-system-info" class="btn btn">系统信息</button>
+            {% if enable_server_control %}
             <button id="btn-restart" class="btn delete-btn">重启服务器</button>
             <button id="btn-shutdown" class="btn delete-btn">关停服务器</button>
+            {% else %}
+            <button class="btn" disabled title="已禁用">重启服务器（禁用）</button>
+            <button class="btn" disabled title="已禁用">关停服务器（禁用）</button>
+            {% endif %}
         </div>
         <div class="dashboard-card">
             <h2>数据库管理</h2>
