@@ -116,6 +116,28 @@
         </div>
     </footer>
     {% block scripts %}
+    <script>
+        // 全局 fetch 拦截器，处理 SU 验证
+        (function() {
+            const originalFetch = window.fetch;
+            window.fetch = function() {
+                return originalFetch.apply(this, arguments).then(response => {
+                    if (response.status === 401) {
+                        // 尝试解析 JSON 看看是否需要 SU
+                        const clone = response.clone();
+                        clone.json().then(data => {
+                            if (data && data.require_su) {
+                                window.location.href = '/admin/su?next=' + encodeURIComponent(window.location.pathname);
+                            }
+                        }).catch(() => {
+                            // 不是 JSON 或解析失败，忽略
+                        });
+                    }
+                    return response;
+                });
+            };
+        })();
+    </script>
     <script src="{{ url_for('static', filename='js/theme-switcher.js') }}"></script>
     <script src="{{ url_for('static', filename='js/command-palette.js') }}"></script>
     <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
