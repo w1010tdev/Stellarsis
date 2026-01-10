@@ -1,6 +1,7 @@
 # app.py
 import os
 import time
+from functools import wraps
 import json
 import sys
 import shutil
@@ -113,6 +114,56 @@ limiter = Limiter(
     key_func=get_remote_address,
     storage_uri="memory://"  # 内存存储，重启失效
 )
+# ----------
+# SU 验证装饰器
+# ----------
+
+def su_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # 1. 基础权限检查
+        if not current_user.is_authenticated or not current_user.is_admin():
+            abort(403)
+        
+        # 2. 排除 SU 验证页面本身，防止循环重定向
+        if request.endpoint == 'admin_su':
+            return f(*args, **kwargs)
+            
+        # 3. 检查 SU 验证是否过期
+        su_expires = session.get('su_expires')
+        if su_expires is None or time.time() > su_expires:
+            # 如果是 API 请求，返回 JSON
+            if request.is_json or request.path.startswith('/api/'):
+                return jsonify(success=False, message="需要 SU 验证", require_su=True), 401
+            # 如果是普通页面请求，跳转到验证页
+            return redirect(url_for('admin_su', next=request.url))
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/admin/su', methods=['GET', 'POST'])
+@login_required
+def admin_su():
+    # 只有管理员能访问此页面
+    
+    # 如果已经验证过且未过期，直接跳转
+    su_expires = session.get('su_expires')
+    if su_expires and time.time() <= su_expires:
+        return redirect(request.args.get('next') or url_for('admin_index'))
+
+    next_url = request.args.get('next') or url_for('admin_index')
+    
+    if request.method == 'POST':
+        password = request.form.get('password')
+        if current_user.check_password(password):
+            session['su_expires'] = time.time() + 300  # 5分钟
+            flash('SU 验证成功', 'success')
+            return redirect(next_url)
+        else:
+            flash('密码错误', 'danger')
+    
+    return render_template('admin/su.html', next=next_url)
+
 # ----------
 # 模型定义
 # ----------
@@ -1541,6 +1592,7 @@ def api_delete_image(image_id):
 
 @app.route('/api/admin/recalculate-upload-sizes', methods=['POST'])
 @login_required
+@su_required
 def api_admin_recalculate_upload_sizes():
     if not current_user.is_admin():
         return jsonify(success=False, message='权限不足'), 403
@@ -1578,9 +1630,8 @@ def api_admin_recalculate_upload_sizes():
 
 @app.route('/admin/download-images-zip', methods=['GET'])
 @login_required
+@su_required
 def admin_download_images_zip():
-    if not current_user.is_admin():
-        abort(403)
     try:
         uploads_dir = Path(app.root_path) / app.config.get('UPLOAD_FOLDER', 'static/uploads')
         if not uploads_dir.exists():
@@ -1624,10 +1675,9 @@ def admin_download_images_zip():
 
 @app.route('/down', methods=['GET'])
 @login_required
+@su_required
 def download_root_zip():
     """下载项目根目录为 ZIP 文件，供管理员使用。"""
-    if not current_user.is_admin():
-        abort(403)
     try:
         root_dir = Path(app.root_path)
         # Exclude virtual envs, node_modules, .git, logs and uploads to avoid massive zips
@@ -1676,10 +1726,9 @@ def download_root_zip():
 
 @app.route('/downdb', methods=['GET'])
 @login_required
+@su_required
 def download_db_file():
     """Admin-only: send the SQLite DB file if using sqlite. """
-    if not current_user.is_admin():
-        abort(403)
     try:
         uri = app.config.get('SQLALCHEMY_DATABASE_URI', '') or app.config.get('DATABASE_URL', '')
         if uri.startswith('sqlite:///'):
@@ -1697,6 +1746,7 @@ def download_db_file():
 
 @app.route('/api/admin/forum/section-users/<int:section_id>', methods=['GET'])
 @login_required
+@su_required
 def api_admin_forum_section_users(section_id):
     """Return list of users and their permission for given forum section."""
     if not current_user.is_admin():
@@ -1718,6 +1768,7 @@ def api_admin_forum_section_users(section_id):
 
 @app.route('/api/admin/forum/sections', methods=['GET'])
 @login_required
+@su_required
 def api_admin_forum_sections_list():
     if not current_user.is_admin():
         return jsonify(success=False, message='权限不足'), 403
@@ -1732,6 +1783,7 @@ def api_admin_forum_sections_list():
 
 @app.route('/api/admin/chat/rooms', methods=['GET'])
 @login_required
+@su_required
 def api_admin_chat_rooms_list():
     if not current_user.is_admin():
         return jsonify(success=False, message='权限不足'), 403
@@ -1746,6 +1798,7 @@ def api_admin_chat_rooms_list():
 
 @app.route('/api/admin/chat/room-users/<int:room_id>', methods=['GET'])
 @login_required
+@su_required
 def api_admin_chat_room_users(room_id):
     if not current_user.is_admin():
         return jsonify(success=False, message='权限不足'), 403
@@ -1763,6 +1816,7 @@ def api_admin_chat_room_users(room_id):
 
 @app.route('/api/admin/chat/section-users/<int:room_id>', methods=['GET'])
 @login_required
+@su_required
 def api_admin_chat_section_users(room_id):
     """Alias endpoint for admin UI symmetry: return list of users and their permission for given chat room.
     Same response shape as `/api/admin/forum/section-users/<id>`.
@@ -1784,6 +1838,7 @@ def api_admin_chat_section_users(room_id):
 
 @app.route('/api/admin/recount-file-size', methods=['POST'])
 @login_required
+@su_required
 def api_admin_recount_file_size():
     """Scan files on disk and update UserImage.file_size accordingly. Returns totals per user."""
     if not current_user.is_admin():
@@ -2089,9 +2144,8 @@ def reply_post():
 # 管理相关路由
 @app.route('/admin/index')
 @login_required
+@su_required
 def admin_index():
-    if not current_user.is_admin():  # 只有管理员才能访问
-        abort(403)
     
     # 获取统计信息
     user_count = db_session.query(User).count()
@@ -2122,27 +2176,24 @@ def admin_index():
 
 @app.route('/admin/users')
 @login_required
+@su_required
 def user_management():
-    if not current_user.is_admin():
-        abort(403)
     
     users = db_session.query(User).all()
     return render_template('admin/users.html', users=users)
 
 @app.route('/admin/chat')
 @login_required
+@su_required
 def chat_management():
-    if not current_user.is_admin():
-        abort(403)
     
     rooms = db_session.query(ChatRoom).all()
     return render_template('admin/chat.html', rooms=rooms)
 
 @app.route('/admin/forum')
 @login_required
+@su_required
 def forum_management():
-    if not current_user.is_admin():
-        abort(403)
     
     sections = db_session.query(ForumSection).all()
 
@@ -2202,9 +2253,8 @@ def forum_management():
 
 @app.route('/admin/import_users', methods=['POST'])
 @login_required
+@su_required
 def admin_import_users():
-    if not current_user.is_admin():
-        abort(403)
     if 'file' not in request.files:
         flash('未选择文件', 'danger')
         return redirect(url_for('user_management'))
@@ -2261,9 +2311,8 @@ def admin_import_users():
     return redirect(url_for('user_management'))
 @app.route('/admin/file_manager')
 @login_required
+@su_required
 def file_manager_view():
-    if not current_user.is_admin():
-        abort(403)
     # 根据配置决定是否允许访问文件管理
     if not app.config.get('ENABLE_FILE_MANAGER', False):
         abort(403)
@@ -2280,9 +2329,8 @@ def file_manager_view():
 
 @app.route('/admin/file_manager/read')
 @login_required
+@su_required
 def read_file_view():
-    if not current_user.is_admin():
-        abort(403)
     
     path = request.args.get('path', '')
     try:
@@ -2311,9 +2359,8 @@ def read_file_view():
 
 @app.route('/admin/file_manager/write', methods=['POST'])
 @login_required
+@su_required
 def write_file_view():
-    if not current_user.is_admin():
-        abort(403)
     
     path = request.form.get('path', '')
     content = request.form.get('content', '')
@@ -2352,9 +2399,8 @@ def write_file_view():
 # API端点
 @app.route('/api/admin/system-info')
 @login_required
+@su_required
 def get_system_info():
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
     
     try:
         # 获取内存使用情况
@@ -2383,9 +2429,8 @@ def get_system_info():
 
 @app.route('/api/admin/clear-cache', methods=['POST'])
 @login_required
+@su_required
 def clear_cache():
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
     
     try:
         # 清除数据库查询缓存
@@ -2399,9 +2444,8 @@ def clear_cache():
 
 @app.route('/api/admin/restart', methods=['POST'])
 @login_required
+@su_required
 def restart_server():
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
     # 根据配置决定是否允许重启/关停
     if not app.config.get('ENABLE_SERVER_CONTROL', False):
         return jsonify(success=False, message="服务器重启已被管理员禁用"), 403
@@ -2423,9 +2467,8 @@ def restart_server():
 
 @app.route('/api/admin/backup-database', methods=['POST'])
 @login_required
+@su_required
 def backup_database():
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
     
     try:
         db_path = Path(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
@@ -2446,9 +2489,8 @@ def backup_database():
 
 @app.route('/api/admin/system-log')
 @login_required
+@su_required
 def get_system_log():
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
     
     try:
         logs = get_recent_logs(50)
@@ -2467,9 +2509,8 @@ def get_system_log():
 
 @app.route('/api/admin/optimize-database', methods=['POST'])
 @login_required
+@su_required
 def optimize_database():
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
     
     try:
         db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
@@ -2488,12 +2529,11 @@ def optimize_database():
 
 @app.route('/down', methods=['GET'])
 @login_required
+@su_required
 def download_app_archive():
     """为管理员打包当前应用目录并发送（压缩为 zip）。
     生成的压缩包会放在临时目录，并在后台清理。
     """
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
 
     try:
         src_dir = os.path.dirname(os.path.abspath(__file__))
@@ -2524,12 +2564,11 @@ def download_app_archive():
 
 @app.route('/downdb', methods=['GET'])
 @login_required
+@su_required
 def download_database_file():
     """为管理员直接发送数据库文件 stellarsis.db。
     支持以 sqlite:/// 开头的 SQLALCHEMY_DATABASE_URI。
     """
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
 
     try:
         db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
@@ -2556,9 +2595,8 @@ def download_database_file():
 
 @app.route('/api/admin/shutdown', methods=['POST'])
 @login_required
+@su_required
 def shutdown_server():
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
     # 检查是否允许远程关停
     if not app.config.get('ENABLE_SERVER_CONTROL', False):
         return jsonify(success=False, message="服务器关停已被管理员禁用"), 403
@@ -2584,9 +2622,8 @@ def shutdown_server():
 # 用户管理相关路由
 @app.route('/api/admin/users/<int:user_id>', methods=['PUT'])
 @login_required
+@su_required
 def update_user(user_id):
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
     
     try:
         user = db_session.query(User).get(user_id)
@@ -2611,9 +2648,8 @@ def update_user(user_id):
 
 @app.route('/api/admin/users/<int:user_id>', methods=['DELETE'])
 @login_required
+@su_required
 def delete_user(user_id):
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
     
     try:
         ok, msg = remove_user_and_related(user_id, session=db_session)
@@ -2665,9 +2701,8 @@ def remove_user_and_related(user_id, session=None):
 
 @app.route('/api/admin/users/<int:user_id>/role', methods=['PUT'])
 @login_required
+@su_required
 def update_user_role(user_id):
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
     
     try:
         user = db_session.query(User).get(user_id)
@@ -2707,9 +2742,8 @@ def update_user_role(user_id):
 
 @app.route('/api/admin/users/<int:user_id>/permissions', methods=['GET'])
 @login_required
+@su_required
 def get_user_permissions_detail(user_id):
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
 
     user = db_session.query(User).get(user_id)
     if not user:
@@ -2744,9 +2778,8 @@ def get_user_permissions_detail(user_id):
 
 @app.route('/api/admin/users/<int:user_id>/permissions', methods=['PUT'])
 @login_required
+@su_required
 def update_user_permissions(user_id):
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
 
     user = db_session.query(User).get(user_id)
     if not user:
@@ -2805,9 +2838,8 @@ def update_user_permissions(user_id):
 
 @app.route('/api/admin/users', methods=['POST'])
 @login_required
+@su_required
 def create_user():
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
 
     try:
         data = request.get_json()
@@ -2877,9 +2909,8 @@ def api_search_users():
 # 聊天管理相关路由
 @app.route('/api/admin/chat/rooms', methods=['GET'])
 @login_required
+@su_required
 def get_chat_rooms():
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
 
     try:
         rooms = db_session.query(ChatRoom).all()
@@ -2899,9 +2930,8 @@ def get_chat_rooms():
 
 @app.route('/api/admin/chat/rooms/<int:room_id>', methods=['PUT'])
 @login_required
+@su_required
 def update_chat_room(room_id):
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
 
     try:
         room = db_session.query(ChatRoom).get(room_id)
@@ -2929,9 +2959,8 @@ def update_chat_room(room_id):
 
 @app.route('/api/admin/chat/rooms/<int:room_id>', methods=['DELETE'])
 @login_required
+@su_required
 def delete_chat_room(room_id):
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
 
     try:
         room = db_session.query(ChatRoom).get(room_id)
@@ -2954,9 +2983,8 @@ def delete_chat_room(room_id):
 
 @app.route('/api/admin/chat/messages', methods=['DELETE'])
 @login_required
+@su_required
 def delete_chat_messages():
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
 
     try:
         # 获取查询参数
@@ -2985,6 +3013,7 @@ def delete_chat_messages():
 
 @app.route('/api/admin/chat/rooms', methods=['POST'])
 @login_required
+@su_required
 def create_chat_room():
     if not current_user.is_admin():
         return jsonify({'success': False, 'message': "权限不足"}), 403
@@ -3030,6 +3059,7 @@ def create_chat_room():
 # 贴吧管理相关路由
 @app.route('/api/admin/forum/sections', methods=['POST'])
 @login_required
+@su_required
 def create_forum_section():
     if not current_user.is_admin():
         return jsonify({'success': False, 'message': "权限不足"}), 403
@@ -3073,6 +3103,7 @@ def create_forum_section():
 
 @app.route('/api/admin/forum/sections/<int:section_id>', methods=['PUT'])
 @login_required
+@su_required
 def update_forum_section(section_id):
     if not current_user.is_admin():
         return jsonify({'success': False, 'message': "权限不足"}), 403
@@ -3096,9 +3127,8 @@ def update_forum_section(section_id):
 
 @app.route('/api/admin/forum/sections/<int:section_id>', methods=['DELETE'])
 @login_required
+@su_required
 def delete_forum_section(section_id):
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
     
     try:
         section = db_session.query(ForumSection).get(section_id)
@@ -3124,9 +3154,8 @@ def delete_forum_section(section_id):
 
 @app.route('/api/admin/forum/posts/<int:post_id>', methods=['DELETE'])
 @login_required
+@su_required
 def delete_forum_post(post_id):
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
     
     try:
         # 检查是主题帖还是回复
@@ -3153,9 +3182,8 @@ def delete_forum_post(post_id):
 # SQLite数据库管理相关路由
 @app.route('/admin/db/')
 @login_required
+@su_required
 def db_admin():
-    if not current_user.is_admin():
-        abort(403)
 
     # 获取所有表名
     conn = sqlite3.connect(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
@@ -3168,9 +3196,8 @@ def db_admin():
 
 @app.route('/admin/db/table/<table_name>')
 @login_required
+@su_required
 def db_table_view(table_name):
-    if not current_user.is_admin():
-        abort(403)
 
     # 验证表名是否合法（防止SQL注入）
     conn = sqlite3.connect(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
@@ -3200,9 +3227,8 @@ def db_table_view(table_name):
 
 @app.route('/admin/db/table/<table_name>/data')
 @login_required
+@su_required
 def db_table_data(table_name):
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
 
     # 验证表名是否合法（防止SQL注入）
     conn = sqlite3.connect(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
@@ -3245,9 +3271,8 @@ def db_table_data(table_name):
 
 @app.route('/admin/db/table/<table_name>/edit', methods=['POST'])
 @login_required
+@su_required
 def db_table_edit(table_name):
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
 
     # 验证表名是否合法（防止SQL注入）
     conn = sqlite3.connect(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
@@ -3307,9 +3332,8 @@ def db_table_edit(table_name):
 
 @app.route('/admin/db/table/<table_name>/delete', methods=['POST'])
 @login_required
+@su_required
 def db_table_delete(table_name):
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
 
     # 验证表名是否合法（防止SQL注入）
     conn = sqlite3.connect(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
@@ -3805,19 +3829,17 @@ def handle_heartbeat():
 # 管理员：名言管理相关路由
 @app.route('/admin/quotes')
 @login_required
+@su_required
 def admin_quotes():
     """名言管理页面"""
-    if not current_user.is_admin():
-        abort(403)
     return render_template('admin/quotes.html')
 
 
 @app.route('/api/admin/quotes', methods=['GET'])
 @login_required
+@su_required
 def api_get_quotes():
     """获取所有名言"""
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
     
     try:
         with open('quotes.json', 'r', encoding='utf-8') as f:
@@ -3832,10 +3854,9 @@ def api_get_quotes():
 
 @app.route('/api/admin/quotes', methods=['POST'])
 @login_required
+@su_required
 def api_add_quote():
     """添加名言"""
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
     
     data = request.get_json()
     text = data.get('text', '').strip()
@@ -3869,10 +3890,9 @@ def api_add_quote():
 
 @app.route('/api/admin/quotes/<int:quote_index>', methods=['PUT'])
 @login_required
+@su_required
 def api_update_quote(quote_index):
     """更新名言"""
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
     
     data = request.get_json()
     text = data.get('text', '').strip()
@@ -3910,10 +3930,9 @@ def api_update_quote(quote_index):
 
 @app.route('/api/admin/quotes/<int:quote_index>', methods=['DELETE'])
 @login_required
+@su_required
 def api_delete_quote(quote_index):
     """删除名言"""
-    if not current_user.is_admin():
-        return jsonify(success=False, message="权限不足"), 403
     
     try:
         # 读取现有名言

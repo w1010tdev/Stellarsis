@@ -100,7 +100,11 @@
 {{ super() }}
 <script>
     // 简单助手：显示结果区域
-    function showAdminResult(text, isError) {
+    function showAdminResult(text, isError, data) {
+        if (data && data.require_su) {
+            window.location.href = '/admin/su?next=' + encodeURIComponent(window.location.pathname);
+            return;
+        }
         const container = document.getElementById('admin-tool-result');
         const output = document.getElementById('admin-tool-output');
         container.style.display = 'block';
@@ -113,68 +117,74 @@
         }
     }
 
-    document.getElementById('btn-system-info').addEventListener('click', function () {
+    const btnSystemInfo = document.getElementById('btn-system-info');
+    if (btnSystemInfo) btnSystemInfo.addEventListener('click', function () {
         fetch('/api/admin/system-info')
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
                     showAdminResult('内存: ' + data.memory_usage + '\n时间: ' + data.server_time + '\nPython: ' + data.python_version + '\nFlask: ' + data.flask_version, false);
                 } else {
-                    showAdminResult('错误: ' + (data.message || JSON.stringify(data)), true);
+                    showAdminResult('错误: ' + (data.message || JSON.stringify(data)), true, data);
                 }
             })
             .catch(err => showAdminResult('请求失败: ' + err.message, true));
     });
 
-    document.getElementById('btn-clear-cache').addEventListener('click', async function () {
+    const btnClearCache = document.getElementById('btn-clear-cache');
+    if (btnClearCache) btnClearCache.addEventListener('click', async function () {
         const ok = await showConfirm('确认要清除服务器缓存？此操作不会重启服务。', { title: '清除缓存' });
         if (!ok) return;
         fetch('/api/admin/clear-cache', { method: 'POST' })
             .then(res => res.json())
             .then(data => {
                 if (data.success) showAdminResult('清除缓存成功: ' + (data.message || ''), false);
-                else showAdminResult('清除缓存失败: ' + (data.message || JSON.stringify(data)), true);
+                else showAdminResult('清除缓存失败: ' + (data.message || JSON.stringify(data)), true, data);
             })
             .catch(err => showAdminResult('请求失败: ' + err.message, true));
     });
 
-    document.getElementById('btn-backup-db').addEventListener('click', async function () {
+    const btnBackupDb = document.getElementById('btn-backup-db');
+    if (btnBackupDb) btnBackupDb.addEventListener('click', async function () {
         const ok = await showConfirm('是否创建数据库备份？请确认为管理员操作。', { title: '备份数据库' });
         if (!ok) return;
         fetch('/api/admin/backup-database', { method: 'POST' })
             .then(res => res.json())
             .then(data => {
                 if (data.success) showAdminResult('备份成功: ' + (data.backup_path || data.message || '已创建'), false);
-                else showAdminResult('备份失败: ' + (data.message || JSON.stringify(data)), true);
+                else showAdminResult('备份失败: ' + (data.message || JSON.stringify(data)), true, data);
             })
             .catch(err => showAdminResult('请求失败: ' + err.message, true));
     });
 
-    document.getElementById('btn-optimize-db').addEventListener('click', async function () {
+    const btnOptimizeDb = document.getElementById('btn-optimize-db');
+    if (btnOptimizeDb) btnOptimizeDb.addEventListener('click', async function () {
         const ok = await showConfirm('确认执行数据库优化（VACUUM）？此操作可能会阻塞数据库短时间。', { title: '数据库优化' });
         if (!ok) return;
         fetch('/api/admin/optimize-database', { method: 'POST' })
             .then(res => res.json())
             .then(data => {
                 if (data.success) showAdminResult('优化成功: ' + (data.message || ''), false);
-                else showAdminResult('优化失败: ' + (data.message || JSON.stringify(data)), true);
+                else showAdminResult('优化失败: ' + (data.message || JSON.stringify(data)), true, data);
             })
             .catch(err => showAdminResult('请求失败: ' + err.message, true));
     });
 
-    document.getElementById('btn-restart').addEventListener('click', async function () {
+    const btnRestart = document.getElementById('btn-restart');
+    if (btnRestart) btnRestart.addEventListener('click', async function () {
         const ok = await showConfirm('确认要重启服务器？所有用户连接将中断。', { title: '重启服务器' });
         if (!ok) return;
         fetch('/api/admin/restart', { method: 'POST' })
             .then(res => res.json())
             .then(data => {
                 if (data.success) showAdminResult('服务器正在重启: ' + (data.message || ''), false);
-                else showAdminResult('重启失败: ' + (data.message || JSON.stringify(data)), true);
+                else showAdminResult('重启失败: ' + (data.message || JSON.stringify(data)), true, data);
             })
             .catch(err => showAdminResult('请求失败: ' + err.message, true));
     });
 
-    document.getElementById('btn-shutdown').addEventListener('click', async function () {
+    const btnShutdown = document.getElementById('btn-shutdown');
+    if (btnShutdown) btnShutdown.addEventListener('click', async function () {
         // 先输入原因（可选），showConfirm 在 input 模式下返回字符串或 false
         const reason = await showConfirm('请输入关停原因（可选）:', { title: '关停服务器', input: true });
         if (reason === false) return; // 取消
@@ -188,12 +198,13 @@
             .then(res => res.json())
             .then(data => {
                 if (data.success) showAdminResult('关停已触发: ' + (data.message || '') + '\n原因: ' + (data.reason || ''), false);
-                else showAdminResult('关停失败: ' + (data.message || JSON.stringify(data)), true);
+                else showAdminResult('关停失败: ' + (data.message || JSON.stringify(data)), true, data);
             })
             .catch(err => showAdminResult('请求失败: ' + err.message, true));
     });
 
-    document.getElementById('btn-view-logs').addEventListener('click', function (e) {
+    const btnViewLogs = document.getElementById('btn-view-logs');
+    if (btnViewLogs) btnViewLogs.addEventListener('click', function (e) {
         e.preventDefault();
         fetch('/api/admin/system-log')
             .then(res => res.json())
@@ -202,7 +213,7 @@
                     const logs = data.logs.map(l => `[${l.timestamp}] ${l.message}`).join('\n\n');
                     showAdminResult(logs || '无日志', false);
                 } else {
-                    showAdminResult('获取日志失败: ' + (data.message || JSON.stringify(data)), true);
+                    showAdminResult('获取日志失败: ' + (data.message || JSON.stringify(data)), true, data);
                 }
             })
             .catch(err => showAdminResult('请求失败: ' + err.message, true));
@@ -223,7 +234,7 @@
                     const lines = Object.keys(totals).map(uid => `用户ID ${uid}: ${totals[uid]} 字节`);
                     showAdminResult('统计结果:\n' + lines.join('\n'));
                 } else {
-                    showAdminResult('执行失败: ' + (data.message || JSON.stringify(data)), true);
+                    showAdminResult('执行失败: ' + (data.message || JSON.stringify(data)), true, data);
                 }
             })
             .catch(err => showAdminResult('请求失败: ' + err.message, true));
@@ -237,11 +248,11 @@
             .then(res => res.json())
             .then(data => {
                 if (data.success) showAdminResult('完成，更新用户数: ' + (data.updated_users || 0) + '\n总文件数: ' + (data.total_files || 0));
-                else showAdminResult('失败: ' + (data.message || JSON.stringify(data)), true);
+                else showAdminResult('失败: ' + (data.message || JSON.stringify(data)), true, data);
             }).catch(err => showAdminResult('请求失败: ' + err.message, true));
     });
 
-    var btnDownloadImages = document.getElementById('btn-download-images');
+    const btnDownloadImages = document.getElementById('btn-download-images');
     if (btnDownloadImages) btnDownloadImages.addEventListener('click', async function () {
         const ok = await showConfirm('将创建一个静态图片压缩包并下载，可能会占用较多磁盘空间。是否继续？', { title: '下载静态图片压缩包' });
         if (!ok) return;
@@ -249,14 +260,14 @@
         window.location.href = '/admin/download-images-zip';
     });
 
-    var btnDownloadRoot = document.getElementById('btn-download-root');
+    const btnDownloadRoot = document.getElementById('btn-download-root');
     if (btnDownloadRoot) btnDownloadRoot.addEventListener('click', async function () {
         const ok = await showConfirm('将创建项目根目录压缩包（会排除 uploads/logs 等大文件夹），是否继续？', { title: '下载项目根目录' });
         if (!ok) return;
         window.location.href = '/down';
     });
 
-    var btnDownloadDb = document.getElementById('btn-download-dbfile');
+    const btnDownloadDb = document.getElementById('btn-download-dbfile');
     if (btnDownloadDb) btnDownloadDb.addEventListener('click', async function () {
         const ok = await showConfirm('下载数据库文件，仅支持 SQLite，确认吗？', { title: '下载数据库' });
         if (!ok) return;
