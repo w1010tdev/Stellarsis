@@ -676,11 +676,17 @@ def get_room_users_data(room_id):
             })
     return users_data
 
-def allowed_image_extension(filename):
-    """检查文件扩展名是否允许上传为图片"""
+def allowed_file_extension(filename):
+    """检查文件扩展名是否允许上传"""
     if '.' not in filename:
         return False
     ext = filename.rsplit('.', 1)[1].lower()
+    
+    # 如果允许上传文件，则检查文件扩展名列表
+    if app.config.get('ALLOW_FILE_UPLOAD', False):
+        return ext in app.config.get('ALLOWED_FILE_EXTENSIONS', set())
+    
+    # 否则只允许图片
     return ext in app.config.get('ALLOWED_IMAGE_EXTENSIONS', set())
 
 
@@ -1391,10 +1397,10 @@ def settings_index():
 
 # 图床相关路由
 
-@app.route('/api/upload/image', methods=['POST'])
+@app.route('/api/upload/file', methods=['POST'])
 @login_required
-def api_upload_image():
-    """上传用户图片API，会返回图片的 URL 以及可直接复制的 Markdown 链接。
+def api_upload_file():
+    """上传用户文件API，会返回文件的 URL 以及可直接复制的 Markdown 链接。
     安全措施包括：登录检查、文件类型检测、文件大小限制以及文件名清理。
     """
     if 'file' not in request.files:
@@ -1404,11 +1410,12 @@ def api_upload_image():
         return jsonify(success=False, message='文件名为空'), 400
 
     filename = file.filename
-    if not allowed_image_extension(filename):
+    if not allowed_file_extension(filename):
         return jsonify(success=False, message='不支持的文件扩展名'), 400
 
     # 首先使用 request.content_length 做一个快速大小检查，避免写入过大的文件
-    max_size = app.config.get('IMAGE_MAX_SIZE', 5 * 1024 * 1024)
+    is_file_allowed = app.config.get('ALLOW_FILE_UPLOAD', False)
+    max_size = app.config.get('FILE_MAX_SIZE' if is_file_allowed else 'IMAGE_MAX_SIZE', 5 * 1024 * 1024)
     if request.content_length and request.content_length > max_size:
         return jsonify(success=False, message='文件过大'), 413
 
@@ -1446,25 +1453,27 @@ def api_upload_image():
         file.save(str(filepath))
 
         # 检测文件真实类型（只读取前几KB）
-        with open(filepath, 'rb') as fh:
-            header = fh.read(2048)
-        import imghdr
-        detected = imghdr.what(None, h=header)
-        if not detected:
-            # 非法图片，删除已写入的文件
-            try:
-                filepath.unlink()
-            except Exception:
-                pass
-            return jsonify(success=False, message='无法识别的图片类型'), 400
+        normalized = ext
+        if not is_file_allowed:
+            with open(filepath, 'rb') as fh:
+                header = fh.read(2048)
+            import imghdr
+            detected = imghdr.what(None, h=header)
+            if not detected:
+                # 非法图片，删除已写入的文件
+                try:
+                    filepath.unlink()
+                except Exception:
+                    pass
+                return jsonify(success=False, message='无法识别的图片类型'), 400
 
-        normalized = detected.replace('jpeg', 'jpg') if detected else None
-        if normalized not in app.config.get('ALLOWED_IMAGE_EXTENSIONS', set()):
-            try:
-                filepath.unlink()
-            except Exception:
-                pass
-            return jsonify(success=False, message=f'不被允许的图片类型: {detected}'), 400
+            normalized = detected.replace('jpeg', 'jpg') if detected else None
+            if normalized not in app.config.get('ALLOWED_IMAGE_EXTENSIONS', set()):
+                try:
+                    filepath.unlink()
+                except Exception:
+                    pass
+                return jsonify(success=False, message=f'不被允许的图片类型: {detected}'), 400
 
         # 获取实际文件大小
         actual_file_size = filepath.stat().st_size
@@ -1508,11 +1517,18 @@ def api_upload_image():
         relative_path = os.path.relpath(str(filepath), str(Path(app.root_path) / 'static'))
         # 去除反斜杠，构造 URL
         url = url_for('static', filename=relative_path.replace('\\', '/'))
-        markdown_link = f"![{secure_filename(base)}]({url})"
+        
+        # 如果是图片，使用图片 Markdown 语法，否则使用普通链接
+        is_image = ext in app.config.get('ALLOWED_IMAGE_EXTENSIONS', set())
+        if is_image:
+            markdown_link = f"![{secure_filename(base)}]({url})"
+        else:
+            markdown_link = f"[{secure_filename(base)}.{ext}]({url})"
+            
         return jsonify(success=True, url=url, markdown=markdown_link, id=ui.id, filename=ui.filename)
     except Exception as e:
         db_session.rollback()
-        logger.exception('保存用户上传图片失败')
+        logger.exception('保存用户上传文件失败')
         return jsonify(success=False, message='保存文件失败'), 500
 
 
@@ -1551,17 +1567,17 @@ def api_get_upload_quota():
         return jsonify(success=True, quota=quota_info)
     except Exception as e:
         logger.exception('获取用户上传配额失败')
-        return jsonify(success=False, message='服务器错误'), 500
+return jsonify(success=False, message='服务器错误'), 500
 
 
-@app.route('/api/upload/image/<int:image_id>', methods=['DELETE'])
+@app.route('/api/upload/file/<int:file_id>', methods=['DELETE'])
 @login_required
-def api_delete_image(image_id):
+def api_delete_file(file_id):
     try:
-        ui = db_session.query(UserImage).get(image_id)
+        ui = db_session.query(UserImage).get(file_id)
         if not ui:
-            return jsonify(success=False, message='图片不存在'), 404
-        # 权限：图片所有者或管理员可删除
+            return jsonify(success=False, message='文件不存在'), 404
+        # 权限：文件所有者或管理员可删除
         if not (current_user.is_admin() or ui.user_id == current_user.id):
             return jsonify(success=False, message='权限不足'), 403
 
@@ -1573,21 +1589,19 @@ def api_delete_image(image_id):
         except Exception:
             pass
 
-        # 获取用户信息以便减少配额
+        # 更新用户已用配额
         user = db_session.query(User).get(ui.user_id)
-        if user and not user.is_admin():
-            # 减少用户的已使用配额
+        if user:
             user.upload_used = max(0, user.upload_used - ui.file_size)
             db_session.add(user)
 
         db_session.delete(ui)
         db_session.commit()
-        logger.info(f"用户 {current_user.username} 删除上传图片 {ui.filename} (ID:{ui.id})")
-        return jsonify(success=True, message='图片已删除')
+        return jsonify(success=True, message='删除成功')
     except Exception as e:
         db_session.rollback()
-        logger.exception('删除上传图片失败')
-        return jsonify(success=False, message='服务器错误'), 500
+        logger.exception('删除文件失败')
+        return jsonify(success=False, message='删除失败'), 500
 
 
 @app.route('/api/admin/recalculate-upload-sizes', methods=['POST'])
