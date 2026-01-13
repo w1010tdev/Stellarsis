@@ -122,10 +122,12 @@ def test_su_verification(ts):
             su_data['csrf_token'] = ts.csrf_token
             
         resp = ts.session.post(f"{BASE_URL}/admin/su", data=su_data, allow_redirects=True)
-        success = resp.status_code == 200 and 'success' in resp.text.lower() or resp.status_code in [302, 303]
-        log_test("SU验证", True, "SU验证通过或已验证")
-        ts.su_verified = True
-        return True
+        # Check if SU verification succeeded: either redirect or success message in response
+        success = (resp.status_code == 200 and 'success' in resp.text.lower()) or resp.status_code in [302, 303]
+        log_test("SU验证", success, f"状态码: {resp.status_code}")
+        if success:
+            ts.su_verified = True
+        return success
     except Exception as e:
         log_test("SU验证", False, str(e))
         return False

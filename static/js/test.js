@@ -62,12 +62,20 @@
         assert(document.body !== null, '页面body存在');
         assert(document.head !== null, '页面head存在');
 
-        // 检查常见元素
+        // 检查常见元素（这些是可选的，所以用日志记录而非断言）
         const header = document.querySelector('header, .header, nav, .navbar');
-        assert(header !== null || true, '页面头部元素', '可能不存在');
+        if (header !== null) {
+            log('  ✓ 页面头部元素存在', 'info');
+        } else {
+            log('  ⚠️ 页面头部元素未找到（可能不存在）', 'warning');
+        }
 
         const main = document.querySelector('main, .main, .content, .container');
-        assert(main !== null || true, '页面主体元素', '可能不存在');
+        if (main !== null) {
+            log('  ✓ 页面主体元素存在', 'info');
+        } else {
+            log('  ⚠️ 页面主体元素未找到（可能不存在）', 'warning');
+        }
 
         // 检查Toast容器是否可以创建
         if (typeof window.showToast === 'function') {
