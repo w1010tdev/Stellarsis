@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     preview.appendChild(img);
                 } else {
                     var icon = document.createElement('div');
-                    icon.className = 'file-upload-preview-icon';
+                    icon.className = 'image-upload-preview';
                     icon.innerHTML = '<i class="fas fa-file"></i>';
                     preview.appendChild(icon);
                 }
