@@ -1566,7 +1566,7 @@ def api_get_upload_quota():
         return jsonify(success=True, quota=quota_info)
     except Exception as e:
         logger.exception('获取用户上传配额失败')
-return jsonify(success=False, message='服务器错误'), 500
+        return jsonify(success=False, message='服务器错误'), 500
 
 
 @app.route('/api/upload/file/<int:file_id>', methods=['DELETE'])
