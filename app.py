@@ -1453,7 +1453,6 @@ def api_upload_file():
         file.save(str(filepath))
 
         # 检测文件真实类型（只读取前几KB）
-        normalized = ext
         if not is_file_allowed:
             with open(filepath, 'rb') as fh:
                 header = fh.read(2048)
