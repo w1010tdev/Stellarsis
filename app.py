@@ -1591,7 +1591,8 @@ def api_upload_file():
     # 安全文件名及唯一后缀
     base = secure_filename(os.path.splitext(filename)[0]) or 'file'
     from uuid import uuid4
-    unique_name = f"{base}_{int(time.time())}_{uuid4().hex}.{ext}" if ext else f"{base}_{int(time.time())}_{uuid4().hex}"
+    suffix = f".{ext}" if ext else ""
+    unique_name = f"{base}_{int(time.time())}_{uuid4().hex}{suffix}"
 
     # 安全检查：确保上传目标目录位于应用的 static 目录之内
     static_root = Path(app.root_path) / 'static'

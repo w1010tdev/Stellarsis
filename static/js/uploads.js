@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'txt': '📄',
             'md': '📝',
             'zip': '📦',
-            'rar': '��',
+            'rar': '📦',
             '7z': '📦'
         };
         return iconMap[ext] || '📁';

@@ -23,7 +23,9 @@ class Config:
     # ALLOWED_FILE_EXTENSIONS: 允许上传的文件扩展名，设为空集合则允许所有类型
     # 如果设置为 set() 或 None，则允许上传任意类型文件
     # 如果设置为具体扩展名集合，则只允许这些类型
-    ALLOWED_FILE_EXTENSIONS = set(os.environ.get('ALLOWED_FILE_EXTENSIONS', 'pdf,doc,docx,xls,xlsx,ppt,pptx,txt,zip,rar,7z,md').split(',')) if os.environ.get('ALLOWED_FILE_EXTENSIONS') else set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'zip', 'rar', '7z', 'md'])
+    _DEFAULT_FILE_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'zip', 'rar', '7z', 'md']
+    _env_file_ext = os.environ.get('ALLOWED_FILE_EXTENSIONS')
+    ALLOWED_FILE_EXTENSIONS = set(_env_file_ext.split(',')) if _env_file_ext else set(_DEFAULT_FILE_EXTENSIONS)
     FILE_MAX_SIZE = int(os.environ.get('FILE_MAX_SIZE', 10 * 1024 * 1024))  # 单个文件最大 10MB
 
     # 管理面板开关：用于在生产环境中禁用高风险功能
