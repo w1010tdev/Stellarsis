@@ -684,6 +684,26 @@ def allowed_image_extension(filename):
     return ext in app.config.get('ALLOWED_IMAGE_EXTENSIONS', set())
 
 
+def allowed_file_extension(filename):
+    """检查文件扩展名是否允许上传（当文件上传功能开启时）"""
+    if '.' not in filename:
+        return False
+    ext = filename.rsplit('.', 1)[1].lower()
+    allowed_exts = app.config.get('ALLOWED_FILE_EXTENSIONS', set())
+    # 如果允许的扩展名为空集合，则允许所有类型
+    if not allowed_exts:
+        return True
+    return ext in allowed_exts
+
+
+def is_image_extension(filename):
+    """检查文件扩展名是否为图片类型"""
+    if '.' not in filename:
+        return False
+    ext = filename.rsplit('.', 1)[1].lower()
+    return ext in app.config.get('ALLOWED_IMAGE_EXTENSIONS', set())
+
+
 def get_image_type(stream):
     """检测图片类型，优先使用imghdr，其次使用Pillow"""
     try:
@@ -1509,27 +1529,190 @@ def api_upload_image():
         # 去除反斜杠，构造 URL
         url = url_for('static', filename=relative_path.replace('\\', '/'))
         markdown_link = f"![{secure_filename(base)}]({url})"
-        return jsonify(success=True, url=url, markdown=markdown_link, id=ui.id, filename=ui.filename)
+        return jsonify(success=True, url=url, markdown=markdown_link, id=ui.id, filename=ui.filename, is_image=True)
     except Exception as e:
         db_session.rollback()
         logger.exception('保存用户上传图片失败')
         return jsonify(success=False, message='保存文件失败'), 500
 
 
+@app.route('/api/upload/file', methods=['POST'])
+@login_required
+def api_upload_file():
+    """上传用户文件API（当ENABLE_FILE_UPLOAD开启时可用），
+    支持图片和非图片文件，返回文件的 URL 以及可直接复制的 Markdown 链接。
+    如果是图片格式则返回 ![]() 格式，否则返回 []() 格式。
+    """
+    # 检查是否启用文件上传功能
+    if not app.config.get('ENABLE_FILE_UPLOAD', False):
+        return jsonify(success=False, message='文件上传功能未启用'), 403
+
+    if 'file' not in request.files:
+        return jsonify(success=False, message='未找到文件'), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify(success=False, message='文件名为空'), 400
+
+    filename = file.filename
+    
+    # 获取文件扩展名
+    ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+    
+    # 检查是否为图片
+    is_image = is_image_extension(filename)
+    
+    # 如果不是图片，检查是否允许该文件类型
+    if not is_image and not allowed_file_extension(filename):
+        return jsonify(success=False, message='不支持的文件扩展名'), 400
+    
+    # 如果是图片，也需要检查图片扩展名是否允许
+    if is_image and not allowed_image_extension(filename):
+        return jsonify(success=False, message='不支持的图片扩展名'), 400
+
+    # 文件大小检查
+    max_size = app.config.get('FILE_MAX_SIZE', 10 * 1024 * 1024) if not is_image else app.config.get('IMAGE_MAX_SIZE', 5 * 1024 * 1024)
+    if request.content_length and request.content_length > max_size:
+        return jsonify(success=False, message='文件过大'), 413
+
+    # 检查用户上传配额（管理员不受限制）
+    if not current_user.is_admin():
+        user_quota = app.config.get('USER_UPLOAD_QUOTA', 50 * 1024 * 1024)
+        if current_user.upload_used >= user_quota:
+            return jsonify(success=False, message='上传配额已用完'), 400
+        
+        # 获取文件大小进行预检查
+        file.seek(0, 2)
+        file_size = file.tell()
+        file.seek(0)
+        
+        if current_user.upload_used + file_size > user_quota:
+            return jsonify(success=False, message='上传后将超出配额限制'), 400
+
+    # 安全文件名及唯一后缀
+    base = secure_filename(os.path.splitext(filename)[0]) or 'file'
+    from uuid import uuid4
+    unique_name = f"{base}_{int(time.time())}_{uuid4().hex}.{ext}" if ext else f"{base}_{int(time.time())}_{uuid4().hex}"
+
+    # 安全检查：确保上传目标目录位于应用的 static 目录之内
+    static_root = Path(app.root_path) / 'static'
+    upload_folder = (Path(app.root_path) / app.config.get('UPLOAD_FOLDER', 'static/uploads') / str(current_user.id)).resolve()
+    if not str(upload_folder).startswith(str(static_root.resolve())):
+        return jsonify(success=False, message='上传目录配置不合法'), 500
+    upload_folder.mkdir(parents=True, exist_ok=True)
+    filepath = upload_folder / unique_name
+
+    try:
+        file.save(str(filepath))
+
+        # 如果是图片，检测文件真实类型
+        if is_image:
+            with open(filepath, 'rb') as fh:
+                header = fh.read(2048)
+            import imghdr
+            detected = imghdr.what(None, h=header)
+            if not detected:
+                try:
+                    filepath.unlink()
+                except Exception:
+                    pass
+                return jsonify(success=False, message='无法识别的图片类型'), 400
+
+            normalized = detected.replace('jpeg', 'jpg') if detected else None
+            if normalized not in app.config.get('ALLOWED_IMAGE_EXTENSIONS', set()):
+                try:
+                    filepath.unlink()
+                except Exception:
+                    pass
+                return jsonify(success=False, message=f'不被允许的图片类型: {detected}'), 400
+            file_type = normalized or ext
+        else:
+            file_type = ext
+
+        # 获取实际文件大小
+        actual_file_size = filepath.stat().st_size
+        
+        # 检查实际文件大小是否超过限制
+        if actual_file_size > max_size:
+            try:
+                filepath.unlink()
+            except Exception:
+                pass
+            return jsonify(success=False, message='文件过大'), 413
+            
+        # 检查用户上传配额（再次确认）
+        if not current_user.is_admin():
+            user_quota = app.config.get('USER_UPLOAD_QUOTA', 50 * 1024 * 1024)
+            if current_user.upload_used + actual_file_size > user_quota:
+                try:
+                    filepath.unlink()
+                except Exception:
+                    pass
+                return jsonify(success=False, message='上传后将超出配额限制'), 400
+
+        # 在数据库中记录文件信息
+        ui = UserImage(
+            user_id=current_user.id,
+            filename=unique_name,
+            filepath=str(filepath),
+            file_size=actual_file_size,
+            file_type=file_type
+        )
+        db_session.add(ui)
+        
+        # 更新用户已使用配额
+        if not current_user.is_admin():
+            current_user.upload_used += actual_file_size
+            db_session.add(current_user)
+        
+        db_session.commit()
+
+        # 返回静态资源URL
+        relative_path = os.path.relpath(str(filepath), str(Path(app.root_path) / 'static'))
+        url = url_for('static', filename=relative_path.replace('\\', '/'))
+        
+        # 根据文件类型生成不同的 Markdown 链接
+        if is_image:
+            markdown_link = f"![{secure_filename(base)}]({url})"
+        else:
+            markdown_link = f"[{secure_filename(base)}.{ext}]({url})"
+        
+        return jsonify(success=True, url=url, markdown=markdown_link, id=ui.id, filename=ui.filename, is_image=is_image)
+    except Exception as e:
+        db_session.rollback()
+        logger.exception('保存用户上传文件失败')
+        return jsonify(success=False, message='保存文件失败'), 500
+
+
 @app.route('/api/upload/images', methods=['GET'])
 @login_required
 def api_list_user_images():
-    """列出当前用户已上传的图片，支持前端展示和复制 Markdown 链接。"""
+    """列出当前用户已上传的文件，支持前端展示和复制 Markdown 链接。"""
     try:
         images = db_session.query(UserImage).filter_by(user_id=current_user.id).order_by(UserImage.upload_time.desc()).all()
         results = []
+        image_extensions = app.config.get('ALLOWED_IMAGE_EXTENSIONS', set())
         for im in images:
             rel = os.path.relpath(str(im.filepath), str(Path(app.root_path) / 'static'))
             url = url_for('static', filename=rel.replace('\\', '/'))
-            results.append({'id': im.id, 'filename': im.filename, 'url': url, 'markdown': f'![{im.filename}]({url})', 'uploaded': im.upload_time.isoformat()})
+            # 判断是否为图片类型
+            file_ext = im.filename.rsplit('.', 1)[1].lower() if '.' in im.filename else ''
+            is_image = file_ext in image_extensions or (im.file_type and im.file_type.lower() in image_extensions)
+            # 根据文件类型生成不同的 Markdown 链接
+            if is_image:
+                markdown = f'![{im.filename}]({url})'
+            else:
+                markdown = f'[{im.filename}]({url})'
+            results.append({
+                'id': im.id,
+                'filename': im.filename,
+                'url': url,
+                'markdown': markdown,
+                'uploaded': im.upload_time.isoformat(),
+                'is_image': is_image
+            })
         return jsonify(success=True, images=results)
     except Exception as e:
-        logger.exception('列出用户图片失败')
+        logger.exception('列出用户文件失败')
         return jsonify(success=False, message='服务器错误'), 500
 
 
