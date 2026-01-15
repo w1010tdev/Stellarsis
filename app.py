@@ -4047,7 +4047,7 @@ def handle_heartbeat():
     """处理客户端心跳，更新用户最后活动时间，广播全局在线人数"""
     if current_user.is_authenticated:
         # 检查用户之前是否被视为离线（用于判断是否刚上线）
-        cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
+        cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
         was_offline = current_user.last_seen is None or current_user.last_seen < cutoff_time
         
         current_user.last_seen = datetime.now(timezone.utc)
