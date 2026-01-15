@@ -160,7 +160,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     // If displayList is enabled, add an entry; otherwise directly insert into editor
                     if (displayList && list) {
                         var container = document.createElement('div');
-                        container.className = 'image-upload-item' + (fileIsImage ? '' : ' file-upload-item');
+                        if (fileIsImage) {
+                            container.className = 'image-upload-item';
+                        } else {
+                            container.className = 'file-upload-item';
+                        }
 
                         if (fileIsImage) {
                             var thumb = document.createElement('img');
