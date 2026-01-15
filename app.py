@@ -685,14 +685,20 @@ def allowed_image_extension(filename):
 
 
 def allowed_file_extension(filename):
-    """检查文件扩展名是否允许上传（当文件上传功能开启时）"""
+    """检查文件扩展名是否允许上传（当文件上传功能开启时）
+
+    安全说明：
+    - 当 ALLOWED_FILE_EXTENSIONS 为空或未配置时，默认不允许任何文件扩展名上传，
+      除非显式将配置项 ALLOW_ALL_FILE_EXTENSIONS 设为 True 才会放行所有类型。
+    """
     if '.' not in filename:
         return False
     ext = filename.rsplit('.', 1)[1].lower()
-    allowed_exts = app.config.get('ALLOWED_FILE_EXTENSIONS', set())
-    # 如果允许的扩展名为空集合，则允许所有类型
+    allowed_exts = app.config.get('ALLOWED_FILE_EXTENSIONS')
+    # 当未配置或配置为空集合/列表时，仅在显式开启 ALLOW_ALL_FILE_EXTENSIONS 时才允许所有类型
     if not allowed_exts:
-        return True
+        allow_all = app.config.get('ALLOW_ALL_FILE_EXTENSIONS', False)
+        return bool(allow_all)
     return ext in allowed_exts
 
 
