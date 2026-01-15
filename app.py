@@ -1703,9 +1703,13 @@ def api_list_user_images():
         for im in images:
             rel = os.path.relpath(str(im.filepath), str(Path(app.root_path) / 'static'))
             url = url_for('static', filename=rel.replace('\\', '/'))
-            # 判断是否为图片类型
-            file_ext = im.filename.rsplit('.', 1)[1].lower() if '.' in im.filename else ''
-            is_image = file_ext in image_extensions or (im.file_type and im.file_type.lower() in image_extensions)
+            # 判断是否为图片类型：优先使用模型上的 is_image 标记，缺失时再根据扩展名判断
+            stored_is_image = getattr(im, 'is_image', None)
+            if stored_is_image is None:
+                file_ext = im.filename.rsplit('.', 1)[1].lower() if '.' in im.filename else ''
+                is_image = file_ext in image_extensions or (im.file_type and im.file_type.lower() in image_extensions)
+            else:
+                is_image = bool(stored_is_image)
             # 根据文件类型生成不同的 Markdown 链接
             if is_image:
                 markdown = f'![{im.filename}]({url})'
