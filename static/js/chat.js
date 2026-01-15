@@ -916,6 +916,22 @@ function setupWebSocket() {
                 addMessageToUI(msg);
             }
         });
+
+        // 监听关注用户上线通知（全局事件，不仅限于当前聊天室）
+        chatSocket.on('followed_user_online', (data) => {
+            // 如果是关注的用户，在聊天室显示上线提示
+            if (followedUserIds.has(data.user_id)) {
+                const msg = {
+                    type: 'system',
+                    user_id: data.user_id,
+                    username: data.username,
+                    nickname: data.nickname || data.username,
+                    timestamp: new Date().toISOString(),
+                    content: `您关注的用户 ${data.nickname || data.username} 上线了`
+                };
+                addMessageToUI(msg);
+            }
+        });
     } catch (e) {
         console.error('WebSocket初始化失败:', e);
         setupPolling();

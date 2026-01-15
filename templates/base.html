@@ -724,10 +724,46 @@
                 globalOnlineCountElement.textContent = count || '0';
             }
         }
-        // 获取全局在线人数（WebSocket或fetch）
+        // 显示关注用户上线提示
+        function showFollowedUserOnlineNotification(userData) {
+            // 创建通知元素
+            const notification = document.createElement('div');
+            notification.className = 'followed-user-notification';
+            notification.innerHTML = `
+                <div class="notification-content">
+                    <span class="notification-icon">👋</span>
+                    <span style="color: ${userData.color || 'inherit'}">${escapeHtml(userData.nickname || userData.username)}</span>
+                    <span>上线了</span>
+                </div>
+            `;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: var(--surface-color, #fff);
+                border: 1px solid var(--border-color, #ddd);
+                border-radius: 8px;
+                padding: 12px 16px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 10000;
+                animation: slideIn 0.3s ease-out;
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-in';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
+        }
+        // 获取全局在线人数（WebSocket或fetch降级方案）
         function getGlobalOnlineCount() {
-
-            // WebSocket不可用，使用fetch降级方案
+            // 使用fetch作为降级方案（WebSocket不可用时或初始获取）
             fetch('/api/online_count')
                 .then(response => response.json())
                 .then(data => {
@@ -737,7 +773,6 @@
                     console.error('获取全局在线人数失败:', error);
                     updateGlobalOnlineCountDisplay('错误');
                 });
-
         }
         // 初始化全局在线人数更新
         function initializeGlobalOnlineCount() {
@@ -745,11 +780,19 @@
             globalOnlineCountInitialized = true;
             // 先获取一次全局在线人数
             getGlobalOnlineCount();
-            // 设置定时器定期更新（当WebSocket不可用时）
-            setInterval(() => {
-                getGlobalOnlineCount();
-                console.log('定时更新全局在线人数');
-            }, 10000); // 每10s更新一次
+            
+            // 如果WebSocket已连接，监听全局在线人数广播
+            if (globalSocket && globalSocket.connected) {
+                console.log('使用WebSocket接收全局在线人数');
+            } else {
+                // WebSocket未连接时，使用定时轮询作为降级方案
+                setInterval(() => {
+                    if (!globalSocket || !globalSocket.connected) {
+                        getGlobalOnlineCount();
+                        console.log('定时更新全局在线人数（降级方案）');
+                    }
+                }, 30000); // 每30s更新一次（降级方案）
+            }
         }
         // 设置WebSocket连接
         function setupGlobalSocket() {
@@ -768,6 +811,25 @@
                         timeout: 20000,
                         transports: ['websocket', 'polling']
                     });
+                    
+                    // 监听全局在线人数广播（WebSocket方式）
+                    globalSocket.on('global_online_count', function(data) {
+                        console.log('收到全局在线人数广播:', data.count);
+                        updateGlobalOnlineCountDisplay(data.count);
+                    });
+                    
+                    // 监听关注用户上线通知
+                    globalSocket.on('followed_user_online', function(data) {
+                        console.log('关注的用户上线:', data.nickname || data.username);
+                        showFollowedUserOnlineNotification(data);
+                    });
+                    
+                    globalSocket.on('connect', function() {
+                        console.log('全局WebSocket已连接');
+                        // 连接成功后发送一次心跳以获取最新在线人数
+                        globalSocket.emit('heartbeat');
+                    });
+                    
                     initializeGlobalOnlineCount();
                 } catch (e) {
                     console.error('全局WebSocket初始化失败:', e);
@@ -780,6 +842,38 @@
             setupGlobalSocket();
         });
     </script>
+    
+    <!-- 通知动画样式 -->
+    <style>
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        .followed-user-notification .notification-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .followed-user-notification .notification-icon {
+            font-size: 1.2em;
+        }
+    </style>
 
     <script>
         // 页面入场：在 DOMContentLoaded 后触发 page-ready，产生约 0.45s 的平滑入场
