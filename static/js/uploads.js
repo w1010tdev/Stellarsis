@@ -1,5 +1,8 @@
 document.addEventListener('DOMContentLoaded', function () {
     
+    // Check if file upload is enabled (set from server-side template)
+    var FILE_UPLOAD_ENABLED = window.ENABLE_FILE_UPLOAD || false;
+    
     // 使用 clipboard-polyfill 库（如果存在），否则使用现代 Clipboard API，最后回退到传统方法
     function copyToClipboard(text) {
         // 如果 clipboardPolyfill 存在，优先使用它
@@ -75,9 +78,38 @@ document.addEventListener('DOMContentLoaded', function () {
 
         document.body.removeChild(textArea);
     }
+    
+    // 检查文件扩展名是否为图片类型
+    function isImageFile(filename) {
+        if (!filename) return false;
+        var imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+        var ext = filename.split('.').pop().toLowerCase();
+        return imageExtensions.indexOf(ext) !== -1;
+    }
+    
+    // 获取文件图标（用于非图片文件）
+    function getFileIcon(filename) {
+        var ext = filename ? filename.split('.').pop().toLowerCase() : '';
+        var iconMap = {
+            'pdf': '📄',
+            'doc': '📝',
+            'docx': '📝',
+            'xls': '📊',
+            'xlsx': '📊',
+            'ppt': '📽️',
+            'pptx': '📽️',
+            'txt': '📄',
+            'md': '📝',
+            'zip': '📦',
+            'rar': '📦',
+            '7z': '📦'
+        };
+        return iconMap[ext] || '📁';
+    }
+    
     // Upload a single file input with preview and send to server
     function setupUpload(inputId, previewContainerId, listContainerId, insertTargetSelector, displayList, autoSend) {
-        // displayList: whether to show/manage the image list UI
+        // displayList: whether to show/manage the file list UI
         // autoSend: whether to auto-submit after inserting (forum/chat)
         var input = document.getElementById(inputId);
         var preview = previewContainerId ? document.getElementById(previewContainerId) : null;
@@ -91,22 +123,29 @@ document.addEventListener('DOMContentLoaded', function () {
         input.addEventListener('change', function (e) {
             var file = input.files[0];
             if (!file) return;
+            
+            // 判断是否为图片文件
+            var isImage = isImageFile(file.name);
 
-            // preview
-            if (preview) {
+            // preview (only for images)
+            if (preview && isImage) {
                 preview.innerHTML = '';
                 var img = document.createElement('img');
                 img.src = URL.createObjectURL(file);
                 img.className = 'image-upload-preview';
                 img.onload = function () { URL.revokeObjectURL(this.src); };
                 preview.appendChild(img);
+            } else if (preview) {
+                preview.innerHTML = '';
             }
 
-            // upload
+            // upload - 根据是否启用文件上传选择不同的API
             var fd = new FormData();
             fd.append('file', file);
+            
+            var uploadUrl = FILE_UPLOAD_ENABLED ? '/api/upload/file' : '/api/upload/image';
 
-            fetch('/api/upload/image', {
+            fetch(uploadUrl, {
                 method: 'POST',
                 body: fd,
                 credentials: 'same-origin'
@@ -114,18 +153,35 @@ document.addEventListener('DOMContentLoaded', function () {
                 return resp.json();
             }).then(function (data) {
                 if (data && data.success) {
+                    // 从服务器响应获取是否为图片
+                    var fileIsImage = data.is_image !== undefined ? data.is_image : isImage;
+                    var itemType = fileIsImage ? '图片' : '文件';
+                    
                     // If displayList is enabled, add an entry; otherwise directly insert into editor
                     if (displayList && list) {
                         var container = document.createElement('div');
-                        container.className = 'image-upload-item';
+                        if (fileIsImage) {
+                            container.className = 'image-upload-item';
+                        } else {
+                            container.className = 'file-upload-item';
+                        }
 
-                        var thumb = document.createElement('img');
-                        thumb.src = data.url;
-                        thumb.className = 'image-upload-thumb';
-                        container.appendChild(thumb);
+                        if (fileIsImage) {
+                            var thumb = document.createElement('img');
+                            thumb.src = data.url;
+                            thumb.className = 'image-upload-thumb';
+                            container.appendChild(thumb);
+                        } else {
+                            // 非图片文件显示图标
+                            var iconDiv = document.createElement('div');
+                            iconDiv.className = 'file-icon';
+                            iconDiv.textContent = getFileIcon(data.filename);
+                            container.appendChild(iconDiv);
+                        }
 
                         // store markdown in data attribute, but do not display long raw markdown
                         container.dataset.markdown = data.markdown || data.url;
+                        container.dataset.isImage = fileIsImage ? 'true' : 'false';
 
                         var fname = document.createElement('div');
                         fname.className = 'image-upload-filename';
@@ -159,19 +215,22 @@ document.addEventListener('DOMContentLoaded', function () {
                             container.appendChild(insertBtn);
                         }
 
-                        // add delete button (only visible for user's own images)
+                        // add delete button (only visible for user's own files)
                         var delBtn = document.createElement('button');
                         delBtn.className = 'btn btn-sm btn-danger image-upload-delete';
                         delBtn.textContent = '删除';
                         delBtn.addEventListener('click', function () {
-                            showConfirm('确认删除图片？此操作不可恢复。', { title: '删除图片', danger: true }).then(function (ok) {
+                            var isImage = container.dataset.isImage === 'true';
+                            var confirmMsg = isImage ? '确认删除图片？此操作不可恢复。' : '确认删除文件？此操作不可恢复。';
+                            var confirmTitle = isImage ? '删除图片' : '删除文件';
+                            showConfirm(confirmMsg, { title: confirmTitle, danger: true }).then(function (ok) {
                                 if (!ok) return;
                                 fetch('/api/upload/image/' + (data.id || data.image_id || 0), { method: 'DELETE', credentials: 'same-origin' })
                                     .then(function (r) { return r.json(); })
                                     .then(function (res) {
                                         if (res && res.success) {
                                             container.parentNode && container.parentNode.removeChild(container);
-                                            showToast('success', '图片已删除');
+                                            showToast('success', itemType + '已删除');
                                             
                                             // 触发上传完成事件以更新配额信息
                                             document.dispatchEvent(new CustomEvent('uploadComplete', { detail: data }));
@@ -196,7 +255,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         var md = data.markdown || data.url;
                         el.value = before + '\n' + md + '\n' + after;
                         el.dispatchEvent(new Event('input'));
-                        showToast('success', '图片已插入到编辑器');
+                        showToast('success', itemType + '已插入到编辑器');
                         if (autoSend) {
                             // If it is a forum form, submit it; otherwise try to click send button
                             var form = el.closest('form');
@@ -212,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         // 触发上传完成事件以更新配额信息
                         document.dispatchEvent(new CustomEvent('uploadComplete', { detail: data }));
                     }
-                    showToast('success', '图片上传成功');
+                    showToast('success', itemType + '上传成功');
                 } else {
                     showToast('danger', data && data.message ? data.message : '上传失败');
                 }
@@ -223,7 +282,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Fetch and render existing images (only for pages that show a list)
+    // Fetch and render existing files (only for pages that show a list)
     function loadExistingImages(listId, insertTargetSelector) {
         var list = document.getElementById(listId);
         if (!list) return;
@@ -234,12 +293,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 list.innerHTML = '';
                 d.images.forEach(function (item) {
                     var container = document.createElement('div');
-                    container.className = 'image-upload-item';
-                    var thumb = document.createElement('img');
-                    thumb.src = item.url;
-                    thumb.className = 'image-upload-thumb';
-                    container.appendChild(thumb);
+                    // 判断是否为图片
+                    var fileIsImage = item.is_image !== undefined ? item.is_image : isImageFile(item.filename);
+                    container.className = 'image-upload-item' + (fileIsImage ? '' : ' file-upload-item');
+                    
+                    if (fileIsImage) {
+                        var thumb = document.createElement('img');
+                        thumb.src = item.url;
+                        thumb.className = 'image-upload-thumb';
+                        container.appendChild(thumb);
+                    } else {
+                        // 非图片文件显示图标
+                        var iconDiv = document.createElement('div');
+                        iconDiv.className = 'file-icon';
+                        iconDiv.textContent = getFileIcon(item.filename);
+                        container.appendChild(iconDiv);
+                    }
+                    
                     container.dataset.markdown = item.markdown;
+                    container.dataset.isImage = fileIsImage ? 'true' : 'false';
                     var fname = document.createElement('div');
                     fname.className = 'image-upload-filename';
                     var fullName = item.filename || '';
@@ -271,19 +343,21 @@ document.addEventListener('DOMContentLoaded', function () {
                         });
                         container.appendChild(insertBtn);
                     }
-                    // delete for user's images
+                    // delete for user's files
                     var delBtn = document.createElement('button');
                     delBtn.className = 'btn btn-sm btn-danger image-upload-delete';
                     delBtn.textContent = '删除';
                     delBtn.addEventListener('click', function () {
-                        showConfirm('确认删除图片？此操作不可恢复。', { title: '删除图片', danger: true }).then(function (ok) {
+                        var confirmMsg = fileIsImage ? '确认删除图片？此操作不可恢复。' : '确认删除文件？此操作不可恢复。';
+                        var confirmTitle = fileIsImage ? '删除图片' : '删除文件';
+                        showConfirm(confirmMsg, { title: confirmTitle, danger: true }).then(function (ok) {
                             if (!ok) return;
                             fetch('/api/upload/image/' + item.id, { method: 'DELETE', credentials: 'same-origin' })
                                 .then(function (r) { return r.json(); })
                                 .then(function (res) {
                                     if (res && res.success) {
                                         container.parentNode && container.parentNode.removeChild(container);
-                                        showToast('success', '图片已删除');
+                                        showToast('success', (fileIsImage ? '图片' : '文件') + '已删除');
                                         
                                         // 触发上传完成事件以更新配额信息
                                         document.dispatchEvent(new CustomEvent('uploadComplete', { detail: item }));
@@ -296,7 +370,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     container.appendChild(delBtn);
                     list.appendChild(container);
                 });
-            }).catch(function (e) { console.error('获取已有图片失败', e); });
+            }).catch(function (e) { console.error('获取已有文件失败', e); });
     }
 
     // Initialize on known IDs
@@ -308,9 +382,7 @@ document.addEventListener('DOMContentLoaded', function () {
     setupUpload('chat-image-input', 'chat-image-preview', null, '#message-text', false, false);
     // Settings page: show list and allow copy/delete
     setupUpload('settings-images-input', null, 'settings-images-list', null, true, false);
-    // load existing images only for settings page
+    // load existing files only for settings page
     loadExistingImages('settings-images-list', null);
 
 });
-//为管理员面板新增：一个button用于从/down下载根目录压缩包，一个button用于从/downdb下载db（API路径可能不对，我忘了），一个button用于从static下载图片压缩包（自行实现后端）。上传的图片可能有5G之多，但是我的服务器只有2G的内存，你需要思考如何优化。
-//解决问题：1. 插入图片自动发送（贴吧中），2. 上传多个图片后大量积压输入空间（你只应当上传后自动插入，而非显示所有图片的预览。3. “我的图片”菜单没有在所有的settings文件夹下的网页显示 4. 删除markdown链接的直接显示，复制markdown链接这个按钮的文字颜色不对（与背景颜色冲突）（浅色模式）5. 个人资料这里应当删除图片列表

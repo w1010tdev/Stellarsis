@@ -1818,7 +1818,41 @@ footer a,
   margin-left: 6px;
 }
 
-/* Make settings sidebar link more prominent for image management */
+/* File upload item styles (for non-image files) */
+.file-upload-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--card-border-color);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: var(--surface-color);
+}
+
+.file-upload-item .file-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--neutral-100);
+  border-radius: 8px;
+  font-size: 24px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.file-upload-item .image-upload-filename {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-color);
+  font-size: 0.9rem;
+}
+
+/* Make settings sidebar link more prominent for file/image management */
 .settings-sidebar a[href*="images"] {
   font-weight: 700;
 }
