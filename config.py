@@ -26,7 +26,12 @@ class Config:
     _DEFAULT_FILE_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'zip', 'rar', '7z', 'md']
     _env_file_ext = os.environ.get('ALLOWED_FILE_EXTENSIONS')
     ALLOWED_FILE_EXTENSIONS = set(_env_file_ext.split(',')) if _env_file_ext else set(_DEFAULT_FILE_EXTENSIONS)
-    FILE_MAX_SIZE = int(os.environ.get('FILE_MAX_SIZE', 10 * 1024 * 1024))  # 单个文件最大 10MB
+    _DEFAULT_FILE_MAX_SIZE = 10 * 1024 * 1024  # 单个文件最大 10MB
+    _env_file_max_size = os.environ.get('FILE_MAX_SIZE')
+    try:
+        FILE_MAX_SIZE = int(_env_file_max_size) if _env_file_max_size is not None else _DEFAULT_FILE_MAX_SIZE
+    except ValueError:
+        FILE_MAX_SIZE = _DEFAULT_FILE_MAX_SIZE
 
     # 管理面板开关：用于在生产环境中禁用高风险功能
     ENABLE_FILE_MANAGER = os.environ.get('ENABLE_FILE_MANAGER', 'False').lower() in ('1','true','yes')
