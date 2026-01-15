@@ -5,6 +5,10 @@
    - Bash-style features: command history (↑/↓), tab completion, aliases
 */
 (function () {
+    // Configuration constants
+    var MAX_HISTORY_SIZE = 50;  // Maximum number of commands to keep in history
+    var RECENT_HISTORY_DISPLAY = 10;  // Number of recent commands to show in history command
+    
     var commands = {};
     var aliases = {}; // alias -> command
     var commandHistory = []; // command history for ↑/↓ navigation
@@ -36,8 +40,8 @@
         // avoid duplicates
         if (commandHistory.length === 0 || commandHistory[commandHistory.length - 1] !== cmd) {
             commandHistory.push(cmd);
-            // keep only last 50 commands
-            if (commandHistory.length > 50) {
+            // keep only last MAX_HISTORY_SIZE commands
+            if (commandHistory.length > MAX_HISTORY_SIZE) {
                 commandHistory.shift();
             }
         }
@@ -91,7 +95,7 @@
         if (commandHistory.length === 0) {
             return Promise.resolve('命令历史为空');
         }
-        var recent = commandHistory.slice(-10).reverse(); // show last 10 commands
+        var recent = commandHistory.slice(-RECENT_HISTORY_DISPLAY).reverse(); // show last RECENT_HISTORY_DISPLAY commands
         return Promise.resolve({ 
             type: 'help', 
             list: recent.map((cmd, idx) => ({ 
