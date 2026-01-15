@@ -676,6 +676,33 @@ def get_room_users_data(room_id):
             })
     return users_data
 
+def get_global_online_count():
+    """获取全局在线用户数量（基于心跳判定）"""
+    cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
+    count = db_session.query(User).filter(User.last_seen >= cutoff_time).count()
+    return count
+
+def broadcast_global_online_count():
+    """通过WebSocket广播全局在线人数"""
+    count = get_global_online_count()
+    socketio.emit('global_online_count', {'count': count})
+
+def notify_followers_user_online(user):
+    """通知关注者该用户上线"""
+    # 获取所有关注该用户的人
+    followers = db_session.query(UserFollow).filter_by(followed_id=user.id).all()
+    for follow in followers:
+        follower_id = follow.follower_id
+        # 通过 WebSocket 向每个关注者发送通知
+        # 使用用户ID作为房间名，这样可以向特定用户发送消息
+        socketio.emit('followed_user_online', {
+            'user_id': user.id,
+            'username': user.username,
+            'nickname': user.nickname or user.username,
+            'color': user.color,
+            'badge': user.badge
+        }, room=f"user_{follower_id}")
+
 def allowed_image_extension(filename):
     """检查文件扩展名是否允许上传为图片"""
     if '.' not in filename:
@@ -3613,6 +3640,8 @@ def handle_connect():
     if current_user.is_authenticated:
         current_user.last_seen = datetime.now(timezone.utc)
         db_session.commit()
+        # 加入用户专属房间，用于接收关注通知
+        join_room(f"user_{current_user.id}")
     
     session['receive_count'] = session.get('receive_count', 0) + 1
     emit('my_response', {'count': session['receive_count']})
@@ -3695,8 +3724,7 @@ def on_leave(data):
         'room_id': room_id
     }, room=room_name)
     
-    # 更新在线人数
-    update_room_online_count(room_id)
+    # 在线人数完全依赖 heartbeat_chat 心跳判定，不在 leave 事件中更新
 
 @socketio.on('send_message')
 def handle_message(data):
@@ -4016,10 +4044,21 @@ def toggle_follow():
 
 @socketio.on('heartbeat')
 def handle_heartbeat():
-    """处理客户端心跳，更新用户最后活动时间"""
+    """处理客户端心跳，更新用户最后活动时间，广播全局在线人数"""
     if current_user.is_authenticated:
+        # 检查用户之前是否被视为离线（用于判断是否刚上线）
+        cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
+        was_offline = current_user.last_seen is None or current_user.last_seen < cutoff_time
+        
         current_user.last_seen = datetime.now(timezone.utc)
         db_session.commit()
+        
+        # 如果用户刚从离线变为在线，通知其关注者
+        if was_offline:
+            notify_followers_user_online(current_user)
+        
+        # 广播全局在线人数
+        broadcast_global_online_count()
 
 
 # 管理员：名言管理相关路由
