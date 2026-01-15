@@ -11,13 +11,31 @@ import json
 import time
 import os
 import sys
+import sqlite3
 from datetime import datetime
 
 # 配置
 BASE_URL = os.environ.get('TEST_BASE_URL', 'http://localhost:80')
 ADMIN_USERNAME = 'admin'
-# 从数据库读取或使用默认密码（ensure_admin_user中设置为'admin123'）
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
+
+# 从数据库读取admin密码（数据库使用明文存储）
+def get_admin_password():
+    """从数据库读取admin用户的密码"""
+    db_path = os.environ.get('DATABASE_PATH', 'stellarsis.db')
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT password_hash FROM users WHERE username=?", (ADMIN_USERNAME,))
+        result = cursor.fetchone()
+        conn.close()
+        if result:
+            return result[0]
+    except Exception as e:
+        print(f"警告: 无法从数据库读取密码: {e}")
+    # 如果无法从数据库读取，使用环境变量或默认值
+    return os.environ.get('ADMIN_PASSWORD', 'admin123')
+
+ADMIN_PASSWORD = get_admin_password()
 
 # 测试结果统计
 test_results = {
