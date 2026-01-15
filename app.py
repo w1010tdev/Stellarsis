@@ -1560,9 +1560,11 @@ def api_upload_file():
         return jsonify(success=False, message='文件名为空'), 400
 
     filename = file.filename
-    
-    # 获取文件扩展名
-    ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+
+    # 获取文件扩展名；如果没有扩展名则认为不支持该文件类型
+    if '.' not in filename:
+        return jsonify(success=False, message='不支持的文件扩展名'), 400
+    ext = filename.rsplit('.', 1)[1].lower()
     
     # 检查是否为图片
     is_image = is_image_extension(filename)
