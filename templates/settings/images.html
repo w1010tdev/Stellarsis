@@ -1,40 +1,6 @@
 {% extends "base.html" %}
 {% block additional_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-<style>
-/* 文件上传项样式 */
-.file-upload-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px;
-    border: 1px solid var(--neutral-200);
-    border-radius: 8px;
-    margin-bottom: 8px;
-    background: var(--neutral-50);
-}
-.file-upload-item .file-icon {
-    width: 48px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--neutral-200);
-    border-radius: 8px;
-    font-size: 20px;
-    color: var(--neutral-600);
-}
-.file-upload-item .file-icon.is-image {
-    padding: 0;
-    background: transparent;
-}
-.file-upload-item .file-icon.is-image img {
-    width: 48px;
-    height: 48px;
-    object-fit: cover;
-    border-radius: 8px;
-}
-</style>
 {% endblock %}
 {% block content %}
 <div class="settings-layout">
