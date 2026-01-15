@@ -220,8 +220,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         delBtn.className = 'btn btn-sm btn-danger image-upload-delete';
                         delBtn.textContent = '删除';
                         delBtn.addEventListener('click', function () {
-                            var confirmMsg = fileIsImage ? '确认删除图片？此操作不可恢复。' : '确认删除文件？此操作不可恢复。';
-                            var confirmTitle = fileIsImage ? '删除图片' : '删除文件';
+                            var isImage = container.dataset.isImage === 'true';
+                            var confirmMsg = isImage ? '确认删除图片？此操作不可恢复。' : '确认删除文件？此操作不可恢复。';
+                            var confirmTitle = isImage ? '删除图片' : '删除文件';
                             showConfirm(confirmMsg, { title: confirmTitle, danger: true }).then(function (ok) {
                                 if (!ok) return;
                                 fetch('/api/upload/image/' + (data.id || data.image_id || 0), { method: 'DELETE', credentials: 'same-origin' })
