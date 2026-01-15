@@ -115,12 +115,66 @@
     registerCommand('close', '关闭命令面板', function () { window.commandPalette.hide(); return Promise.resolve('closed'); }, { aliases: ['ex', 'quit'] });
     registerCommand('exit', '关闭命令面板', function () { window.commandPalette.hide(); return Promise.resolve('closed'); }, { aliases: ['q'] });
 
-    registerCommand('forumlist', "贴吧分区列表", function () { window.location.replace('/forum'); return Promise.resolve('closed'); }, { aliases: ['fl'] });
-    registerCommand('chatlist', "聊天室列表", function () { window.location.replace('/chat'); return Promise.resolve('closed'); }, { aliases: ['cl'] });
-    registerCommand('settings', '设置', function () { window.location.replace('/settings'); return Promise.resolve('closed'); }, { aliases: ['st'] });
-    registerCommand('admin', '管理面板', function () { window.location.replace('/admin/index'); return Promise.resolve('closed'); }, { aliases: ['adm'] });
-    registerCommand('home', '首页', function () { window.location.replace('/'); return Promise.resolve('closed'); }, { aliases: ['h'] });
-    registerCommand('tm', '切换主题: theme <name>', function (args) { var name = args[0]; if (!name) return Promise.reject('缺少主题名称'); if (typeof setTheme === 'function') setTheme(name); return Promise.resolve('已切换主题：' + name); });
+    // Bash-style cd (change directory) command for navigation
+    var directories = {
+        '/': { path: '/', desc: '首页' },
+        '~': { path: '/', desc: '首页 (home)' },
+        '/chat': { path: '/chat', desc: '聊天室列表' },
+        '/forum': { path: '/forum', desc: '论坛分区列表' },
+        '/settings': { path: '/settings', desc: '设置' },
+        '/admin': { path: '/admin/index', desc: '管理面板' }
+    };
+    
+    registerCommand('cd', '切换目录: cd <path>，如 cd /chat, cd ~', function (args) {
+        var dir = args[0];
+        if (!dir) {
+            // Show available directories
+            return Promise.resolve({ 
+                type: 'help', 
+                list: Object.keys(directories).map(function(k) {
+                    return { name: k, desc: directories[k].desc };
+                })
+            });
+        }
+        
+        var target = directories[dir];
+        if (!target) {
+            return Promise.reject('未知目录: ' + dir + '。使用 cd 或 ls 查看可用目录');
+        }
+        
+        window.location.replace(target.path);
+        return Promise.resolve('正在跳转到 ' + target.desc + '...');
+    });
+    
+    // ls command to list directories
+    registerCommand('ls', '列出可用目录', function (args) {
+        return Promise.resolve({ 
+            type: 'help', 
+            list: Object.keys(directories).map(function(k) {
+                return { name: k, desc: directories[k].desc };
+            })
+        });
+    });
+    
+    // pwd command to show current path
+    registerCommand('pwd', '显示当前路径', function (args) {
+        var currentPath = window.location.pathname;
+        return Promise.resolve('当前路径: ' + currentPath);
+    });
+    
+    // clear command to clear suggestions (like bash clear)
+    registerCommand('clear', '清空命令输出', function (args) {
+        clearSuggestions();
+        return Promise.resolve('');
+    });
+    
+    // Alias tm for theme command (bash-like short command)
+    registerCommand('tm', '切换主题: tm <name>', function (args) { 
+        var name = args[0]; 
+        if (!name) return Promise.reject('缺少主题名称'); 
+        if (typeof setTheme === 'function') setTheme(name); 
+        return Promise.resolve('已切换主题：' + name); 
+    });
 
     // focus command - focuses common inputs across site
     var focusTargets = {

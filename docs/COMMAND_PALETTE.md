@@ -67,11 +67,7 @@ var args = parts.slice(1);
 | 完整命令 | 别名 | 说明 |
 |---------|------|------|
 | `quit` | `q`, `ex`, `exit`, `close` | 关闭命令面板 |
-| `forumlist` | `fl` | 论坛分区列表 |
-| `chatlist` | `cl` | 聊天室列表 |
-| `settings` | `st` | 设置页面 |
-| `admin` | `adm` | 管理面板 |
-| `home` | `h` | 首页 |
+| `history` | `hist` | 显示命令历史 |
 
 **注册别名示例**:
 ```javascript
@@ -80,7 +76,42 @@ registerCommand('close', '关闭命令面板', handler, {
 });
 ```
 
-### 3. Tab 自动补全
+### 3. Bash 风格导航 (cd 命令)
+
+使用 `cd` 命令进行页面导航，类似 Bash 的目录切换：
+
+```
+:cd /chat      # 切换到聊天室列表
+:cd /forum     # 切换到论坛分区列表
+:cd /settings  # 切换到设置页面
+:cd /admin     # 切换到管理面板
+:cd ~          # 返回首页
+:cd /          # 返回首页
+```
+
+**可用目录**:
+- `/` 或 `~` - 首页
+- `/chat` - 聊天室列表
+- `/forum` - 论坛分区列表
+- `/settings` - 设置
+- `/admin` - 管理面板
+
+**不带参数时显示所有可用目录**:
+```
+:cd
+# 显示所有可用目录及其描述
+```
+
+### 4. Bash 标准命令
+
+支持常见的 Bash 命令：
+
+- `ls` - 列出所有可用目录
+- `pwd` - 显示当前路径
+- `clear` - 清空命令输出
+- `history` / `hist` - 显示命令历史
+
+### 5. Tab 自动补全
 
 输入命令前缀后按 Tab 键自动补全：
 
@@ -105,12 +136,12 @@ if (matches.length === 1) {
 }
 ```
 
-### 4. 智能命令建议
+### 6. 智能命令建议
 
 输入命令时，面板自动显示相关建议：
 
 - **无输入时**: 显示所有可用命令
-- **部分输入时**: 显示前缀匹配的命令
+- **部分输入时**: 显示前缀匹配和模糊匹配的命令
 - **命令后无参数时**: 显示可用参数列表
 
 **示例**:
@@ -118,29 +149,22 @@ if (matches.length === 1) {
 输入: :theme
 显示: light, mint, ocean, purple, solarized, sunset
 
-输入: :focus
-显示: message, chat, search, admin-search
+输入: :cd
+显示: /, ~, /chat, /forum, /settings, /admin
 ```
 
-### 5. 参数提示
+### 7. 参数提示
 
 某些命令输入后会自动显示可用参数：
 
 ```javascript
-// theme 命令的参数提示
-if (resolved === 'theme' && args.length === 0) {
-    getAvailableThemes().forEach(function (t) {
-        suggestions.appendChild(renderSuggestionItem(
-            t, '主题', function () {
-                input.value = 'theme ' + t;
-                execute('theme', [t]);
-            }
-        ));
-    });
+// cd 命令的参数提示
+if (resolved === 'cd' && args.length === 0) {
+    // 显示所有可用目录
 }
 ```
 
-### 6. 命令执行
+### 8. 命令执行
 
 命令支持同步和异步执行（Promise-based）：
 
@@ -169,6 +193,16 @@ registerCommand('async-example', '异步示例', function (args) {
 
 **输出**: 所有命令及其描述的列表。
 
+#### history / hist
+显示最近 10 条命令历史。
+
+```
+:history
+:hist
+```
+
+**输出**: 最近执行的命令列表，带序号。
+
 #### close / exit / quit / q
 关闭命令面板。
 
@@ -181,59 +215,78 @@ registerCommand('async-example', '异步示例', function (args) {
 
 **别名**: `close`, `exit`, `quit`, `q`, `ex`
 
+#### clear
+清空命令输出区域（类似 Bash 的 clear 命令）。
+
+```
+:clear
+```
+
 ---
 
-### 导航命令
+### Bash 风格导航命令
 
-#### home / h
-返回首页。
-
-```
-:home
-:h
-```
-
-**效果**: 跳转到 `/`
-
-#### chatlist / cl
-打开聊天室列表页面。
+#### cd
+切换到指定目录/页面（类似 Bash 的 cd 命令）。
 
 ```
-:chatlist
-:cl
+:cd <目录>
 ```
 
-**效果**: 跳转到 `/chat`
+**可用目录**:
+- `/` 或 `~` - 首页
+- `/chat` - 聊天室列表
+- `/forum` - 论坛分区列表
+- `/settings` - 设置页面
+- `/admin` - 管理面板
 
-#### forumlist / fl
-打开论坛分区列表页面。
-
+**示例**:
 ```
-:forumlist
-:fl
-```
-
-**效果**: 跳转到 `/forum`
-
-#### settings / st
-打开设置页面。
-
-```
-:settings
-:st
+:cd /chat      # 切换到聊天室列表
+:cd ~          # 返回首页
+:cd            # 显示所有可用目录
 ```
 
-**效果**: 跳转到 `/settings`
+**不带参数**: 显示所有可用目录。
 
-#### admin / adm
-打开管理面板（需管理员权限）。
+#### ls
+列出所有可用目录（类似 Bash 的 ls 命令）。
 
 ```
-:admin
-:adm
+:ls
 ```
 
-**效果**: 跳转到 `/admin/index`
+**输出**: 所有可用目录及其描述。
+
+#### pwd
+显示当前页面路径（类似 Bash 的 pwd 命令）。
+
+```
+:pwd
+```
+
+**输出**: 当前页面的路径，如 `/chat` 或 `/forum/section/1`。
+
+---
+
+### 已弃用的导航命令
+
+以下命令已被 `cd` 命令替代，建议使用 `cd <目录>` 进行导航：
+
+~~#### home / h~~  
+~~返回首页。~~ **已弃用，请使用 `cd ~` 或 `cd /`**
+
+~~#### chatlist / cl~~  
+~~打开聊天室列表页面。~~ **已弃用，请使用 `cd /chat`**
+
+~~#### forumlist / fl~~  
+~~打开论坛分区列表页面。~~ **已弃用，请使用 `cd /forum`**
+
+~~#### settings / st~~  
+~~打开设置页面。~~ **已弃用，请使用 `cd /settings`**
+
+~~#### admin / adm~~  
+~~打开管理面板。~~ **已弃用，请使用 `cd /admin`**
 
 ---
 

@@ -467,14 +467,19 @@ ENABLE_SERVER_CONTROL=False
 
 #### 基础命令
 - `help` - 显示所有可用命令
+- `history` / `hist` - 显示命令历史
 - `close` / `exit` / `quit` / `q` - 关闭命令面板
-- `home` / `h` - 返回首页
+- `clear` - 清空命令输出
 
-#### 导航命令
-- `chatlist` / `cl` - 聊天室列表
-- `forumlist` / `fl` - 论坛分区列表
-- `settings` / `st` - 设置页面
-- `admin` / `adm` - 管理面板（需管理员权限）
+#### Bash 风格导航命令
+- `cd <目录>` - 切换到指定目录/页面
+  - `cd /chat` - 聊天室列表
+  - `cd /forum` - 论坛分区列表
+  - `cd /settings` - 设置页面
+  - `cd /admin` - 管理面板
+  - `cd ~` 或 `cd /` - 返回首页
+- `ls` - 列出所有可用目录
+- `pwd` - 显示当前路径
 
 #### 功能命令
 - `theme <name>` / `tm <name>` - 切换主题
