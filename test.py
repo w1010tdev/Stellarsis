@@ -16,8 +16,8 @@ from datetime import datetime
 # 配置
 BASE_URL = os.environ.get('TEST_BASE_URL', 'http://localhost:80')
 ADMIN_USERNAME = 'admin'
-# 从数据库读取或使用默认密码（init_db中设置为'admin'）
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin')
+# 从数据库读取或使用默认密码（ensure_admin_user中设置为'admin123'）
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
 
 # 测试结果统计
 test_results = {
