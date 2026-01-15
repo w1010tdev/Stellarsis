@@ -20,18 +20,18 @@ ADMIN_USERNAME = 'admin'
 
 # 从数据库读取admin密码
 def get_admin_password():
-    """从数据库读取admin用户的密码（从password_hash列）"""
+    """
+    从数据库读取admin用户的密码
+    注意: 虽然列名为password_hash，但当前实现存储的是明文密码
+    """
     db_path = os.environ.get('DATABASE_PATH', 'stellarsis.db')
     try:
-        conn = sqlite3.connect(db_path)
-        try:
+        with sqlite3.connect(db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT password_hash FROM users WHERE username=?", (ADMIN_USERNAME,))
             result = cursor.fetchone()
             if result:
                 return result[0]
-        finally:
-            conn.close()
     except Exception as e:
         print(f"警告: 无法从数据库读取密码: {e}")
     # 如果无法从数据库读取，使用环境变量或默认值
