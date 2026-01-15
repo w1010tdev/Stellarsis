@@ -774,6 +774,9 @@
                     updateGlobalOnlineCountDisplay('错误');
                 });
         }
+        // 全局变量用于存储降级轮询的interval ID
+        let globalOnlineCountFallbackInterval = null;
+        
         // 初始化全局在线人数更新
         function initializeGlobalOnlineCount() {
             if (globalOnlineCountInitialized) return; // 防止重复初始化
@@ -786,7 +789,7 @@
                 console.log('使用WebSocket接收全局在线人数');
             } else {
                 // WebSocket未连接时，使用定时轮询作为降级方案
-                setInterval(() => {
+                globalOnlineCountFallbackInterval = setInterval(() => {
                     if (!globalSocket || !globalSocket.connected) {
                         getGlobalOnlineCount();
                         console.log('定时更新全局在线人数（降级方案）');
@@ -826,6 +829,12 @@
                     
                     globalSocket.on('connect', function() {
                         console.log('全局WebSocket已连接');
+                        // 清除降级轮询（如果存在）
+                        if (globalOnlineCountFallbackInterval) {
+                            clearInterval(globalOnlineCountFallbackInterval);
+                            globalOnlineCountFallbackInterval = null;
+                            console.log('已切换到WebSocket模式，停止轮询');
+                        }
                         // 连接成功后发送一次心跳以获取最新在线人数
                         globalSocket.emit('heartbeat');
                     });
