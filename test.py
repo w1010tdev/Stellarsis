@@ -19,6 +19,7 @@ import os
 import sys
 import sqlite3
 import shutil
+import io
 from datetime import datetime
 from pathlib import Path
 
@@ -413,9 +414,7 @@ def test_upload(ts):
     
     # 创建测试图片并上传
     try:
-        # 创建一个小的测试PNG图片
-        import io
-        # 简单的1x1红色PNG
+        # 创建一个小的测试PNG图片（简单的1x1红色PNG）
         png_data = bytes([
             0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,  # PNG signature
             0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,  # IHDR chunk
@@ -891,7 +890,6 @@ def test_user_deletion_with_activity(ts):
     # 6. 上传图片
     image_id = None
     try:
-        import io
         png_data = bytes([
             0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
             0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
