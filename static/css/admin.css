@@ -263,12 +263,12 @@
 
 .role-user {
   background-color: var(--secondary-color);
-  color: var(--on-primary);
+  color: #ffffff;
 }
 
 .role-mod {
   background-color: #9b59b6;
-  color: var(--on-primary);
+  color: #ffffff;
 }
 
 /* 文件管理器样式 */
@@ -608,11 +608,17 @@ textarea.file-content-editor {
 }
 
 /* 数据库表格编辑模态框 */
+/* 使用高z-index确保模态框在所有元素之上显示 */
+.db-table-container .modal-backdrop,
+#editModal.modal-backdrop {
+    z-index: 100001 !important;
+}
+
 #editModal .modal-content {
     background-color: var(--surface-color, #ffffff) !important;
     color: var(--text-color, #333333) !important;
     position: relative;
-    z-index: 10001;
+    z-index: 100002;
 }
 
 #editModal .modal-body {

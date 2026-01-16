@@ -50,7 +50,12 @@ def backup_database():
         return False
 
 def restore_database():
-    """恢复数据库和上传目录"""
+    """恢复数据库和上传目录
+    
+    注意: 如果服务器正在运行且数据库文件被锁定（特别是在Windows上），
+    恢复操作可能会失败。建议在运行启用恢复功能的测试前停止服务器，
+    或者在测试完成后手动重启服务器以加载恢复后的数据库。
+    """
     try:
         if os.path.exists(BACKUP_PATH):
             shutil.copy2(BACKUP_PATH, DB_PATH)
@@ -65,6 +70,7 @@ def restore_database():
         return True
     except Exception as e:
         print(f"❌ 恢复失败: {e}")
+        print("提示: 如果服务器正在运行，数据库文件可能被锁定。请停止服务器后重试。")
         return False
 
 # 从数据库读取admin密码

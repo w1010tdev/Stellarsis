@@ -245,8 +245,8 @@ input:focus, textarea:focus, select:focus {
   60% { transform: translateY(-10px); }
 }
 
-/* 通知动画样式 */
-@keyframes slideIn {
+/* 通知动画样式 - 从右侧滑入 */
+@keyframes notificationSlideIn {
   from {
     transform: translateX(100%);
     opacity: 0;
@@ -278,7 +278,7 @@ input:focus, textarea:focus, select:focus {
   padding: 12px 16px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   z-index: 10000;
-  animation: slideIn 0.3s ease-out;
+  animation: notificationSlideIn 0.3s ease-out;
 }
 
 .followed-user-notification .notification-content {
