@@ -2,8 +2,15 @@
 # -*- coding: utf-8 -*-
 """
 Stellarsis 后端自动化测试脚本
-运行方式: 先启动服务器 (python app.py)，然后运行本脚本 (python test.py)
-会读取 admin 账号密码用于登录测试所有功能
+
+运行方式:
+  方式1（自动模式）: python test.py
+    - 测试脚本会自动启动服务器，运行测试，然后停止服务器
+    - 测试完成后会自动恢复数据库到测试前状态
+    
+  方式2（手动模式）: TEST_MANUAL_SERVER=true python test.py
+    - 需要先手动启动服务器 (python app.py)
+    - 测试完成后需要停止服务器才能恢复数据库
 
 特性:
 - 测试前自动备份数据库
@@ -20,6 +27,9 @@ import sys
 import sqlite3
 import shutil
 import io
+import subprocess
+import signal
+import atexit
 from datetime import datetime
 
 # 配置
@@ -32,6 +42,90 @@ UPLOADS_BACKUP_DIR = 'uploads.test_backup'
 
 # 是否在测试后恢复数据库（默认为True）
 RESTORE_DB_AFTER_TEST = os.environ.get('RESTORE_DB_AFTER_TEST', 'true').lower() == 'true'
+
+# 是否使用手动服务器模式（默认为False，自动启动/停止服务器）
+MANUAL_SERVER_MODE = os.environ.get('TEST_MANUAL_SERVER', 'false').lower() == 'true'
+
+# 服务器进程（用于自动模式）
+_server_process = None
+_atexit_registered = False
+
+def start_server():
+    """启动Flask服务器进程"""
+    global _server_process, _atexit_registered
+    if MANUAL_SERVER_MODE:
+        print("ℹ️ 手动服务器模式：跳过服务器启动")
+        return True
+    
+    try:
+        print("🚀 正在启动服务器...")
+        # 使用subprocess启动app.py
+        _server_process = subprocess.Popen(
+            [sys.executable, 'app.py'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=os.path.dirname(os.path.abspath(__file__)) or '.'
+        )
+        
+        # 注册退出时清理函数（只注册一次）
+        if not _atexit_registered:
+            atexit.register(stop_server)
+            _atexit_registered = True
+        
+        # 等待服务器启动（最多30秒）
+        max_wait = 30
+        for i in range(max_wait):
+            try:
+                resp = requests.get(f"{BASE_URL}/", timeout=1)
+                if resp.status_code in [200, 302, 303]:
+                    print(f"✅ 服务器已启动 (等待了 {i+1} 秒)")
+                    return True
+            except requests.exceptions.RequestException:
+                pass
+            time.sleep(1)
+        
+        print("❌ 服务器启动超时")
+        stop_server()
+        return False
+    except Exception as e:
+        print(f"❌ 启动服务器失败: {e}")
+        return False
+
+def stop_server():
+    """停止Flask服务器进程"""
+    global _server_process
+    if MANUAL_SERVER_MODE:
+        print("ℹ️ 手动服务器模式：跳过服务器停止")
+        return True
+    
+    if _server_process is None:
+        return True
+    
+    try:
+        print("🛑 正在停止服务器...")
+        # 发送终止信号
+        if sys.platform == 'win32':
+            _server_process.terminate()
+        else:
+            _server_process.send_signal(signal.SIGTERM)
+        
+        # 等待进程结束（最多5秒）
+        try:
+            _server_process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            # 强制终止
+            _server_process.kill()
+            _server_process.wait()
+        
+        print("✅ 服务器已停止")
+        _server_process = None
+        
+        # 等待一小段时间确保文件锁释放
+        time.sleep(1)
+        return True
+    except Exception as e:
+        print(f"❌ 停止服务器失败: {e}")
+        return False
 
 def backup_database():
     """备份数据库和上传目录"""
@@ -52,9 +146,8 @@ def backup_database():
 def restore_database():
     """恢复数据库和上传目录
     
-    注意: 如果服务器正在运行且数据库文件被锁定（特别是在Windows上），
-    恢复操作可能会失败。建议在运行启用恢复功能的测试前停止服务器，
-    或者在测试完成后手动重启服务器以加载恢复后的数据库。
+    在自动模式下，服务器会先停止再恢复数据库，因此不会有文件锁问题。
+    在手动模式下，需要确保服务器已停止才能成功恢复。
     """
     try:
         if os.path.exists(BACKUP_PATH):
@@ -70,7 +163,8 @@ def restore_database():
         return True
     except Exception as e:
         print(f"❌ 恢复失败: {e}")
-        print("提示: 如果服务器正在运行，数据库文件可能被锁定。请停止服务器后重试。")
+        if MANUAL_SERVER_MODE:
+            print("提示: 手动模式下，请确保服务器已停止后重试。")
         return False
 
 # 从数据库读取admin密码
@@ -1053,6 +1147,7 @@ def main():
     print(f"测试时间: {datetime.now().isoformat()}")
     print(f"数据库路径: {DB_PATH}")
     print(f"测试后恢复数据库: {'是' if RESTORE_DB_AFTER_TEST else '否'}")
+    print(f"服务器模式: {'手动' if MANUAL_SERVER_MODE else '自动'}")
     print("="*60)
     
     # 备份数据库
@@ -1063,6 +1158,15 @@ def main():
     if not backup_success:
         print("⚠️ 警告: 数据库备份失败，测试将继续但无法恢复")
     
+    # 启动服务器（自动模式）
+    if not MANUAL_SERVER_MODE:
+        print("\n" + "-"*40)
+        print("启动服务器...")
+        print("-"*40)
+        if not start_server():
+            print("❌ 无法启动服务器，测试中止")
+            return 1
+    
     # 创建测试会话
     ts = TestSession()
     
@@ -1070,9 +1174,10 @@ def main():
         # 登录测试
         if not test_login(ts):
             print("\n❌ 登录失败，无法继续测试")
-            print("请确保:")
-            print("  1. 服务器已启动 (python app.py)")
-            print("  2. 管理员密码正确 (默认: admin)")
+            if MANUAL_SERVER_MODE:
+                print("请确保:")
+                print("  1. 服务器已启动 (python app.py)")
+                print("  2. 管理员密码正确 (默认: admin)")
             return 1
         
         # SU验证
@@ -1096,6 +1201,13 @@ def main():
         test_logout(ts)
     
     finally:
+        # 停止服务器（自动模式下，必须在恢复数据库之前停止）
+        if not MANUAL_SERVER_MODE:
+            print("\n" + "-"*40)
+            print("停止服务器...")
+            print("-"*40)
+            stop_server()
+        
         # 恢复数据库
         if RESTORE_DB_AFTER_TEST and backup_success:
             print("\n" + "-"*40)
