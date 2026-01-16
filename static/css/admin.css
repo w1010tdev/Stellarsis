@@ -258,7 +258,7 @@
 
 .role-admin {
   background-color: var(--danger-color);
-  color: var(--on-danger, var(--on-primary));
+  color: var(--on-danger, #ffffff);
 }
 
 .role-user {
