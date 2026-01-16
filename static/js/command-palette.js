@@ -1,11 +1,18 @@
-/* Command Palette - desktop quick command overlay
+/* Command Palette - desktop quick command overlay (Bash-style)
    - Shows when user presses ':' while no input is focused
    - Provides an API: registerCommand(name, desc, handler)
    - Exposes `window.commandPalette.show()` and `window.commandPalette.hide()`
+   - Bash-style features: command history (↑/↓), tab completion, aliases
 */
 (function () {
+    // Configuration constants
+    var MAX_HISTORY_SIZE = 50;  // Maximum number of commands to keep in history
+    var RECENT_HISTORY_DISPLAY = 10;  // Number of recent commands to show in history command
+    
     var commands = {};
     var aliases = {}; // alias -> command
+    var commandHistory = []; // command history for ↑/↓ navigation
+    var historyIndex = -1; // current position in history
 
     function registerCommand(name, desc, handler, opts) {
         commands[name] = { desc: desc || '', handler: handler };
@@ -27,11 +34,76 @@
         return ['light', 'mint', 'ocean', 'purple', 'solarized', 'sunset'];
     }
 
+    // helper to save command to history
+    function saveToHistory(cmd) {
+        if (!cmd || cmd.trim() === '') return;
+        // avoid duplicates
+        if (commandHistory.length === 0 || commandHistory[commandHistory.length - 1] !== cmd) {
+            commandHistory.push(cmd);
+            // keep only last MAX_HISTORY_SIZE commands
+            if (commandHistory.length > MAX_HISTORY_SIZE) {
+                commandHistory.shift();
+            }
+        }
+        historyIndex = -1; // reset history navigation
+    }
+
+    // helper to navigate history
+    function navigateHistory(direction) {
+        if (commandHistory.length === 0) return null;
+        
+        if (direction === 'up') {
+            if (historyIndex < commandHistory.length - 1) {
+                historyIndex++;
+            }
+        } else if (direction === 'down') {
+            if (historyIndex > 0) {
+                historyIndex--;
+            } else {
+                historyIndex = -1;
+                return '';
+            }
+        }
+        
+        return historyIndex >= 0 ? commandHistory[commandHistory.length - 1 - historyIndex] : '';
+    }
+
+    // fuzzy match helper for better autocomplete
+    function fuzzyMatch(pattern, text) {
+        pattern = pattern.toLowerCase();
+        text = text.toLowerCase();
+        var patternIdx = 0;
+        var textIdx = 0;
+        
+        while (patternIdx < pattern.length && textIdx < text.length) {
+            if (pattern[patternIdx] === text[textIdx]) {
+                patternIdx++;
+            }
+            textIdx++;
+        }
+        
+        return patternIdx === pattern.length;
+    }
+
     // default commands
     registerCommand('help', '显示可用命令', function (args) {
         var keys = Object.keys(commands).sort();
         return Promise.resolve({ type: 'help', list: keys.map(k => ({ name: k, desc: commands[k].desc })) });
     });
+
+    registerCommand('history', '显示命令历史', function (args) {
+        if (commandHistory.length === 0) {
+            return Promise.resolve('命令历史为空');
+        }
+        var recent = commandHistory.slice(-RECENT_HISTORY_DISPLAY).reverse(); // show last RECENT_HISTORY_DISPLAY commands
+        return Promise.resolve({ 
+            type: 'help', 
+            list: recent.map((cmd, idx) => ({ 
+                name: (commandHistory.length - idx) + ': ' + cmd, 
+                desc: '' 
+            })) 
+        });
+    }, { aliases: ['hist'] });
 
     registerCommand('theme', '切换主题: theme <name>', function (args) {
         var name = args[0];
@@ -43,12 +115,66 @@
     registerCommand('close', '关闭命令面板', function () { window.commandPalette.hide(); return Promise.resolve('closed'); }, { aliases: ['ex', 'quit'] });
     registerCommand('exit', '关闭命令面板', function () { window.commandPalette.hide(); return Promise.resolve('closed'); }, { aliases: ['q'] });
 
-    registerCommand('forumlist', "贴吧分区列表", function () { window.location.replace('/forum'); return Promise.resolve('closed'); }, { aliases: ['fl'] });
-    registerCommand('chatlist', "聊天室列表", function () { window.location.replace('/chat'); return Promise.resolve('closed'); }, { aliases: ['cl'] });
-    registerCommand('settings', '设置', function () { window.location.replace('/settings'); return Promise.resolve('closed'); }, { aliases: ['st'] });
-    registerCommand('admin', '管理面板', function () { window.location.replace('/admin/index'); return Promise.resolve('closed'); }, { aliases: ['adm'] });
-    registerCommand('home', '首页', function () { window.location.replace('/'); return Promise.resolve('closed'); }, { aliases: ['h'] });
-    registerCommand('tm', '切换主题: theme <name>', function (args) { var name = args[0]; if (!name) return Promise.reject('缺少主题名称'); if (typeof setTheme === 'function') setTheme(name); return Promise.resolve('已切换主题：' + name); });
+    // Bash-style cd (change directory) command for navigation
+    var directories = {
+        '/': { path: '/', desc: '首页' },
+        '~': { path: '/', desc: '首页 (home)' },
+        '/chat': { path: '/chat', desc: '聊天室列表' },
+        '/forum': { path: '/forum', desc: '论坛分区列表' },
+        '/settings': { path: '/settings', desc: '设置' },
+        '/admin': { path: '/admin/index', desc: '管理面板' }
+    };
+    
+    registerCommand('cd', '切换目录: cd <path>，如 cd /chat, cd ~', function (args) {
+        var dir = args[0];
+        if (!dir) {
+            // Show available directories
+            return Promise.resolve({ 
+                type: 'help', 
+                list: Object.keys(directories).map(function(k) {
+                    return { name: k, desc: directories[k].desc };
+                })
+            });
+        }
+        
+        var target = directories[dir];
+        if (!target) {
+            return Promise.reject('未知目录: ' + dir + '。使用 cd 或 ls 查看可用目录');
+        }
+        
+        window.location.replace(target.path);
+        return Promise.resolve('正在跳转到 ' + target.desc + '...');
+    });
+    
+    // ls command to list directories
+    registerCommand('ls', '列出可用目录', function (args) {
+        return Promise.resolve({ 
+            type: 'help', 
+            list: Object.keys(directories).map(function(k) {
+                return { name: k, desc: directories[k].desc };
+            })
+        });
+    });
+    
+    // pwd command to show current path
+    registerCommand('pwd', '显示当前路径', function (args) {
+        var currentPath = window.location.pathname;
+        return Promise.resolve('当前路径: ' + currentPath);
+    });
+    
+    // clear command to clear suggestions (like bash clear)
+    registerCommand('clear', '清空命令输出', function (args) {
+        clearSuggestions();
+        return Promise.resolve('');
+    });
+    
+    // Alias tm for theme command (bash-like short command)
+    registerCommand('tm', '切换主题: tm <name>', function (args) { 
+        var name = args[0]; 
+        if (!name) return Promise.reject('缺少主题名称'); 
+        if (typeof setTheme === 'function') setTheme(name); 
+        return Promise.resolve('已切换主题：' + name); 
+    });
 
     // focus command - focuses common inputs across site
     var focusTargets = {
@@ -74,14 +200,28 @@
     var overlay = document.createElement('div'); overlay.id = 'command-palette-overlay';
     var input = document.createElement('input'); input.className = 'cp-input'; input.placeholder = '输入命令（例如: help）';
     var suggestions = document.createElement('div'); suggestions.className = 'cp-suggestions';
-    var help = document.createElement('div'); help.className = 'cp-help'; help.textContent = '按 Enter 执行，Tab 补全，Esc 退出';
+    var help = document.createElement('div'); help.className = 'cp-help'; help.textContent = '按 Enter 执行，Tab 补全，↑↓ 历史记录，Esc 退出';
     overlay.appendChild(input); overlay.appendChild(suggestions); overlay.appendChild(help);
     document.body.appendChild(overlay);
 
     var selectedSuggestion = -1;
 
-    function show() { overlay.classList.add('show'); overlay.style.display = 'flex'; input.focus(); input.select(); updateSuggestions(); }
-    function hide() { overlay.classList.remove('show'); overlay.style.display = 'none'; input.value = ''; suggestions.innerHTML = ''; selectedSuggestion = -1; }
+    function show() { 
+        overlay.classList.add('show'); 
+        overlay.style.display = 'flex'; 
+        input.focus(); 
+        input.select(); 
+        updateSuggestions(); 
+        historyIndex = -1; // reset history navigation when showing
+    }
+    function hide() { 
+        overlay.classList.remove('show'); 
+        overlay.style.display = 'none'; 
+        input.value = ''; 
+        suggestions.innerHTML = ''; 
+        selectedSuggestion = -1; 
+        historyIndex = -1;
+    }
 
     function clearSuggestions() { suggestions.innerHTML = ''; selectedSuggestion = -1; }
 
@@ -116,12 +256,20 @@
             return;
         }
 
-        // command name suggestions (prefix match)
-        var keys = Object.keys(commands).sort().filter(function (k) { return k.indexOf(cmdToken) === 0 || cmdToken.indexOf(k) === 0; });
+        // command name suggestions (prefix match + fuzzy match)
+        var exactMatches = Object.keys(commands).sort().filter(function (k) { 
+            return k.indexOf(cmdToken) === 0; 
+        });
+        var fuzzyMatches = Object.keys(commands).sort().filter(function (k) {
+            return k.indexOf(cmdToken) !== 0 && fuzzyMatch(cmdToken, k);
+        });
+        var keys = exactMatches.concat(fuzzyMatches);
+        
         // include alias matches
         Object.keys(aliases).forEach(function (a) {
-            if (a.indexOf(cmdToken) === 0) {
-                var r = aliases[a]; if (keys.indexOf(r) === -1) keys.push(r);
+            if (a.indexOf(cmdToken) === 0 || fuzzyMatch(cmdToken, a)) {
+                var r = aliases[a]; 
+                if (keys.indexOf(r) === -1) keys.push(r);
             }
         });
 
@@ -135,6 +283,10 @@
         var raw = parts[0];
         var cmdName = resolveCommand(name || raw) || raw;
         var args = providedArgs || parts.slice(1);
+        
+        // save to history before executing
+        saveToHistory(input.value.trim());
+        
         if (!commands[cmdName]) {
             clearSuggestions();
             suggestions.appendChild(renderSuggestionItem('未知命令: ' + raw, '', function () { }));
@@ -185,6 +337,28 @@
             var v = input.value.trim(); if (!v) return; var parts = v.split(/\s+/); var cmd = parts[0]; execute(cmd);
         } else if (e.key === 'Escape') {
             hide();
+        } else if (e.key === 'ArrowUp') {
+            // Navigate command history backwards (older commands)
+            e.preventDefault();
+            var historyCmd = navigateHistory('up');
+            if (historyCmd !== null) {
+                input.value = historyCmd;
+                // move cursor to end
+                setTimeout(function() {
+                    input.setSelectionRange(input.value.length, input.value.length);
+                }, 0);
+            }
+        } else if (e.key === 'ArrowDown') {
+            // Navigate command history forwards (newer commands)
+            e.preventDefault();
+            var historyCmd = navigateHistory('down');
+            if (historyCmd !== null) {
+                input.value = historyCmd;
+                // move cursor to end
+                setTimeout(function() {
+                    input.setSelectionRange(input.value.length, input.value.length);
+                }, 0);
+            }
         } else if (e.key === 'Tab') {
             // Tab autocomplete
             e.preventDefault();
@@ -192,9 +366,19 @@
             var before = val.slice(0, input.selectionStart);
             var parts = before.trim().split(/\s+/);
             var prefix = parts[0] || '';
-            var matches = Object.keys(commands).filter(function (k) { return k.indexOf(prefix) === 0; });
+            
+            // exact matches first, then fuzzy matches
+            var exactMatches = Object.keys(commands).filter(function (k) { return k.indexOf(prefix) === 0; });
+            var fuzzyMatches = Object.keys(commands).filter(function (k) { return k.indexOf(prefix) !== 0 && fuzzyMatch(prefix, k); });
+            var matches = exactMatches.concat(fuzzyMatches);
+            
             // include aliases
-            Object.keys(aliases).forEach(function (a) { if (a.indexOf(prefix) === 0 && matches.indexOf(aliases[a]) === -1) matches.push(aliases[a]); });
+            Object.keys(aliases).forEach(function (a) { 
+                if ((a.indexOf(prefix) === 0 || fuzzyMatch(prefix, a)) && matches.indexOf(aliases[a]) === -1) {
+                    matches.push(aliases[a]); 
+                }
+            });
+            
             if (matches.length === 1) {
                 input.value = matches[0] + (val.length > before.length ? val.slice(before.length) : ' ');
                 updateSuggestions();
@@ -212,7 +396,9 @@
         show: show,
         hide: hide,
         listCommands: function () { return Object.keys(commands).sort(); },
-        resolveCommand: resolveCommand
+        resolveCommand: resolveCommand,
+        getHistory: function () { return commandHistory.slice(); }, // get command history
+        clearHistory: function () { commandHistory = []; historyIndex = -1; } // clear history
     };
 
 })();
