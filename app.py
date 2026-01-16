@@ -2920,8 +2920,8 @@ def remove_user_and_related(user_id, session=None):
                 p = Path(ui.filepath)
                 if p.exists():
                     p.unlink()
-            except Exception:
-                pass
+            except Exception as e:
+                logging.warning("Failed to delete user image file '%s': %s", ui.filepath, e)
         session.query(UserImage).filter_by(user_id=user_id).delete()
 
         username = user.username
