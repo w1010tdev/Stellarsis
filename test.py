@@ -4,6 +4,12 @@
 Stellarsis 后端自动化测试脚本
 运行方式: 先启动服务器 (python app.py)，然后运行本脚本 (python test.py)
 会读取 admin 账号密码用于登录测试所有功能
+
+特性:
+- 测试前自动备份数据库
+- 测试后自动恢复数据库（可选）
+- 全面测试管理员功能
+- 测试用户创建、消息发送、帖子发布后的删除
 """
 
 import requests
@@ -12,11 +18,54 @@ import time
 import os
 import sys
 import sqlite3
+import shutil
 from datetime import datetime
+from pathlib import Path
 
 # 配置
 BASE_URL = os.environ.get('TEST_BASE_URL', 'http://localhost:80')
 ADMIN_USERNAME = 'admin'
+DB_PATH = os.environ.get('DATABASE_PATH', 'stellarsis.db')
+BACKUP_PATH = DB_PATH + '.test_backup'
+UPLOADS_DIR = 'uploads'
+UPLOADS_BACKUP_DIR = 'uploads.test_backup'
+
+# 是否在测试后恢复数据库（默认为True）
+RESTORE_DB_AFTER_TEST = os.environ.get('RESTORE_DB_AFTER_TEST', 'true').lower() == 'true'
+
+def backup_database():
+    """备份数据库和上传目录"""
+    try:
+        if os.path.exists(DB_PATH):
+            shutil.copy2(DB_PATH, BACKUP_PATH)
+            print(f"✅ 已备份数据库: {DB_PATH} -> {BACKUP_PATH}")
+        if os.path.exists(UPLOADS_DIR):
+            if os.path.exists(UPLOADS_BACKUP_DIR):
+                shutil.rmtree(UPLOADS_BACKUP_DIR)
+            shutil.copytree(UPLOADS_DIR, UPLOADS_BACKUP_DIR)
+            print(f"✅ 已备份上传目录: {UPLOADS_DIR} -> {UPLOADS_BACKUP_DIR}")
+        return True
+    except Exception as e:
+        print(f"❌ 备份失败: {e}")
+        return False
+
+def restore_database():
+    """恢复数据库和上传目录"""
+    try:
+        if os.path.exists(BACKUP_PATH):
+            shutil.copy2(BACKUP_PATH, DB_PATH)
+            os.remove(BACKUP_PATH)
+            print(f"✅ 已恢复数据库: {BACKUP_PATH} -> {DB_PATH}")
+        if os.path.exists(UPLOADS_BACKUP_DIR):
+            if os.path.exists(UPLOADS_DIR):
+                shutil.rmtree(UPLOADS_DIR)
+            shutil.copytree(UPLOADS_BACKUP_DIR, UPLOADS_DIR)
+            shutil.rmtree(UPLOADS_BACKUP_DIR)
+            print(f"✅ 已恢复上传目录: {UPLOADS_BACKUP_DIR} -> {UPLOADS_DIR}")
+        return True
+    except Exception as e:
+        print(f"❌ 恢复失败: {e}")
+        return False
 
 # 从数据库读取admin密码
 def get_admin_password():
@@ -24,9 +73,8 @@ def get_admin_password():
     从数据库读取admin用户的密码
     注意: 虽然列名为password_hash，但当前实现存储的是明文密码
     """
-    db_path = os.environ.get('DATABASE_PATH', 'stellarsis.db')
     try:
-        with sqlite3.connect(db_path) as conn:
+        with sqlite3.connect(DB_PATH) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT password_hash FROM users WHERE username=?", (ADMIN_USERNAME,))
             result = cursor.fetchone()
@@ -739,6 +787,226 @@ def test_admin_api(ts):
             log_test("删除名言API", False, str(e))
 
 
+def test_user_deletion_with_activity(ts):
+    """测试删除有活动记录的用户（消息、帖子、图片等）"""
+    test_section("用户删除（有活动记录）")
+    
+    # 确保SU验证
+    if not ts.su_verified:
+        test_su_verification(ts)
+    
+    test_username = f'test_active_user_{int(time.time())}'
+    test_password = 'testpassword123'
+    test_user_id = None
+    
+    # 1. 创建测试用户
+    try:
+        resp = ts.session.post(f"{BASE_URL}/api/admin/users", json={
+            'username': test_username,
+            'password': test_password,
+            'nickname': '测试活跃用户',
+            'role': 'user'
+        })
+        data = resp.json()
+        success = resp.status_code == 200 and data.get('success')
+        test_user_id = data.get('user_id')
+        log_test("创建测试用户", success, f"用户ID: {test_user_id}")
+    except Exception as e:
+        log_test("创建测试用户", False, str(e))
+        return
+    
+    if not test_user_id:
+        log_test("用户删除测试跳过", False, "无法创建测试用户")
+        return
+    
+    # 2. 以测试用户身份登录
+    test_session = TestSession()
+    try:
+        resp = test_session.session.get(f"{BASE_URL}/login")
+        test_session.csrf_token = test_session.get_csrf_token(resp.text)
+        
+        login_data = {
+            'username': test_username,
+            'password': test_password,
+        }
+        if test_session.csrf_token:
+            login_data['csrf_token'] = test_session.csrf_token
+            
+        resp = test_session.session.post(f"{BASE_URL}/login", data=login_data, allow_redirects=True)
+        success = resp.status_code in [302, 303, 200]
+        log_test("测试用户登录", success, f"状态码: {resp.status_code}")
+    except Exception as e:
+        log_test("测试用户登录", False, str(e))
+        # 清理：尝试删除用户
+        ts.session.delete(f"{BASE_URL}/api/admin/users/{test_user_id}")
+        return
+    
+    # 3. 发送聊天消息
+    try:
+        resp = test_session.session.post(f"{BASE_URL}/api/chat/send", json={
+            'room_id': 1,
+            'message': f'测试消息 by {test_username} - {datetime.now().isoformat()}'
+        })
+        data = resp.json()
+        success = resp.status_code == 200 and data.get('success')
+        log_test("测试用户发送聊天消息", success, f"响应: {data}")
+    except Exception as e:
+        log_test("测试用户发送聊天消息", False, str(e))
+    
+    # 4. 发帖（获取CSRF token后发帖）
+    thread_id = None
+    try:
+        resp = test_session.session.get(f"{BASE_URL}/forum/new/1")
+        test_session.csrf_token = test_session.get_csrf_token(resp.text)
+        
+        post_data = {
+            'title': f'测试帖子 by {test_username}',
+            'content': '这是测试帖子内容',
+        }
+        if test_session.csrf_token:
+            post_data['csrf_token'] = test_session.csrf_token
+            
+        resp = test_session.session.post(f"{BASE_URL}/forum/new/1", data=post_data, allow_redirects=True)
+        success = resp.status_code == 200
+        log_test("测试用户发帖", success, f"状态码: {resp.status_code}")
+        
+        if '/forum/thread/' in resp.url:
+            thread_id = int(resp.url.split('/forum/thread/')[-1].split('?')[0])
+    except Exception as e:
+        log_test("测试用户发帖", False, str(e))
+    
+    # 5. 回复帖子
+    if thread_id:
+        try:
+            resp = test_session.session.post(f"{BASE_URL}/api/forum/reply", data={
+                'thread_id': thread_id,
+                'content': f'测试回复 by {test_username}'
+            })
+            data = resp.json()
+            success = resp.status_code == 200 and data.get('success')
+            log_test("测试用户回复帖子", success, f"响应: {data}")
+        except Exception as e:
+            log_test("测试用户回复帖子", False, str(e))
+    
+    # 6. 上传图片
+    image_id = None
+    try:
+        import io
+        png_data = bytes([
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+            0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+            0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,
+            0x54, 0x08, 0xD7, 0x63, 0xF8, 0xFF, 0xFF, 0x3F,
+            0x00, 0x05, 0xFE, 0x02, 0xFE, 0xDC, 0xCC, 0x59,
+            0xE7, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+            0x44, 0xAE, 0x42, 0x60, 0x82
+        ])
+        
+        files = {'file': ('test.png', io.BytesIO(png_data), 'image/png')}
+        resp = test_session.session.post(f"{BASE_URL}/api/upload/image", files=files)
+        data = resp.json()
+        success = resp.status_code == 200 and data.get('success')
+        image_id = data.get('id')
+        log_test("测试用户上传图片", success, f"图片ID: {image_id}")
+    except Exception as e:
+        log_test("测试用户上传图片", False, str(e))
+    
+    # 7. 修改用户设置
+    try:
+        resp = test_session.session.post(f"{BASE_URL}/api/settings/profile", json={
+            'nickname': '修改后的昵称',
+            'color': '#ff5733'
+        })
+        data = resp.json()
+        success = resp.status_code == 200 and data.get('success')
+        log_test("测试用户修改设置", success, f"响应: {data}")
+    except Exception as e:
+        log_test("测试用户修改设置", False, str(e))
+    
+    # 8. 登出测试用户
+    try:
+        test_session.session.get(f"{BASE_URL}/logout", allow_redirects=False)
+    except Exception:
+        pass
+    
+    # 9. 使用管理员删除用户（这是核心测试）
+    try:
+        resp = ts.session.delete(f"{BASE_URL}/api/admin/users/{test_user_id}")
+        data = resp.json()
+        success = resp.status_code == 200 and data.get('success')
+        log_test("删除有活动记录的用户", success, f"响应: {data}")
+    except Exception as e:
+        log_test("删除有活动记录的用户", False, str(e))
+    
+    # 10. 验证用户已被删除
+    try:
+        resp = ts.session.get(f"{BASE_URL}/api/admin/users/{test_user_id}/permissions")
+        # 用户不存在应该返回404或相应错误
+        success = resp.status_code == 404 or (resp.status_code == 200 and not resp.json().get('success'))
+        log_test("验证用户已删除", success, f"状态码: {resp.status_code}")
+    except Exception as e:
+        log_test("验证用户已删除", False, str(e))
+
+
+def test_admin_user_role(ts):
+    """测试用户角色更新API"""
+    test_section("用户角色管理")
+    
+    # 确保SU验证
+    if not ts.su_verified:
+        test_su_verification(ts)
+    
+    # 创建测试用户
+    test_user_id = None
+    try:
+        resp = ts.session.post(f"{BASE_URL}/api/admin/users", json={
+            'username': f'test_role_user_{int(time.time())}',
+            'password': 'testpassword123',
+            'nickname': '角色测试用户',
+            'role': 'user'
+        })
+        data = resp.json()
+        success = resp.status_code == 200 and data.get('success')
+        test_user_id = data.get('user_id')
+        log_test("创建角色测试用户", success, f"用户ID: {test_user_id}")
+    except Exception as e:
+        log_test("创建角色测试用户", False, str(e))
+        return
+    
+    if test_user_id:
+        # 更新用户角色
+        try:
+            resp = ts.session.put(f"{BASE_URL}/api/admin/users/{test_user_id}/role", json={
+                'role': 'admin'
+            })
+            data = resp.json()
+            success = resp.status_code == 200 and data.get('success')
+            log_test("更新用户角色API", success, f"响应: {data}")
+        except Exception as e:
+            log_test("更新用户角色API", False, str(e))
+        
+        # 更新用户信息
+        try:
+            resp = ts.session.put(f"{BASE_URL}/api/admin/users/{test_user_id}", json={
+                'nickname': '更新后的昵称',
+                'color': '#3399ff',
+                'badge': 'VIP'
+            })
+            data = resp.json()
+            success = resp.status_code == 200 and data.get('success')
+            log_test("更新用户信息API", success, f"响应: {data}")
+        except Exception as e:
+            log_test("更新用户信息API", False, str(e))
+        
+        # 清理：删除测试用户
+        try:
+            ts.session.delete(f"{BASE_URL}/api/admin/users/{test_user_id}")
+        except Exception:
+            pass
+
+
 def test_db_admin(ts):
     """测试数据库管理功能"""
     test_section("数据库管理")
@@ -780,36 +1048,57 @@ def main():
     print("Stellarsis 后端自动化测试")
     print(f"目标服务器: {BASE_URL}")
     print(f"测试时间: {datetime.now().isoformat()}")
+    print(f"数据库路径: {DB_PATH}")
+    print(f"测试后恢复数据库: {'是' if RESTORE_DB_AFTER_TEST else '否'}")
     print("="*60)
+    
+    # 备份数据库
+    print("\n" + "-"*40)
+    print("备份数据库...")
+    print("-"*40)
+    backup_success = backup_database()
+    if not backup_success:
+        print("⚠️ 警告: 数据库备份失败，测试将继续但无法恢复")
     
     # 创建测试会话
     ts = TestSession()
     
-    # 登录测试
-    if not test_login(ts):
-        print("\n❌ 登录失败，无法继续测试")
-        print("请确保:")
-        print("  1. 服务器已启动 (python app.py)")
-        print("  2. 管理员密码正确 (默认: admin)")
-        return 1
+    try:
+        # 登录测试
+        if not test_login(ts):
+            print("\n❌ 登录失败，无法继续测试")
+            print("请确保:")
+            print("  1. 服务器已启动 (python app.py)")
+            print("  2. 管理员密码正确 (默认: admin)")
+            return 1
+        
+        # SU验证
+        test_su_verification(ts)
+        
+        # 运行各项测试
+        test_profile(ts)
+        test_settings(ts)
+        test_chat(ts)
+        test_forum(ts)
+        test_upload(ts)
+        test_follows(ts)
+        test_misc_api(ts)
+        test_admin(ts)
+        test_admin_api(ts)
+        test_admin_user_role(ts)
+        test_user_deletion_with_activity(ts)
+        test_db_admin(ts)
+        
+        # 登出测试
+        test_logout(ts)
     
-    # SU验证
-    test_su_verification(ts)
-    
-    # 运行各项测试
-    test_profile(ts)
-    test_settings(ts)
-    test_chat(ts)
-    test_forum(ts)
-    test_upload(ts)
-    test_follows(ts)
-    test_misc_api(ts)
-    test_admin(ts)
-    test_admin_api(ts)
-    test_db_admin(ts)
-    
-    # 登出测试
-    test_logout(ts)
+    finally:
+        # 恢复数据库
+        if RESTORE_DB_AFTER_TEST and backup_success:
+            print("\n" + "-"*40)
+            print("恢复数据库...")
+            print("-"*40)
+            restore_database()
     
     # 打印总结
     print("\n" + "="*60)

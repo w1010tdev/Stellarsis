@@ -2913,6 +2913,16 @@ def remove_user_and_related(user_id, session=None):
         # - 最后查看时间记录
         session.query(ChatLastView).filter_by(user_id=user_id).delete()
         session.query(ForumLastView).filter_by(user_id=user_id).delete()
+        # - 用户上传的图片（先删除磁盘文件，再删除数据库记录）
+        user_images = session.query(UserImage).filter_by(user_id=user_id).all()
+        for ui in user_images:
+            try:
+                p = Path(ui.filepath)
+                if p.exists():
+                    p.unlink()
+            except Exception:
+                pass
+        session.query(UserImage).filter_by(user_id=user_id).delete()
 
         username = user.username
         session.delete(user)

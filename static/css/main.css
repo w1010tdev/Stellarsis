@@ -271,7 +271,7 @@ header .container {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--on-surface);
+  color: var(--on-primary);
   font-weight: 700;
   font-size: 1.1rem;
   box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
@@ -373,7 +373,7 @@ header nav ul li a.active::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--on-surface);
+  color: var(--on-primary);
   font-weight: 600;
   font-size: 0.875rem;
 }
@@ -774,6 +774,27 @@ footer {
   flex-direction: column;
   justify-content: flex-start; /* 修改为顶部对齐 */
   align-items: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.quote-module:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.quote-change-hint {
+  position: absolute;
+  bottom: 10px;
+  right: 15px;
+  font-size: 0.8em;
+  color: var(--muted-text-color);
+  font-style: italic;
+  opacity: 0.6;
+}
+
+.quote-module:hover .quote-change-hint {
+  opacity: 1;
 }
 
 
