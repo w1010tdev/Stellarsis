@@ -721,7 +721,7 @@ textarea.file-content-editor {
 
 .su-desc {
     margin-bottom: 25px;
-    color: var(--muted-text-color, var(--text-muted));
+    color: var(--muted-text-color, var(--text-muted, #6c757d));
     font-size: 14px;
 }
 
