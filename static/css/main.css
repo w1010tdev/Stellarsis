@@ -775,7 +775,6 @@ footer {
   justify-content: flex-start; /* 修改为顶部对齐 */
   align-items: center;
   transition: all 0.3s ease;
-  cursor: pointer;
 }
 
 .quote-module:hover {
