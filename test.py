@@ -33,7 +33,7 @@ import atexit
 from datetime import datetime
 
 # 配置
-BASE_URL = os.environ.get('TEST_BASE_URL', 'http://localhost:80')
+BASE_URL = os.environ.get('TEST_BASE_URL', 'http://localhost:5000')
 ADMIN_USERNAME = 'admin'
 DB_PATH = os.environ.get('DATABASE_PATH', 'stellarsis.db')
 BACKUP_PATH = DB_PATH + '.test_backup'
@@ -63,10 +63,13 @@ def start_server():
     try:
         print("🚀 正在启动服务器...")
         # 使用subprocess启动app.py
+        env = os.environ.copy()
+        env['PORT'] = '5000'  # 使用5000端口避免权限问题
         _server_process = subprocess.Popen(
             [sys.executable, 'app.py'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            env=env,
             cwd=os.path.dirname(os.path.abspath(__file__)) or '.'
         )
         
@@ -930,6 +933,31 @@ def test_user_deletion_with_activity(ts):
     if not test_user_id:
         log_test("用户删除测试跳过", False, "无法创建测试用户")
         return
+
+    # 1.5 为测试用户授予聊天室/论坛权限（避免权限不足）
+    try:
+        resp = ts.session.put(f"{BASE_URL}/api/admin/users/{test_user_id}/permissions", json={
+            'scope': 'chat',
+            'target_id': 1,
+            'perm': '777'
+        })
+        data = resp.json()
+        success = resp.status_code == 200 and data.get('success')
+        log_test("授予测试用户聊天室权限", success, f"响应: {data}")
+    except Exception as e:
+        log_test("授予测试用户聊天室权限", False, str(e))
+
+    try:
+        resp = ts.session.put(f"{BASE_URL}/api/admin/users/{test_user_id}/permissions", json={
+            'scope': 'forum',
+            'target_id': 1,
+            'perm': '777'
+        })
+        data = resp.json()
+        success = resp.status_code == 200 and data.get('success')
+        log_test("授予测试用户论坛权限", success, f"响应: {data}")
+    except Exception as e:
+        log_test("授予测试用户论坛权限", False, str(e))
     
     # 2. 以测试用户身份登录
     test_session = TestSession()
@@ -1024,15 +1052,22 @@ def test_user_deletion_with_activity(ts):
     except Exception as e:
         log_test("测试用户上传图片", False, str(e))
     
-    # 7. 修改用户设置
+    # 7. 修改用户设置（使用 /profile 表单与 CSRF）
     try:
-        resp = test_session.session.post(f"{BASE_URL}/api/settings/profile", json={
+        resp = test_session.session.get(f"{BASE_URL}/profile")
+        test_session.csrf_token = test_session.get_csrf_token(resp.text)
+
+        profile_data = {
             'nickname': '修改后的昵称',
-            'color': '#ff5733'
-        })
-        data = resp.json()
-        success = resp.status_code == 200 and data.get('success')
-        log_test("测试用户修改设置", success, f"响应: {data}")
+            'color': '#ff5733',
+            'badge': ''
+        }
+        if test_session.csrf_token:
+            profile_data['csrf_token'] = test_session.csrf_token
+
+        resp = test_session.session.post(f"{BASE_URL}/profile", data=profile_data, allow_redirects=True)
+        success = resp.status_code in [200, 302, 303]
+        log_test("测试用户修改设置", success, f"状态码: {resp.status_code}")
     except Exception as e:
         log_test("测试用户修改设置", False, str(e))
     
