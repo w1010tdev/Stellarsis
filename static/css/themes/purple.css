@@ -41,6 +41,8 @@
   --surface-color: #1a0f3a;
   --card-border-color: rgba(255,255,255,0.05);
   --card-shadow: 0 6px 18px rgba(0,0,0,0.5);
+  /* Table row hover background for dark theme */
+  --table-row-hover-bg: rgba(255, 255, 255, 0.05);
   --settings-accent-gradient: linear-gradient(180deg, var(--primary-400), var(--primary-700));
   --settings-accent-shadow: rgba(80,40,160,0.08);
   --settings-hover-gradient: linear-gradient(90deg, rgba(139,92,246,0.04), rgba(37,99,235,0.02));

@@ -140,6 +140,8 @@
   --surface-color: #ffffff;
   --card-border-color: var(--neutral-200);
   --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  /* Table row hover background - themes should override for dark mode */
+  --table-row-hover-bg: rgba(0, 0, 0, 0.05);
   /* Overlay tokens for semi-transparent white overlays; themes may override */
   --overlay-strong: rgba(255, 255, 255, 0.95);
   --overlay-almost: rgba(250, 252, 255, 0.98);
