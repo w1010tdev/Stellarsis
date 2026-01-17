@@ -81,6 +81,7 @@ def start_server():
                     print(f"✅ 服务器已启动 (等待了 {i+1} 秒)")
                     return True
             except requests.exceptions.RequestException:
+                # 服务器可能尚未启动或端口未开放，忽略异常并重试直到超时
                 pass
             time.sleep(1)
         
@@ -1026,6 +1027,7 @@ def test_user_deletion_with_activity(ts):
     try:
         test_session.session.get(f"{BASE_URL}/logout", allow_redirects=False)
     except Exception:
+        # 忽略登出错误：即使登出失败也不影响后续管理员删除用户的核心测试
         pass
     
     # 9. 使用管理员删除用户（这是核心测试）
@@ -1101,6 +1103,7 @@ def test_admin_user_role(ts):
         try:
             ts.session.delete(f"{BASE_URL}/api/admin/users/{test_user_id}")
         except Exception:
+            # 清理失败不影响主测试结果，安全忽略
             pass
 
 
