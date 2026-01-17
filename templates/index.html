@@ -125,6 +125,9 @@
 
 {% block scripts %}
 {{ super() }}
+<!-- GitGraph.js Library - Required for git commit visualization -->
+<!-- In production, download from: https://cdn.jsdelivr.net/npm/@gitgraph/js@1.8.0/lib/gitgraph.umd.js -->
+<!-- And place in static/js/vendor/gitgraph.umd.js -->
 <script src="https://cdn.jsdelivr.net/npm/@gitgraph/js@1.8.0/lib/gitgraph.umd.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -210,62 +213,105 @@ function renderGitGraph(commits) {
     // 清空现有内容
     graphContainer.innerHTML = '';
     
+    // 检查 GitgraphJS 是否已加载
+    if (typeof GitgraphJS === 'undefined') {
+        console.error('GitgraphJS library not loaded. Using fallback rendering.');
+        // 使用简化的渲染方式作为后备
+        renderSimpleCommitList(commits);
+        return;
+    }
+    
     // 获取当前主题（检测是否为暗色主题）
     const isDarkTheme = document.documentElement.getAttribute('data-theme') === 'dark' || 
                         document.body.classList.contains('dark-theme');
     
-    // 创建 GitGraph 实例，使用 VSCode 风格配置
-    const gitgraph = GitgraphJS.createGitgraph(graphContainer, {
-        orientation: 'vertical-reverse',
-        template: GitgraphJS.templateExtend(GitgraphJS.TemplateName.Metro, {
-            colors: isDarkTheme ? 
-                ['#3794ff', '#89d185', '#d186d9', '#f48771', '#f5b951'] :
-                ['#007acc', '#388a34', '#8e44ad', '#e74c3c', '#f39c12'],
-            branch: {
-                lineWidth: 2,
-                spacing: 25,
-                label: {
-                    display: false,
+    try {
+        // 创建 GitGraph 实例，使用 VSCode 风格配置
+        const gitgraph = GitgraphJS.createGitgraph(graphContainer, {
+            orientation: 'vertical-reverse',
+            template: GitgraphJS.templateExtend(GitgraphJS.TemplateName.Metro, {
+                colors: isDarkTheme ? 
+                    ['#3794ff', '#89d185', '#d186d9', '#f48771', '#f5b951'] :
+                    ['#007acc', '#388a34', '#8e44ad', '#e74c3c', '#f39c12'],
+                branch: {
+                    lineWidth: 2,
+                    spacing: 25,
+                    label: {
+                        display: false,
+                    },
                 },
-            },
-            commit: {
-                spacing: 50,
-                dot: {
-                    size: 6,
+                commit: {
+                    spacing: 50,
+                    dot: {
+                        size: 6,
+                    },
+                    message: {
+                        displayAuthor: true,
+                        displayHash: true,
+                        displayBranch: false,
+                        font: isDarkTheme ? 'normal 12px sans-serif' : 'normal 12px sans-serif',
+                        color: isDarkTheme ? '#cccccc' : '#333333',
+                    },
                 },
-                message: {
-                    displayAuthor: true,
-                    displayHash: true,
-                    displayBranch: false,
-                    font: isDarkTheme ? 'normal 12px sans-serif' : 'normal 12px sans-serif',
-                    color: isDarkTheme ? '#cccccc' : '#333333',
-                },
-            },
-        }),
-        mode: 'compact',
-    });
+            }),
+            mode: 'compact',
+        });
 
-    // 创建主分支
-    const master = gitgraph.branch('main');
-    
-    // 渲染提交记录（从旧到新）
-    const reversedCommits = commits.slice().reverse();
-    reversedCommits.forEach((commit, index) => {
-        const date = new Date(commit.commit.author.date);
-        const formattedDate = date.toLocaleDateString('zh-CN');
-        let message = commit.commit.message.split('\n')[0];
+        // 创建主分支
+        const master = gitgraph.branch('main');
         
-        // 截断过长的消息
+        // 渲染提交记录（从旧到新）
+        const reversedCommits = commits.slice().reverse();
+        reversedCommits.forEach((commit, index) => {
+            const date = new Date(commit.commit.author.date);
+            const formattedDate = date.toLocaleDateString('zh-CN');
+            let message = commit.commit.message.split('\n')[0];
+            
+            // 截断过长的消息
+            if (message.length > 30) {
+                message = message.substring(0, 30) + '...';
+            }
+            
+            master.commit({
+                subject: message,
+                hash: commit.sha.substring(0, 7),
+                author: `${commit.commit.author.name} - ${formattedDate}`,
+            });
+        });
+    } catch (error) {
+        console.error('Error rendering git graph:', error);
+        // 如果渲染失败，使用简化视图
+        renderSimpleCommitList(commits);
+    }
+}
+
+// 简化的提交列表渲染（后备方案）
+function renderSimpleCommitList(commits) {
+    const container = document.getElementById('git-graph-container');
+    if (!container) return;
+    
+    let html = '<div style="padding: 10px;">';
+    commits.forEach(commit => {
+        const date = new Date(commit.commit.author.date).toLocaleDateString('zh-CN');
+        let message = commit.commit.message.split('\n')[0];
         if (message.length > 30) {
             message = message.substring(0, 30) + '...';
         }
-        
-        master.commit({
-            subject: message,
-            hash: commit.sha.substring(0, 7),
-            author: `${commit.commit.author.name} - ${formattedDate}`,
-        });
+        html += `
+            <div style="display: flex; align-items: center; padding: 8px 0; border-left: 2px solid #007acc; padding-left: 10px; margin-left: 5px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: #007acc; margin-right: 10px; margin-left: -14px;"></div>
+                <div style="flex: 1;">
+                    <div style="font-size: 12px;">
+                        <span style="background: #e0e0e0; padding: 2px 6px; border-radius: 3px; font-family: monospace; margin-right: 8px;">${commit.sha.substring(0, 7)}</span>
+                        <strong>${message}</strong>
+                    </div>
+                    <div style="font-size: 11px; color: #666; margin-top: 4px;">${commit.commit.author.name} - ${date}</div>
+                </div>
+            </div>
+        `;
     });
+    html += '</div>';
+    container.innerHTML = html;
 }
 </script>
 {% endblock %}
