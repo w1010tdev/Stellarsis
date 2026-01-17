@@ -215,3 +215,17 @@ logs/
 static/uploads/
 
 backups/
+
+# Android
+app_android/.gradle/
+app_android/build/
+app_android/app/build/
+app_android/local.properties
+app_android/*.iml
+app_android/.idea/
+
+# Windows App
+windows_app/__pycache__/
+windows_app/dist/
+windows_app/build/
+windows_app/*.spec

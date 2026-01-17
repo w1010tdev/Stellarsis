@@ -6,6 +6,7 @@ import json
 import sys
 import shutil
 import threading
+import secrets
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sqlite3
@@ -314,6 +315,22 @@ class UserImage(Base):
 
     user = relationship('User', backref='images')
 
+
+class ApiToken(Base):
+    """API Token model for mobile/desktop app authentication"""
+    __tablename__ = 'api_tokens'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    token = Column(String(64), unique=True, nullable=False, index=True)
+    device_name = Column(String(128), default='')
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=True)
+    last_used = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship('User', backref='api_tokens')
+
+
 Base.metadata.create_all(bind=engine)
 
 
@@ -381,6 +398,57 @@ def user_can_view_forum(user, section_id):
 def user_can_post_forum(user, section_id):
     """检查用户是否有权限在指定贴吧分区发帖"""
     return get_forum_permission_value(user, section_id) in FORUM_POST_PERMISSIONS
+
+# ----------
+# API Token 认证 (用于移动端/桌面端应用)
+# ----------
+
+def get_user_from_token(token_str):
+    """从token字符串获取用户对象，如果token无效或过期则返回None"""
+    if not token_str:
+        return None
+    token = db_session.query(ApiToken).filter_by(token=token_str).first()
+    if not token:
+        return None
+    # 检查是否过期
+    if token.expires_at and token.expires_at < datetime.utcnow():
+        return None
+    # 更新最后使用时间
+    token.last_used = datetime.utcnow()
+    db_session.commit()
+    return token.user
+
+
+def api_token_required(f):
+    """API token认证装饰器，用于移动端/桌面端API"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # 从请求头获取token
+        auth_header = request.headers.get('Authorization', '')
+        token_str = None
+        if auth_header.startswith('Bearer '):
+            token_str = auth_header[7:]
+        elif auth_header.startswith('Token '):
+            token_str = auth_header[6:]
+        
+        # 如果header没有token，尝试从query参数获取
+        if not token_str:
+            token_str = request.args.get('token')
+        
+        user = get_user_from_token(token_str)
+        if not user:
+            return jsonify(success=False, message='无效或过期的token'), 401
+        
+        # 将用户存储在g对象中供后续使用
+        from flask import g
+        g.api_user = user
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def generate_api_token():
+    """生成一个安全的API token"""
+    return secrets.token_urlsafe(32)
 
 # ----------
 # 工具函数
@@ -1279,6 +1347,185 @@ def api_delete_forum_reply(reply_id):
         return jsonify({'success': False, 'message': '服务器错误'}), 500
 
 # API相关路由
+
+# ----------
+# 移动端/桌面端 API (Token-based authentication)
+# ----------
+
+@app.route('/api/auth/login', methods=['POST'])
+@limiter.limit("10 per minute")
+def api_auth_login():
+    """
+    API登录接口，返回token用于后续请求认证
+    适用于移动端/桌面端应用
+    """
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify(success=False, message='请求格式错误'), 400
+    
+    username = data.get('username', '').strip()
+    password = data.get('password', '')
+    device_name = data.get('device_name', 'Unknown Device')
+    
+    if not username or not password:
+        return jsonify(success=False, message='用户名和密码不能为空'), 400
+    
+    user = db_session.query(User).filter_by(username=username).first()
+    if not user or not user.check_password(password):
+        return jsonify(success=False, message='用户名或密码错误'), 401
+    
+    # 生成新token
+    token_str = generate_api_token()
+    # Token 有效期30天
+    expires_at = datetime.utcnow() + timedelta(days=30)
+    
+    new_token = ApiToken(
+        user_id=user.id,
+        token=token_str,
+        device_name=device_name,
+        expires_at=expires_at
+    )
+    db_session.add(new_token)
+    db_session.commit()
+    
+    log_admin_action(f"API登录: 用户 {user.username} 通过设备 {device_name}")
+    
+    return jsonify(
+        success=True,
+        message='登录成功',
+        token=token_str,
+        expires_at=expires_at.isoformat(),
+        user={
+            'id': user.id,
+            'username': user.username,
+            'nickname': user.nickname or user.username,
+            'color': user.color,
+            'badge': user.badge,
+            'role': user.role
+        }
+    )
+
+
+@app.route('/api/auth/logout', methods=['POST'])
+@api_token_required
+def api_auth_logout():
+    """
+    API登出接口，使当前token失效
+    """
+    from flask import g
+    user = g.api_user
+    
+    # 获取当前token
+    auth_header = request.headers.get('Authorization', '')
+    token_str = None
+    if auth_header.startswith('Bearer '):
+        token_str = auth_header[7:]
+    elif auth_header.startswith('Token '):
+        token_str = auth_header[6:]
+    if not token_str:
+        token_str = request.args.get('token')
+    
+    # 删除token
+    if token_str:
+        token = db_session.query(ApiToken).filter_by(token=token_str).first()
+        if token:
+            db_session.delete(token)
+            db_session.commit()
+    
+    log_admin_action(f"API登出: 用户 {user.username}")
+    
+    return jsonify(success=True, message='登出成功')
+
+
+@app.route('/api/auth/validate', methods=['GET'])
+@api_token_required
+def api_auth_validate():
+    """
+    验证token是否有效，返回用户信息
+    """
+    from flask import g
+    user = g.api_user
+    
+    return jsonify(
+        success=True,
+        user={
+            'id': user.id,
+            'username': user.username,
+            'nickname': user.nickname or user.username,
+            'color': user.color,
+            'badge': user.badge,
+            'role': user.role
+        }
+    )
+
+
+@app.route('/api/notifications/unread', methods=['GET'])
+@api_token_required
+def api_notifications_unread():
+    """
+    获取未读消息数量，用于移动端/桌面端通知
+    返回聊天室和论坛分区的未读消息数
+    """
+    from flask import g
+    user = g.api_user
+    
+    try:
+        chat_counts = {}
+        forum_counts = {}
+        total_unread = 0
+
+        # 聊天室未读
+        rooms = db_session.query(ChatRoom).all()
+        for room in rooms:
+            if get_chat_permission_value(user, room.id) == 'Null':
+                continue
+            last = db_session.query(ChatLastView).filter_by(user_id=user.id, room_id=room.id).first()
+            if last:
+                cnt = db_session.query(ChatMessage).filter(
+                    ChatMessage.room_id == room.id,
+                    ChatMessage.timestamp > last.last_view
+                ).count()
+            else:
+                cnt = db_session.query(ChatMessage).filter_by(room_id=room.id).count()
+            chat_counts[room.id] = {'name': room.name, 'count': cnt}
+            total_unread += cnt
+
+        # 贴吧分区未读
+        sections = db_session.query(ForumSection).all()
+        for section in sections:
+            if get_forum_permission_value(user, section.id) == 'Null':
+                continue
+            last = db_session.query(ForumLastView).filter_by(user_id=user.id, section_id=section.id).first()
+            if last:
+                last_time = last.last_view
+                cnt_threads = db_session.query(ForumThread).filter(
+                    ForumThread.section_id == section.id,
+                    ForumThread.timestamp > last_time
+                ).count()
+                cnt_replies = db_session.query(ForumReply).join(
+                    ForumThread, ForumReply.thread_id == ForumThread.id
+                ).filter(
+                    ForumThread.section_id == section.id,
+                    ForumReply.timestamp > last_time
+                ).count()
+            else:
+                cnt_threads = db_session.query(ForumThread).filter_by(section_id=section.id).count()
+                cnt_replies = db_session.query(ForumReply).join(
+                    ForumThread, ForumReply.thread_id == ForumThread.id
+                ).filter(ForumThread.section_id == section.id).count()
+            cnt = cnt_threads + cnt_replies
+            forum_counts[section.id] = {'name': section.name, 'count': cnt}
+            total_unread += cnt
+
+        return jsonify(
+            success=True,
+            total_unread=total_unread,
+            chat=chat_counts,
+            forum=forum_counts
+        )
+    except Exception as e:
+        logger.exception('获取未读消息失败')
+        return jsonify(success=False, message=str(e)), 500
 
 @app.route('/api/online_count')
 @login_required
