@@ -210,9 +210,6 @@ function renderGitGraph(commits) {
     const graphContainer = document.getElementById('git-graph-canvas');
     if (!graphContainer) return;
     
-    // 清空现有内容
-    graphContainer.innerHTML = '';
-    
     // 检查 GitgraphJS 是否已加载
     if (typeof GitgraphJS === 'undefined') {
         console.error('GitgraphJS library not loaded. Using fallback rendering.');
@@ -249,7 +246,7 @@ function renderGitGraph(commits) {
                         displayAuthor: true,
                         displayHash: true,
                         displayBranch: false,
-                        font: isDarkTheme ? 'normal 12px sans-serif' : 'normal 12px sans-serif',
+                        font: 'normal 12px sans-serif',
                         color: isDarkTheme ? '#cccccc' : '#333333',
                     },
                 },
@@ -262,7 +259,7 @@ function renderGitGraph(commits) {
         
         // 渲染提交记录（从旧到新）
         const reversedCommits = commits.slice().reverse();
-        reversedCommits.forEach((commit, index) => {
+        reversedCommits.forEach((commit) => {
             const date = new Date(commit.commit.author.date);
             const formattedDate = date.toLocaleDateString('zh-CN');
             let message = commit.commit.message.split('\n')[0];
