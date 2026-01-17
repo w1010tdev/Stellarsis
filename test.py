@@ -40,6 +40,9 @@ BACKUP_PATH = DB_PATH + '.test_backup'
 UPLOADS_DIR = 'uploads'
 UPLOADS_BACKUP_DIR = 'uploads.test_backup'
 
+# 请求超时设置（秒）- 防止测试卡住
+REQUEST_TIMEOUT = int(os.environ.get('TEST_REQUEST_TIMEOUT', '30'))
+
 # 是否在测试后恢复数据库（默认为True）
 RESTORE_DB_AFTER_TEST = os.environ.get('RESTORE_DB_AFTER_TEST', 'true').lower() == 'true'
 
@@ -196,10 +199,19 @@ test_results = {
 }
 
 
+class TimeoutSession(requests.Session):
+    """带有默认超时的requests会话"""
+    def request(self, method, url, **kwargs):
+        # 如果没有指定timeout，使用默认超时
+        if 'timeout' not in kwargs:
+            kwargs['timeout'] = REQUEST_TIMEOUT
+        return super().request(method, url, **kwargs)
+
+
 class TestSession:
     """管理测试会话"""
     def __init__(self):
-        self.session = requests.Session()
+        self.session = TimeoutSession()
         self.csrf_token = None
         self.su_verified = False
         
