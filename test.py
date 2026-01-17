@@ -33,7 +33,7 @@ import atexit
 from datetime import datetime
 
 # 配置
-BASE_URL = os.environ.get('TEST_BASE_URL', 'http://localhost:80')
+BASE_URL = os.environ.get('TEST_BASE_URL', 'http://localhost:5000')
 ADMIN_USERNAME = 'admin'
 DB_PATH = os.environ.get('DATABASE_PATH', 'stellarsis.db')
 BACKUP_PATH = DB_PATH + '.test_backup'
@@ -63,10 +63,13 @@ def start_server():
     try:
         print("🚀 正在启动服务器...")
         # 使用subprocess启动app.py
+        env = os.environ.copy()
+        env['PORT'] = '5000'  # 使用5000端口避免权限问题
         _server_process = subprocess.Popen(
             [sys.executable, 'app.py'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            env=env,
             cwd=os.path.dirname(os.path.abspath(__file__)) or '.'
         )
         
