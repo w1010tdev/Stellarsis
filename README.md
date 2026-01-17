@@ -309,6 +309,14 @@ cp config.py config_backup.py
 
 ## 安装与部署 / Installation and Deployment
 
+### 📖 完整部署指南 (Complete Deployment Guide)
+
+**推荐阅读**: 查看详细的部署文档 [DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)，包含：
+- 🖥️ 服务端完整部署（开发和生产环境）
+- 📱 Android 客户端编译指南
+- 💻 Windows (Electron) 客户端编译指南
+- 🔧 客户端连接配置和常见问题解决
+
 ### 快速开始 (Quick Start)
 
 请从 [Release 页面](https://github.com/w1010tdev/Stellarsis/releases/latest) 下载最新稳定版本用于开发部署。
@@ -610,6 +618,7 @@ Stellarsis/
 │   ├── admin/          # 管理后台
 │   └── errors/         # 错误页面
 └── docs/               # 文档
+    ├── DEPLOYMENT_GUIDE.md          # 完整部署指南（服务端、Android、Windows）
     ├── ROUTES_AND_WEBSOCKETS.md    # API 文档
     ├── Markdown_LaTeX_Quickstart.md # Markdown/LaTeX 指南
     ├── DATABASE_SCHEMA.md           # 数据库架构
