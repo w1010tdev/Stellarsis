@@ -896,7 +896,8 @@ function setupWebSocket() {
                 username: data.username,
                 nickname: data.nickname || data.username,
                 timestamp: data.timestamp || new Date().toISOString(),
-                content: ''
+                content: '',
+                isFollowed: followedUserIds.has(data.user_id)
             };
             if (followedUserIds.has(data.user_id)) {
                 addMessageToUI(msg);
@@ -910,7 +911,8 @@ function setupWebSocket() {
                 username: data.username,
                 nickname: data.nickname || data.username,
                 timestamp: data.timestamp || new Date().toISOString(),
-                content: ''
+                content: '',
+                isFollowed: followedUserIds.has(data.user_id)
             };
             if (followedUserIds.has(data.user_id)) {
                 addMessageToUI(msg);
@@ -1745,9 +1747,19 @@ function createMessageElement(msg, isLocal = false, his = false) {
         // 格式化系统消息
         let messageText = msg.content;
         if (msg.type === 'join') {
-            messageText = `${msg.nickname || msg.username} 加入了聊天室`;
+            // 如果是关注的用户加入，显示更明显的提示
+            if (msg.isFollowed) {
+                messageText = `🌟 您关注的用户 ${msg.nickname || msg.username} 加入了聊天室`;
+            } else {
+                messageText = `${msg.nickname || msg.username} 加入了聊天室`;
+            }
         } else if (msg.type === 'leave') {
-            messageText = `${msg.nickname || msg.username} 离开了聊天室`;
+            // 如果是关注的用户离开，也显示提示
+            if (msg.isFollowed) {
+                messageText = `您关注的用户 ${msg.nickname || msg.username} 离开了聊天室`;
+            } else {
+                messageText = `${msg.nickname || msg.username} 离开了聊天室`;
+            }
         }
 
         contentElement.textContent = messageText;
