@@ -1,3 +1,6 @@
+// 配置常量
+const HEARTBEAT_INTERVAL = 30000; // 30秒心跳间隔
+
 // 全局变量
 let socket = null;
 let tokenData = null;
@@ -36,13 +39,10 @@ function initWebSocket() {
     updateStatus('正在连接服务器...');
     updateConnectionStatus(false);
 
-    // 创建 Socket.IO 连接，使用 token 认证
+    // 创建 Socket.IO 连接，使用 auth 对象进行 token 认证
     socket = io(serverUrl, {
         transports: ['websocket', 'polling'],
         auth: {
-            token: tokenData.token
-        },
-        query: {
             token: tokenData.token
         }
     });
@@ -206,9 +206,6 @@ async function handleLogout() {
         window.electronAPI.navigateTo('login');
     }
 }
-
-// 配置常量
-const HEARTBEAT_INTERVAL = 30000; // 30秒心跳间隔
 
 // 更新状态文本
 function updateStatus(text) {

@@ -31,6 +31,10 @@ import java.util.Locale
  */
 class MainActivity : AppCompatActivity() {
     
+    companion object {
+        private const val HEARTBEAT_INTERVAL_MS = 30000L // 30秒心跳间隔
+    }
+    
     private lateinit var binding: ActivityMainBinding
     private lateinit var tokenManager: TokenManager
     private lateinit var notificationHelper: NotificationHelper
@@ -41,7 +45,7 @@ class MainActivity : AppCompatActivity() {
     private val heartbeatRunnable = object : Runnable {
         override fun run() {
             socketManager.sendHeartbeat()
-            heartbeatHandler.postDelayed(this, 30000) // 每30秒发送心跳
+            heartbeatHandler.postDelayed(this, HEARTBEAT_INTERVAL_MS)
         }
     }
     

@@ -419,21 +419,28 @@ def get_user_from_token(token_str):
     return token.user
 
 
+def extract_token_from_request(req):
+    """从请求中提取API token（支持Authorization头和query参数）"""
+    auth_header = req.headers.get('Authorization', '')
+    token_str = None
+    if auth_header.startswith('Bearer '):
+        token_str = auth_header[7:]
+    elif auth_header.startswith('Token '):
+        token_str = auth_header[6:]
+    
+    # 如果header没有token，尝试从query参数获取
+    if not token_str:
+        token_str = req.args.get('token')
+    
+    return token_str
+
+
 def api_token_required(f):
     """API token认证装饰器，用于移动端/桌面端API"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # 从请求头获取token
-        auth_header = request.headers.get('Authorization', '')
-        token_str = None
-        if auth_header.startswith('Bearer '):
-            token_str = auth_header[7:]
-        elif auth_header.startswith('Token '):
-            token_str = auth_header[6:]
-        
-        # 如果header没有token，尝试从query参数获取
-        if not token_str:
-            token_str = request.args.get('token')
+        # 从请求中获取token
+        token_str = extract_token_from_request(request)
         
         user = get_user_from_token(token_str)
         if not user:
@@ -449,6 +456,79 @@ def api_token_required(f):
 def generate_api_token():
     """生成一个安全的API token"""
     return secrets.token_urlsafe(32)
+
+
+# 每用户最大token数量限制
+MAX_TOKENS_PER_USER = 10
+
+
+def cleanup_old_tokens(user_id):
+    """清理用户的旧token，保留最新的MAX_TOKENS_PER_USER个"""
+    tokens = db_session.query(ApiToken).filter_by(user_id=user_id).order_by(
+        ApiToken.last_used.desc()
+    ).all()
+    
+    if len(tokens) > MAX_TOKENS_PER_USER:
+        # 删除最旧的token
+        for token in tokens[MAX_TOKENS_PER_USER:]:
+            db_session.delete(token)
+        db_session.commit()
+
+
+def get_unread_counts_for_user(user):
+    """
+    获取用户的未读消息统计
+    返回 (total_unread, chat_counts, forum_counts)
+    """
+    chat_counts = {}
+    forum_counts = {}
+    total_unread = 0
+
+    # 聊天室未读
+    rooms = db_session.query(ChatRoom).all()
+    for room in rooms:
+        if get_chat_permission_value(user, room.id) == 'Null':
+            continue
+        last = db_session.query(ChatLastView).filter_by(user_id=user.id, room_id=room.id).first()
+        if last:
+            cnt = db_session.query(ChatMessage).filter(
+                ChatMessage.room_id == room.id,
+                ChatMessage.timestamp > last.last_view
+            ).count()
+        else:
+            cnt = db_session.query(ChatMessage).filter_by(room_id=room.id).count()
+        chat_counts[room.id] = {'name': room.name, 'count': cnt}
+        total_unread += cnt
+
+    # 贴吧分区未读
+    sections = db_session.query(ForumSection).all()
+    for section in sections:
+        if get_forum_permission_value(user, section.id) == 'Null':
+            continue
+        last = db_session.query(ForumLastView).filter_by(user_id=user.id, section_id=section.id).first()
+        if last:
+            last_time = last.last_view
+            cnt_threads = db_session.query(ForumThread).filter(
+                ForumThread.section_id == section.id,
+                ForumThread.timestamp > last_time
+            ).count()
+            cnt_replies = db_session.query(ForumReply).join(
+                ForumThread, ForumReply.thread_id == ForumThread.id
+            ).filter(
+                ForumThread.section_id == section.id,
+                ForumReply.timestamp > last_time
+            ).count()
+        else:
+            cnt_threads = db_session.query(ForumThread).filter_by(section_id=section.id).count()
+            cnt_replies = db_session.query(ForumReply).join(
+                ForumThread, ForumReply.thread_id == ForumThread.id
+            ).filter(ForumThread.section_id == section.id).count()
+        cnt = cnt_threads + cnt_replies
+        forum_counts[section.id] = {'name': section.name, 'count': cnt}
+        total_unread += cnt
+
+    return total_unread, chat_counts, forum_counts
+
 
 # ----------
 # 工具函数
@@ -1374,6 +1454,9 @@ def api_auth_login():
     if not user or not user.check_password(password):
         return jsonify(success=False, message='用户名或密码错误'), 401
     
+    # 清理旧token，限制每用户token数量
+    cleanup_old_tokens(user.id)
+    
     # 生成新token
     token_str = generate_api_token()
     # Token 有效期30天
@@ -1415,15 +1498,8 @@ def api_auth_logout():
     from flask import g
     user = g.api_user
     
-    # 获取当前token
-    auth_header = request.headers.get('Authorization', '')
-    token_str = None
-    if auth_header.startswith('Bearer '):
-        token_str = auth_header[7:]
-    elif auth_header.startswith('Token '):
-        token_str = auth_header[6:]
-    if not token_str:
-        token_str = request.args.get('token')
+    # 使用helper函数获取当前token
+    token_str = extract_token_from_request(request)
     
     # 删除token
     if token_str:
@@ -1470,53 +1546,8 @@ def api_notifications_unread():
     user = g.api_user
     
     try:
-        chat_counts = {}
-        forum_counts = {}
-        total_unread = 0
-
-        # 聊天室未读
-        rooms = db_session.query(ChatRoom).all()
-        for room in rooms:
-            if get_chat_permission_value(user, room.id) == 'Null':
-                continue
-            last = db_session.query(ChatLastView).filter_by(user_id=user.id, room_id=room.id).first()
-            if last:
-                cnt = db_session.query(ChatMessage).filter(
-                    ChatMessage.room_id == room.id,
-                    ChatMessage.timestamp > last.last_view
-                ).count()
-            else:
-                cnt = db_session.query(ChatMessage).filter_by(room_id=room.id).count()
-            chat_counts[room.id] = {'name': room.name, 'count': cnt}
-            total_unread += cnt
-
-        # 贴吧分区未读
-        sections = db_session.query(ForumSection).all()
-        for section in sections:
-            if get_forum_permission_value(user, section.id) == 'Null':
-                continue
-            last = db_session.query(ForumLastView).filter_by(user_id=user.id, section_id=section.id).first()
-            if last:
-                last_time = last.last_view
-                cnt_threads = db_session.query(ForumThread).filter(
-                    ForumThread.section_id == section.id,
-                    ForumThread.timestamp > last_time
-                ).count()
-                cnt_replies = db_session.query(ForumReply).join(
-                    ForumThread, ForumReply.thread_id == ForumThread.id
-                ).filter(
-                    ForumThread.section_id == section.id,
-                    ForumReply.timestamp > last_time
-                ).count()
-            else:
-                cnt_threads = db_session.query(ForumThread).filter_by(section_id=section.id).count()
-                cnt_replies = db_session.query(ForumReply).join(
-                    ForumThread, ForumReply.thread_id == ForumThread.id
-                ).filter(ForumThread.section_id == section.id).count()
-            cnt = cnt_threads + cnt_replies
-            forum_counts[section.id] = {'name': section.name, 'count': cnt}
-            total_unread += cnt
-
+        total_unread, chat_counts, forum_counts = get_unread_counts_for_user(user)
+        
         return jsonify(
             success=True,
             total_unread=total_unread,
@@ -4326,12 +4357,12 @@ def handle_get_unread_notifications(data):
     用于移动端/桌面端应用
     """
     try:
-        # 优先使用 token 认证
-        token_str = data.get('token') if data else None
+        # 优先使用 token 认证，安全处理 data 为 None 的情况
+        token = data.get('token') if data else None
         user = None
         
-        if token_str:
-            user = get_user_from_token(token_str)
+        if token:
+            user = get_user_from_token(token)
         
         # 如果没有 token 或 token 无效，尝试使用 session 认证
         if not user and current_user.is_authenticated:
@@ -4341,52 +4372,8 @@ def handle_get_unread_notifications(data):
             emit('auth_error', {'message': '未认证或 token 无效'})
             return
         
-        chat_counts = {}
-        forum_counts = {}
-        total_unread = 0
-
-        # 聊天室未读
-        rooms = db_session.query(ChatRoom).all()
-        for room in rooms:
-            if get_chat_permission_value(user, room.id) == 'Null':
-                continue
-            last = db_session.query(ChatLastView).filter_by(user_id=user.id, room_id=room.id).first()
-            if last:
-                cnt = db_session.query(ChatMessage).filter(
-                    ChatMessage.room_id == room.id,
-                    ChatMessage.timestamp > last.last_view
-                ).count()
-            else:
-                cnt = db_session.query(ChatMessage).filter_by(room_id=room.id).count()
-            chat_counts[room.id] = {'name': room.name, 'count': cnt}
-            total_unread += cnt
-
-        # 贴吧分区未读
-        sections = db_session.query(ForumSection).all()
-        for section in sections:
-            if get_forum_permission_value(user, section.id) == 'Null':
-                continue
-            last = db_session.query(ForumLastView).filter_by(user_id=user.id, section_id=section.id).first()
-            if last:
-                last_time = last.last_view
-                cnt_threads = db_session.query(ForumThread).filter(
-                    ForumThread.section_id == section.id,
-                    ForumThread.timestamp > last_time
-                ).count()
-                cnt_replies = db_session.query(ForumReply).join(
-                    ForumThread, ForumReply.thread_id == ForumThread.id
-                ).filter(
-                    ForumThread.section_id == section.id,
-                    ForumReply.timestamp > last_time
-                ).count()
-            else:
-                cnt_threads = db_session.query(ForumThread).filter_by(section_id=section.id).count()
-                cnt_replies = db_session.query(ForumReply).join(
-                    ForumThread, ForumReply.thread_id == ForumThread.id
-                ).filter(ForumThread.section_id == section.id).count()
-            cnt = cnt_threads + cnt_replies
-            forum_counts[section.id] = {'name': section.name, 'count': cnt}
-            total_unread += cnt
+        # 使用共享的helper函数获取未读统计
+        total_unread, chat_counts, forum_counts = get_unread_counts_for_user(user)
 
         emit('unread_notifications', {
             'success': True,

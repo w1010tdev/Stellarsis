@@ -7,11 +7,10 @@
         </trust-anchors>
     </base-config>
     
-    <!-- 开发/测试环境：允许特定域名使用 HTTP -->
-    <!-- 部署生产环境时，请删除或注释此配置 -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">10.0.2.2</domain>
-        <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="true">127.0.0.1</domain>
-    </domain-config>
+    <!-- 开发/测试环境：允许特定域名使用 HTTP（仅在 debuggable=true 时生效） -->
+    <debug-overrides cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </debug-overrides>
 </network-security-config>
