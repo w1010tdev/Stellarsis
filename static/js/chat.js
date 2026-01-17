@@ -719,14 +719,31 @@ function setupWebSocket() {
         window.roomHeartbeatInterval = setInterval(() => {
             if (chatSocket && chatSocket.connected) {
                 chatSocket.emit('heartbeat_chat', { room_id: roomId });
+                // 全局心跳用于关注上线通知与全局在线人数
+                chatSocket.emit('heartbeat');
             }
         }, 5000);
         if (chatSocket && chatSocket.connected) {
             chatSocket.emit('heartbeat_chat', { room_id: roomId });
+            chatSocket.emit('heartbeat');
         }
         chatSocket.on('connect', () => {
             console.log('WebSocket连接已建立');
             updateConnectionStatus('connected', '已连接');
+            // 加载关注列表（每次重连都刷新）
+            fetch('/api/follow/following')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        followedUserIds = new Set(data.following.map(u => u.id));
+                        console.log('已加载关注用户:', Array.from(followedUserIds));
+                    }
+                })
+                .catch(err => {
+                    console.error('加载关注列表失败:', err);
+                    // 可选：降级为本地存储（但你要求后端存储，故不处理）
+                });
+
             if (!chatSocket.hasJoinedRoom) {
                 // 重新加入房间
                 chatSocket.emit('join', { room: roomId });
@@ -735,24 +752,6 @@ function setupWebSocket() {
                 setTimeout(() => {
                     chatSocket.emit('get_online_users', { room_id: roomId });
                 }, 1000);
-            }
-            if (!chatSocket.hasJoinedRoom) {
-                // 加载关注列表
-                fetch('/api/follow/following')
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) {
-                            followedUserIds = new Set(data.following.map(u => u.id));
-                            console.log('已加载关注用户:', Array.from(followedUserIds));
-                        }
-                    })
-                    .catch(err => {
-                        console.error('加载关注列表失败:', err);
-                        // 可选：降级为本地存储（但你要求后端存储，故不处理）
-                    });
-
-                chatSocket.emit('join', { room: roomId });
-                chatSocket.hasJoinedRoom = true;
             }
 
             updateOnlineStatus();
