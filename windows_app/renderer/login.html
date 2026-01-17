@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellarsis - 登录</title>
+    <!-- Material Design Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Material Components Web -->
+    <link href="https://unpkg.com/material-components-web@14.0.0/dist/material-components-web.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="mdc-typography">
+    <div class="login-container">
+        <!-- Logo -->
+        <div class="logo-section">
+            <div class="logo-icon">
+                <span class="material-icons">public</span>
+            </div>
+            <h1 class="logo-title">Stellarsis</h1>
+            <p class="logo-subtitle">群星议会</p>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm" class="login-form">
+            <!-- Username -->
+            <label class="mdc-text-field mdc-text-field--outlined mdc-text-field--with-leading-icon">
+                <span class="mdc-notched-outline">
+                    <span class="mdc-notched-outline__leading"></span>
+                    <span class="mdc-notched-outline__notch">
+                        <span class="mdc-floating-label" id="username-label">用户名</span>
+                    </span>
+                    <span class="mdc-notched-outline__trailing"></span>
+                </span>
+                <span class="material-icons mdc-text-field__icon mdc-text-field__icon--leading">person</span>
+                <input type="text" class="mdc-text-field__input" id="username" required aria-labelledby="username-label">
+            </label>
+
+            <!-- Password -->
+            <label class="mdc-text-field mdc-text-field--outlined mdc-text-field--with-leading-icon">
+                <span class="mdc-notched-outline">
+                    <span class="mdc-notched-outline__leading"></span>
+                    <span class="mdc-notched-outline__notch">
+                        <span class="mdc-floating-label" id="password-label">密码</span>
+                    </span>
+                    <span class="mdc-notched-outline__trailing"></span>
+                </span>
+                <span class="material-icons mdc-text-field__icon mdc-text-field__icon--leading">lock</span>
+                <input type="password" class="mdc-text-field__input" id="password" required aria-labelledby="password-label">
+            </label>
+
+            <!-- Login Button -->
+            <button type="submit" class="mdc-button mdc-button--raised login-button" id="loginBtn">
+                <span class="mdc-button__ripple"></span>
+                <span class="mdc-button__label" id="loginBtnLabel">登录</span>
+            </button>
+
+            <!-- Status Message -->
+            <div id="statusMessage" class="status-message"></div>
+        </form>
+
+        <!-- Server Config -->
+        <div class="server-config">
+            <label class="mdc-text-field mdc-text-field--outlined mdc-text-field--dense">
+                <span class="mdc-notched-outline">
+                    <span class="mdc-notched-outline__leading"></span>
+                    <span class="mdc-notched-outline__notch">
+                        <span class="mdc-floating-label" id="server-label">服务器地址</span>
+                    </span>
+                    <span class="mdc-notched-outline__trailing"></span>
+                </span>
+                <input type="text" class="mdc-text-field__input" id="serverUrl" value="http://localhost:5000" aria-labelledby="server-label">
+            </label>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/material-components-web@14.0.0/dist/material-components-web.min.js"></script>
+    <script src="login.js"></script>
+</body>
+</html>

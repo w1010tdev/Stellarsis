@@ -14,10 +14,14 @@ import java.util.concurrent.TimeUnit
 object ApiClient {
     
     // TODO: 修改为你的服务器地址
-    private const val BASE_URL = "http://10.0.2.2:5000/"  // Android 模拟器访问本机地址
+    const val BASE_URL = "http://10.0.2.2:5000/"  // Android 模拟器访问本机地址
     // 如果是真机测试，请使用实际的服务器 IP 或域名
-    // private const val BASE_URL = "http://192.168.1.100:5000/"
-    // private const val BASE_URL = "https://your-domain.com/"
+    // const val BASE_URL = "http://192.168.1.100:5000/"
+    // const val BASE_URL = "https://your-domain.com/"
+    
+    // WebSocket URL (移除末尾斜杠)
+    val WS_URL: String
+        get() = BASE_URL.trimEnd('/')
     
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         // 仅在调试模式下记录请求/响应体，避免生产环境泄露敏感信息

@@ -224,8 +224,9 @@ app_android/local.properties
 app_android/*.iml
 app_android/.idea/
 
-# Windows App
-windows_app/__pycache__/
+# Windows App (Electron)
+windows_app/node_modules/
 windows_app/dist/
-windows_app/build/
-windows_app/*.spec
+windows_app/out/
+windows_app/*.log
+windows_app/.DS_Store

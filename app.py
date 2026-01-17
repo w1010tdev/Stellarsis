@@ -4319,6 +4319,86 @@ def handle_heartbeat():
         broadcast_global_online_count()
 
 
+@socketio.on('get_unread_notifications')
+def handle_get_unread_notifications(data):
+    """
+    获取未读消息数量（支持 token 认证）
+    用于移动端/桌面端应用
+    """
+    try:
+        # 优先使用 token 认证
+        token_str = data.get('token') if data else None
+        user = None
+        
+        if token_str:
+            user = get_user_from_token(token_str)
+        
+        # 如果没有 token 或 token 无效，尝试使用 session 认证
+        if not user and current_user.is_authenticated:
+            user = current_user
+        
+        if not user:
+            emit('auth_error', {'message': '未认证或 token 无效'})
+            return
+        
+        chat_counts = {}
+        forum_counts = {}
+        total_unread = 0
+
+        # 聊天室未读
+        rooms = db_session.query(ChatRoom).all()
+        for room in rooms:
+            if get_chat_permission_value(user, room.id) == 'Null':
+                continue
+            last = db_session.query(ChatLastView).filter_by(user_id=user.id, room_id=room.id).first()
+            if last:
+                cnt = db_session.query(ChatMessage).filter(
+                    ChatMessage.room_id == room.id,
+                    ChatMessage.timestamp > last.last_view
+                ).count()
+            else:
+                cnt = db_session.query(ChatMessage).filter_by(room_id=room.id).count()
+            chat_counts[room.id] = {'name': room.name, 'count': cnt}
+            total_unread += cnt
+
+        # 贴吧分区未读
+        sections = db_session.query(ForumSection).all()
+        for section in sections:
+            if get_forum_permission_value(user, section.id) == 'Null':
+                continue
+            last = db_session.query(ForumLastView).filter_by(user_id=user.id, section_id=section.id).first()
+            if last:
+                last_time = last.last_view
+                cnt_threads = db_session.query(ForumThread).filter(
+                    ForumThread.section_id == section.id,
+                    ForumThread.timestamp > last_time
+                ).count()
+                cnt_replies = db_session.query(ForumReply).join(
+                    ForumThread, ForumReply.thread_id == ForumThread.id
+                ).filter(
+                    ForumThread.section_id == section.id,
+                    ForumReply.timestamp > last_time
+                ).count()
+            else:
+                cnt_threads = db_session.query(ForumThread).filter_by(section_id=section.id).count()
+                cnt_replies = db_session.query(ForumReply).join(
+                    ForumThread, ForumReply.thread_id == ForumThread.id
+                ).filter(ForumThread.section_id == section.id).count()
+            cnt = cnt_threads + cnt_replies
+            forum_counts[section.id] = {'name': section.name, 'count': cnt}
+            total_unread += cnt
+
+        emit('unread_notifications', {
+            'success': True,
+            'total_unread': total_unread,
+            'chat': chat_counts,
+            'forum': forum_counts
+        })
+    except Exception as e:
+        logger.exception('获取未读消息失败')
+        emit('unread_notifications', {'success': False, 'message': str(e)})
+
+
 # 管理员：名言管理相关路由
 @app.route('/admin/quotes')
 @login_required

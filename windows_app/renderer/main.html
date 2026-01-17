@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellarsis</title>
+    <!-- Material Design Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Material Components Web -->
+    <link href="https://unpkg.com/material-components-web@14.0.0/dist/material-components-web.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="mdc-typography">
+    <div class="main-container">
+        <!-- App Bar -->
+        <header class="mdc-top-app-bar">
+            <div class="mdc-top-app-bar__row">
+                <section class="mdc-top-app-bar__section mdc-top-app-bar__section--align-start">
+                    <span class="material-icons mdc-top-app-bar__navigation-icon">public</span>
+                    <span class="mdc-top-app-bar__title">Stellarsis</span>
+                </section>
+                <section class="mdc-top-app-bar__section mdc-top-app-bar__section--align-end">
+                    <span id="connectionStatus" class="connection-status connected">
+                        <span class="material-icons">wifi</span>
+                    </span>
+                </section>
+            </div>
+        </header>
+
+        <main class="main-content mdc-top-app-bar--fixed-adjust">
+            <!-- User Card -->
+            <div class="mdc-card user-card">
+                <div class="card-content">
+                    <div class="user-avatar">
+                        <span class="material-icons">account_circle</span>
+                    </div>
+                    <div class="user-info">
+                        <h2 id="userName" class="user-name">加载中...</h2>
+                        <p class="user-welcome">欢迎回来</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages Card -->
+            <div class="mdc-card messages-card">
+                <div class="card-header">
+                    <span class="material-icons">notifications</span>
+                    <h3>消息中心</h3>
+                </div>
+                <div class="mdc-card__content">
+                    <!-- Total Unread -->
+                    <div class="unread-total">
+                        <span id="totalUnread" class="unread-count">0</span>
+                        <span class="unread-label">未读消息</span>
+                    </div>
+
+                    <div class="mdc-list">
+                        <!-- Chat Unread -->
+                        <div class="mdc-list-item">
+                            <span class="mdc-list-item__graphic material-icons">chat</span>
+                            <span class="mdc-list-item__text">聊天消息</span>
+                            <span class="mdc-list-item__meta" id="chatUnread">0</span>
+                        </div>
+                        <!-- Forum Unread -->
+                        <div class="mdc-list-item">
+                            <span class="mdc-list-item__graphic material-icons">forum</span>
+                            <span class="mdc-list-item__text">论坛更新</span>
+                            <span class="mdc-list-item__meta" id="forumUnread">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status -->
+            <p id="statusText" class="status-text">正在连接服务器...</p>
+
+            <!-- Buttons -->
+            <div class="button-group">
+                <button class="mdc-button mdc-button--raised refresh-button" id="refreshBtn">
+                    <span class="mdc-button__ripple"></span>
+                    <span class="material-icons mdc-button__icon">refresh</span>
+                    <span class="mdc-button__label">刷新</span>
+                </button>
+
+                <button class="mdc-button mdc-button--outlined logout-button" id="logoutBtn">
+                    <span class="mdc-button__ripple"></span>
+                    <span class="material-icons mdc-button__icon">logout</span>
+                    <span class="mdc-button__label">登出</span>
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://unpkg.com/material-components-web@14.0.0/dist/material-components-web.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>

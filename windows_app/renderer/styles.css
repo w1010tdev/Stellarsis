@@ -1,0 +1,296 @@
+/* Material Design 主题变量 */
+:root {
+    --mdc-theme-primary: #1976D2;
+    --mdc-theme-secondary: #FF5722;
+    --mdc-theme-background: #FAFAFA;
+    --mdc-theme-surface: #FFFFFF;
+    --mdc-theme-error: #D32F2F;
+    --mdc-theme-on-primary: #FFFFFF;
+    --mdc-theme-on-secondary: #FFFFFF;
+    --mdc-theme-on-surface: #212121;
+    --mdc-theme-text-secondary: #757575;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', 'Microsoft YaHei', sans-serif;
+    background-color: var(--mdc-theme-background);
+    color: var(--mdc-theme-on-surface);
+    min-height: 100vh;
+}
+
+/* ========== 登录页面 ========== */
+.login-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+}
+
+.logo-section {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.logo-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1976D2, #42A5F5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    box-shadow: 0 4px 20px rgba(25, 118, 210, 0.3);
+}
+
+.logo-icon .material-icons {
+    font-size: 48px;
+    color: white;
+}
+
+.logo-title {
+    font-size: 28px;
+    font-weight: 500;
+    color: var(--mdc-theme-primary);
+    margin: 0 0 4px;
+}
+
+.logo-subtitle {
+    font-size: 14px;
+    color: var(--mdc-theme-text-secondary);
+    margin: 0;
+}
+
+.login-form {
+    width: 100%;
+    max-width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.login-form .mdc-text-field {
+    width: 100%;
+}
+
+.login-button {
+    margin-top: 8px;
+    height: 48px;
+}
+
+.status-message {
+    text-align: center;
+    font-size: 14px;
+    min-height: 20px;
+}
+
+.status-message.error {
+    color: var(--mdc-theme-error);
+}
+
+.status-message.success {
+    color: #388E3C;
+}
+
+.server-config {
+    margin-top: 32px;
+    width: 100%;
+    max-width: 320px;
+}
+
+.server-config .mdc-text-field {
+    width: 100%;
+}
+
+/* ========== 主页面 ========== */
+.main-container {
+    min-height: 100vh;
+    background-color: var(--mdc-theme-background);
+}
+
+.mdc-top-app-bar {
+    background-color: var(--mdc-theme-primary);
+}
+
+.mdc-top-app-bar__navigation-icon {
+    font-size: 28px;
+}
+
+.main-content {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* User Card */
+.user-card {
+    padding: 20px;
+}
+
+.user-card .card-content {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.user-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1976D2, #42A5F5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.user-avatar .material-icons {
+    font-size: 36px;
+    color: white;
+}
+
+.user-info {
+    flex: 1;
+}
+
+.user-name {
+    font-size: 20px;
+    font-weight: 500;
+    margin: 0 0 4px;
+    color: var(--mdc-theme-primary);
+}
+
+.user-welcome {
+    font-size: 14px;
+    color: var(--mdc-theme-text-secondary);
+    margin: 0;
+}
+
+/* Messages Card */
+.messages-card {
+    padding: 0;
+    overflow: hidden;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #1976D2, #42A5F5);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: white;
+}
+
+.card-header .material-icons {
+    font-size: 24px;
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.mdc-card__content {
+    padding: 20px;
+}
+
+.unread-total {
+    text-align: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #E0E0E0;
+}
+
+.unread-count {
+    display: block;
+    font-size: 48px;
+    font-weight: 500;
+    color: var(--mdc-theme-secondary);
+    line-height: 1;
+}
+
+.unread-label {
+    display: block;
+    font-size: 14px;
+    color: var(--mdc-theme-text-secondary);
+    margin-top: 8px;
+}
+
+.mdc-list {
+    padding: 0;
+}
+
+.mdc-list-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    gap: 12px;
+}
+
+.mdc-list-item__graphic {
+    color: var(--mdc-theme-primary);
+}
+
+.mdc-list-item__text {
+    flex: 1;
+    font-size: 14px;
+}
+
+.mdc-list-item__meta {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--mdc-theme-secondary);
+    background: rgba(255, 87, 34, 0.1);
+    padding: 4px 12px;
+    border-radius: 16px;
+}
+
+/* Status */
+.status-text {
+    text-align: center;
+    font-size: 12px;
+    color: var(--mdc-theme-text-secondary);
+    margin: 8px 0;
+}
+
+/* Buttons */
+.button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 16px;
+}
+
+.refresh-button {
+    height: 48px;
+}
+
+.logout-button {
+    height: 44px;
+}
+
+/* Connection Status */
+.connection-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+}
+
+.connection-status.connected .material-icons {
+    color: #4CAF50;
+}
+
+.connection-status.disconnected .material-icons {
+    color: #F44336;
+}
