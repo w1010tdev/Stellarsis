@@ -1,5 +1,6 @@
 package com.stellarsis.app.api
 
+import com.stellarsis.app.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -19,7 +20,12 @@ object ApiClient {
     // private const val BASE_URL = "https://your-domain.com/"
     
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
+        // 仅在调试模式下记录请求/响应体，避免生产环境泄露敏感信息
+        level = if (BuildConfig.DEBUG) {
+            HttpLoggingInterceptor.Level.BODY
+        } else {
+            HttpLoggingInterceptor.Level.NONE
+        }
     }
     
     private val okHttpClient = OkHttpClient.Builder()

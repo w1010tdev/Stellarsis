@@ -1,4 +1,3 @@
 requests>=2.31.0
 win10toast>=0.9; sys_platform == 'win32'
-pystray>=0.19.5
 Pillow>=10.0.0

@@ -1,18 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Allow cleartext (HTTP) traffic for development -->
-    <!-- Remove or modify this for production -->
-    <base-config cleartextTrafficPermitted="true">
+    <!-- 生产环境配置：仅允许 HTTPS -->
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
     
-    <!-- For specific domains only (recommended for production) -->
-    <!--
+    <!-- 开发/测试环境：允许特定域名使用 HTTP -->
+    <!-- 部署生产环境时，请删除或注释此配置 -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">10.0.2.2</domain>
         <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
     </domain-config>
-    -->
 </network-security-config>

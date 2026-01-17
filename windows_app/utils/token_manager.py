@@ -2,21 +2,42 @@
 """
 Token 管理器
 安全存储和管理用户 Token
+
+注意：当前使用简单的 JSON 文件存储 Token。
+对于生产环境，建议使用 Windows Credential Manager 或加密存储。
+可以使用 keyring 库来实现跨平台的安全凭据存储：
+    pip install keyring
+    import keyring
+    keyring.set_password("stellarsis", "token", token_value)
+    token = keyring.get_password("stellarsis", "token")
 """
 
 import os
 import json
+import base64
 from pathlib import Path
 from typing import Optional, Dict, Any
 import config
 
 
 class TokenManager:
-    """Token 管理类"""
+    """Token 管理类
+    
+    使用简单的 Base64 编码存储 Token（非加密，仅混淆）。
+    生产环境建议使用 keyring 库或 Windows DPAPI 进行加密存储。
+    """
     
     def __init__(self):
         # 获取用户目录
         self.token_file = Path.home() / config.TOKEN_FILE
+    
+    def _encode(self, data: str) -> str:
+        """简单编码（Base64）- 非加密，仅混淆"""
+        return base64.b64encode(data.encode('utf-8')).decode('utf-8')
+    
+    def _decode(self, data: str) -> str:
+        """解码"""
+        return base64.b64decode(data.encode('utf-8')).decode('utf-8')
     
     def save_token(self, token: str, user_info: Dict[str, Any]) -> bool:
         """
@@ -34,8 +55,10 @@ class TokenManager:
                 "token": token,
                 "user": user_info
             }
+            # 使用 Base64 编码存储
+            encoded_data = self._encode(json.dumps(data, ensure_ascii=False))
             with open(self.token_file, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False)
+                f.write(encoded_data)
             return True
         except Exception as e:
             print(f"保存 Token 失败: {e}")
@@ -53,7 +76,10 @@ class TokenManager:
                 return None
             
             with open(self.token_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
+                encoded_data = f.read()
+            
+            # 解码 Base64 数据
+            data = json.loads(self._decode(encoded_data))
             
             if "token" in data and "user" in data:
                 return data
