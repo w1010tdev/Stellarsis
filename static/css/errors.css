@@ -1,0 +1,57 @@
+/* 错误页面样式 */
+.error-container {
+    text-align: center;
+    padding: 50px 20px;
+    max-width: 600px;
+    margin: 50px auto;
+}
+
+.error-code {
+    font-size: 100px;
+    font-weight: bold;
+    color: var(--muted-text-color, #6c757d);
+    line-height: 1;
+    margin-bottom: 20px;
+}
+
+.error-message {
+    font-size: 24px;
+    margin-bottom: 30px;
+    color: var(--text-color);
+}
+
+.error-description {
+    color: var(--muted-text-color, #666);
+    margin-bottom: 30px;
+    line-height: 1.6;
+}
+
+.btn-home {
+    padding: 10px 20px;
+    background-color: var(--primary-color, #007bff);
+    color: var(--on-primary, white);
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 16px;
+    display: inline-block;
+    transition: background-color 0.2s ease;
+}
+
+.btn-home:hover {
+    background-color: var(--primary-700, #0069d9);
+}
+
+@media (max-width: 600px) {
+    .error-container {
+        padding: 20px 15px;
+        margin: 20px auto;
+    }
+    
+    .error-code {
+        font-size: 70px;
+    }
+    
+    .error-message {
+        font-size: 20px;
+    }
+}

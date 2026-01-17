@@ -148,13 +148,26 @@
 .chat-message.local {
   margin-left: auto;
   background: linear-gradient(135deg, var(--primary-500), var(--primary-400));
-  color: var(--on-surface);
+  color: var(--on-primary);
   border-bottom-right-radius: 8px;
   max-width: calc(var(--message-max-width) + 10%);
 }
 
 .chat-message.local .message-content {
   color: var(--on-primary);
+}
+
+/* 自己发送的消息中的链接不使用Primary色 */
+.chat-message.local .message-content a,
+.chat-message.local .message-content a:visited,
+.chat-message.local .message-content a:hover {
+  color: var(--on-primary);
+  text-decoration: underline;
+  opacity: 0.9;
+}
+
+.chat-message.local .message-content a:hover {
+  opacity: 1;
 }
 
 .chat-message.remote {
@@ -183,7 +196,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--on-surface);
+  color: var(--on-primary);
   font-weight: 600;
   font-size: 0.875rem;
   flex-shrink: 0;
@@ -534,7 +547,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--on-surface);
+  color: var(--on-primary);
   font-weight: 600;
   font-size: 0.875rem;
   flex-shrink: 0;

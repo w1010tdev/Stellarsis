@@ -244,3 +244,49 @@ input:focus, textarea:focus, select:focus {
   40% { transform: translateY(-15px); }
   60% { transform: translateY(-10px); }
 }
+
+/* 通知动画样式 - 从右侧滑入 */
+@keyframes notificationSlideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.followed-user-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: var(--surface-color, #fff);
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 8px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 10000;
+  animation: notificationSlideIn 0.3s ease-out;
+}
+
+.followed-user-notification .notification-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.followed-user-notification .notification-icon {
+  font-size: 1.2em;
+}

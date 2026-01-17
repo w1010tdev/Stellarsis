@@ -1,58 +1,7 @@
 {% extends "base.html" %}
 {% block additional_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
-<style>
-    .su-container {
-        max-width: 400px;
-        margin: 50px auto;
-        padding: 30px;
-        background: var(--bg-secondary);
-        border-radius: 12px;
-        box-shadow: var(--shadow-lg);
-        text-align: center;
-    }
-    .su-icon {
-        font-size: 48px;
-        margin-bottom: 20px;
-        color: var(--primary-color);
-    }
-    .su-title {
-        margin-bottom: 10px;
-        font-size: 24px;
-        font-weight: 600;
-    }
-    .su-desc {
-        margin-bottom: 25px;
-        color: var(--text-muted);
-        font-size: 14px;
-    }
-    .form-group {
-        margin-bottom: 20px;
-        text-align: left;
-    }
-    .form-control {
-        width: 100%;
-        padding: 12px;
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        background: var(--bg-primary);
-        color: var(--text-primary);
-    }
-    .submit-btn {
-        width: 100%;
-        padding: 12px;
-        background: var(--primary-color);
-        color: white;
-        border: none;
-        border-radius: 6px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: opacity 0.2s;
-    }
-    .submit-btn:hover {
-        opacity: 0.9;
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 {% endblock %}
 {% block content %}
 <div class="su-container">

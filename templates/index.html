@@ -134,30 +134,6 @@
 
 {% block scripts %}
 {{ super() }}
-<style>
-.quote-module {
-    transition: all 0.3s ease;
-}
-
-.quote-module:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-}
-
-.quote-change-hint {
-    position: absolute;
-    bottom: 10px;
-    right: 15px;
-    font-size: 0.8em;
-    color: var(--muted-text-color);
-    font-style: italic;
-    opacity: 0.6;
-}
-
-.quote-module:hover .quote-change-hint {
-    opacity: 1;
-}
-</style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const quoteModule = document.getElementById('quote-module');
