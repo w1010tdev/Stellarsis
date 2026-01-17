@@ -657,7 +657,7 @@ def get_room_users_data(room_id):
     """获取房间中用户的详细信息"""
     users_data = []
     # 获取在指定聊天室最后活动时间在超时时间内的用户
-    cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
+    cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
     online_users = db_session.query(ChatLastView).filter(
         ChatLastView.room_id == room_id,
         ChatLastView.last_view >= cutoff_time
@@ -678,7 +678,7 @@ def get_room_users_data(room_id):
 
 def get_global_online_count():
     """获取全局在线用户数量（基于心跳判定）"""
-    cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
+    cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
     count = db_session.query(User).filter(User.last_seen >= cutoff_time).count()
     return count
 
@@ -762,7 +762,7 @@ def get_image_type(stream):
 
 def get_online_users(room_id):
     """获取指定房间的在线用户"""
-    cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
+    cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
     online_users = db_session.query(ChatLastView).filter(
         ChatLastView.room_id == room_id,
         ChatLastView.last_view >= cutoff_time
@@ -910,7 +910,7 @@ def login():
             return redirect(url_for('login'))
         
         login_user(user)
-        user.last_seen = datetime.now(timezone.utc)
+        user.last_seen = datetime.utcnow()
         db_session.commit()
         log_admin_action(f"用户登录: {user.username}")
         return redirect(url_for('index'))
@@ -992,7 +992,7 @@ def chat_room(room_id):
     # 记录用户最后查看该聊天室的时间（用于未读统计）
     try:
         last = db_session.query(ChatLastView).filter_by(user_id=current_user.id, room_id=room_id).first()
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         if last:
             last.last_view = now
         else:
@@ -1175,7 +1175,7 @@ def api_delete_chat_message(room_id, message_id):
                     'id': message_id,
                     'room_id': room_id,
                     'deleted_by': getattr(current_user, 'id', None),
-                    'timestamp': datetime.now(timezone.utc).isoformat()
+                    'timestamp': datetime.utcnow().isoformat()
                 }
                 # 某些 socketio/server 版本不接受 broadcast 参数；默认 emit() 不带 to/room 会推送给所有连接
                 socketio.emit('message_deleted', payload)
@@ -1284,7 +1284,7 @@ def api_delete_forum_reply(reply_id):
 @login_required
 def get_online_count():
     """获取全局在线用户数"""
-    cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
+    cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
     
     # 查询最近活动的用户数
     online_count = db_session.query(User).filter(User.last_seen >= cutoff_time).count()
@@ -2133,7 +2133,7 @@ def forum_section(section_id):
     # 记录用户最后查看该分区的时间（用于未读统计）
     try:
         last = db_session.query(ForumLastView).filter_by(user_id=current_user.id, section_id=section_id).first()
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         if last:
             last.last_view = now
         else:
@@ -2508,7 +2508,7 @@ def admin_import_users():
             try:
                 # 保证批量导入的用户默认处于离线状态：将 last_seen 设置为比 ONLINE_TIMEOUT 更早的时间
                 cutoff_seconds = app.config.get('ONLINE_TIMEOUT', 300)
-                default_last_seen = datetime.now(timezone.utc) - timedelta(seconds=(cutoff_seconds + 1))
+                default_last_seen = datetime.utcnow() - timedelta(seconds=(cutoff_seconds + 1))
 
                 new_user = User(
                     username=username,
@@ -3648,7 +3648,7 @@ def handle_connect():
         return False  # 拒绝未认证用户
     
     if current_user.is_authenticated:
-        current_user.last_seen = datetime.now(timezone.utc)
+        current_user.last_seen = datetime.utcnow()
         db_session.commit()
         # 加入用户专属房间，用于接收关注通知
         join_room(f"user_{current_user.id}")
@@ -3678,14 +3678,14 @@ def on_join(data):
     room_name = f"room_{room_id}"
     join_room(room_name)
     # 更新用户最后活动时间
-    current_user.last_seen = datetime.now(timezone.utc)
+    current_user.last_seen = datetime.utcnow()
     
     # 在ChatLastView表中记录用户进入房间的时间
     last = db_session.query(ChatLastView).filter_by(
         user_id=current_user.id,
         room_id=room_id
     ).first()
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     if last:
         last.last_view = now
     else:
@@ -3978,14 +3978,14 @@ def handle_heartbeat_chat(data):
             room_id = int(room_id)
             
             # 更新用户全局最后活动时间
-            current_user.last_seen = datetime.now(timezone.utc)
+            current_user.last_seen = datetime.utcnow()
             
             # 更新房间特定最后查看时间
             last = db_session.query(ChatLastView).filter_by(
                 user_id=current_user.id, 
                 room_id=room_id
             ).first()
-            now = datetime.now(timezone.utc)
+            now = datetime.utcnow()
             if last:
                 last.last_view = now
             else:
@@ -4057,10 +4057,11 @@ def handle_heartbeat():
     """处理客户端心跳，更新用户最后活动时间，广播全局在线人数"""
     if current_user.is_authenticated:
         # 检查用户之前是否被视为离线（用于判断是否刚上线）
-        cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
+        # 使用 datetime.utcnow() 以与数据库中的 offset-naive datetime 保持一致
+        cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
         was_offline = current_user.last_seen is None or current_user.last_seen < cutoff_time
         
-        current_user.last_seen = datetime.now(timezone.utc)
+        current_user.last_seen = datetime.utcnow()
         db_session.commit()
         
         # 如果用户刚从离线变为在线，通知其关注者
@@ -4210,7 +4211,7 @@ def inject_user():
 @app.context_processor
 def inject_online_count():
     """注入在线用户数到模板"""
-    cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
+    cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
     
     # 查询最近活动的用户数
     online_count = db_session.query(User).filter(User.last_seen >= cutoff_time).count()
@@ -4290,7 +4291,7 @@ def create_test_data():
             existing_count = db_session.query(ChatMessage).filter_by(room_id=test_room.id).count()
             if existing_count < 100:
                 # 生成从旧到新的时间戳
-                base_time = datetime.now(timezone.utc) - timedelta(minutes=100)
+                base_time = datetime.utcnow() - timedelta(minutes=100)
                 for i in range(1, 101):
                     # 跳过已存在的消息
                     if i <= existing_count:
@@ -4325,13 +4326,13 @@ def create_test_data():
                 content='这个帖子用于测试分页功能',
                 user_id=admin_user.id,
                 section_id=test_section.id,
-                timestamp=datetime.now(timezone.utc) - timedelta(minutes=110)
+                timestamp=datetime.utcnow() - timedelta(minutes=110)
             )
             db_session.add(test_thread)
             db_session.commit()
             
             # 5. 为测试帖子添加505条回复
-            base_reply_time = datetime.now(timezone.utc) - timedelta(minutes=100)
+            base_reply_time = datetime.utcnow() - timedelta(minutes=100)
             for i in range(1, 505):
                 reply_time = base_reply_time + timedelta(minutes=i)
                 reply = ForumReply(
