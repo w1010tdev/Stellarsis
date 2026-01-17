@@ -2921,7 +2921,7 @@ def remove_user_and_related(user_id, session=None):
                 if p.exists():
                     p.unlink()
             except Exception as e:
-                logging.warning("Failed to delete user image file '%s': %s", ui.filepath, e)
+                logging.warning(f"Failed to delete user image file '{ui.filepath}': {e}")
         session.query(UserImage).filter_by(user_id=user_id).delete()
 
         username = user.username

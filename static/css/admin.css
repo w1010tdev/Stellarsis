@@ -592,7 +592,7 @@ textarea.file-content-editor {
 }
 
 .data-table tr:hover {
-    background-color: var(--hover-bg, rgba(0, 0, 0, 0.05)) !important;
+    background-color: rgba(0, 0, 0, 0.05) !important;
 }
 
 .loading-indicator {
