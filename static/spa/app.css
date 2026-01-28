@@ -418,7 +418,7 @@ html.dark .user-info:hover {
     text-transform: uppercase;
 }
 
-.perm-badge.su {
+.perm-badge.perm-su {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: #ffffff;
 }

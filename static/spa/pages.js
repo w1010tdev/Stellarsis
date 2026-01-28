@@ -144,13 +144,13 @@ const HomePage = {
                         .filter(c => {
                             const msg = c.commit.message.toLowerCase();
                             const hasDeleteUpdate = /delete|update/.test(msg);
-                            const hasDbOrGitignore = /\\.db|\\.gitignore/.test(msg);
+                            const hasDbOrGitignore = /\.db|\.gitignore/.test(msg);
                             return !(hasDeleteUpdate && hasDbOrGitignore);
                         })
                         .slice(0, 10)
                         .map(c => ({
                             sha: c.sha,
-                            message: c.commit.message.split('\\n')[0].substring(0, 30),
+                            message: c.commit.message.split('\n')[0].substring(0, 30),
                             date: new Date(c.commit.author.date).toLocaleDateString('zh-CN')
                         }));
                 }

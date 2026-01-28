@@ -169,12 +169,10 @@ const StellarisUtils = {
         return null;
     },
     
-    // Format time for messages (UTC+8)
+    // Format time for messages
     formatTime(timestamp) {
         if (!timestamp) return '';
         const date = new Date(timestamp);
-        // Adjust to UTC+8
-        date.setHours(date.getHours() + 8);
         return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
     },
     
@@ -273,8 +271,11 @@ const StellarisUtils = {
     },
     
     // Check if message should trigger heart effect
+    // Matches specific pattern to avoid false positives
     hasHeartEffect(content) {
-        return content && content.includes('2026');
+        if (!content) return false;
+        // Match "2026" as a standalone pattern (not part of dates like 2026-01-01)
+        return /(?<!\d)2026(?!\d)/.test(content);
     },
     
     // Debounce function
@@ -331,7 +332,7 @@ const StellarisUtils = {
     
     // Generate client ID for messages
     generateClientId() {
-        return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
     }
 };
 
