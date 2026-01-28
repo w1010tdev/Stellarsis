@@ -4349,6 +4349,263 @@ def create_test_data():
         logger.error(f"创建测试数据失败: {str(e)}")
         db_session.rollback()
 
+# ==============================
+# SPA Routes and API Endpoints
+# ==============================
+
+@app.route('/spa')
+@login_required
+def spa_index():
+    """Serve the SPA interface"""
+    return render_template('spa.html')
+
+@app.route('/api/chat/rooms')
+@login_required
+def api_chat_rooms():
+    """Get list of accessible chat rooms"""
+    rooms = db_session.query(ChatRoom).all()
+    visible_rooms = []
+    permissions = {}
+    
+    for room in rooms:
+        perm = get_chat_permission_value(current_user, room.id)
+        if perm != 'Null':
+            visible_rooms.append({
+                'id': room.id,
+                'name': room.name,
+                'description': room.description
+            })
+            permissions[room.id] = perm
+    
+    return jsonify({
+        'success': True,
+        'rooms': visible_rooms,
+        'permissions': permissions
+    })
+
+@app.route('/api/chat/room/<int:room_id>')
+@login_required
+def api_chat_room(room_id):
+    """Get chat room details"""
+    room = db_session.query(ChatRoom).get(room_id)
+    if room is None:
+        return jsonify({'success': False, 'message': 'Room not found'}), 404
+    
+    permission = get_chat_permission_value(current_user, room_id)
+    if permission == 'Null':
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+    
+    # Update last view
+    try:
+        last = db_session.query(ChatLastView).filter_by(user_id=current_user.id, room_id=room_id).first()
+        now = datetime.utcnow()
+        if last:
+            last.last_view = now
+        else:
+            db_session.add(ChatLastView(user_id=current_user.id, room_id=room_id, last_view=now))
+        db_session.commit()
+    except Exception:
+        db_session.rollback()
+    
+    return jsonify({
+        'success': True,
+        'room': {
+            'id': room.id,
+            'name': room.name,
+            'description': room.description
+        },
+        'permission': permission
+    })
+
+@app.route('/api/forum/sections')
+@login_required
+def api_forum_sections():
+    """Get list of accessible forum sections"""
+    sections = db_session.query(ForumSection).all()
+    visible_sections = []
+    permissions = {}
+    
+    for section in sections:
+        perm = get_forum_permission_value(current_user, section.id)
+        if perm != 'Null':
+            visible_sections.append({
+                'id': section.id,
+                'name': section.name,
+                'description': section.description
+            })
+            permissions[section.id] = perm
+    
+    return jsonify({
+        'success': True,
+        'sections': visible_sections,
+        'permissions': permissions
+    })
+
+@app.route('/api/forum/section/<int:section_id>')
+@login_required
+def api_forum_section(section_id):
+    """Get forum section details with threads"""
+    section = db_session.query(ForumSection).get(section_id)
+    if section is None:
+        return jsonify({'success': False, 'message': 'Section not found'}), 404
+    
+    permission = get_forum_permission_value(current_user, section_id)
+    if permission == 'Null':
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+    
+    # Update last view
+    try:
+        last = db_session.query(ForumLastView).filter_by(user_id=current_user.id, section_id=section_id).first()
+        now = datetime.utcnow()
+        if last:
+            last.last_view = now
+        else:
+            db_session.add(ForumLastView(user_id=current_user.id, section_id=section_id, last_view=now))
+        db_session.commit()
+    except Exception:
+        db_session.rollback()
+    
+    threads = db_session.query(ForumThread).filter_by(section_id=section_id)\
+        .order_by(ForumThread.timestamp.desc()).all()
+    
+    threads_data = []
+    for thread in threads:
+        threads_data.append({
+            'id': thread.id,
+            'title': thread.title,
+            'content': thread.content,
+            'timestamp': thread.timestamp.isoformat() if thread.timestamp else None,
+            'reply_count': db_session.query(ForumReply).filter_by(thread_id=thread.id).count(),
+            'user': {
+                'id': thread.user.id,
+                'username': thread.user.username,
+                'nickname': thread.user.nickname,
+                'color': thread.user.color,
+                'badge': thread.user.badge
+            } if thread.user else None
+        })
+    
+    return jsonify({
+        'success': True,
+        'section': {
+            'id': section.id,
+            'name': section.name,
+            'description': section.description
+        },
+        'permission': permission,
+        'threads': threads_data
+    })
+
+@app.route('/api/forum/thread/<int:thread_id>', methods=['GET'])
+@login_required
+def api_forum_thread_get(thread_id):
+    """Get forum thread details with replies"""
+    thread = db_session.query(ForumThread).get(thread_id)
+    if thread is None:
+        return jsonify({'success': False, 'message': 'Thread not found'}), 404
+    
+    permission = get_forum_permission_value(current_user, thread.section_id)
+    if permission == 'Null':
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+    
+    replies = db_session.query(ForumReply).filter_by(thread_id=thread_id)\
+        .order_by(ForumReply.timestamp.asc()).all()
+    
+    replies_data = []
+    for reply in replies:
+        replies_data.append({
+            'id': reply.id,
+            'content': reply.content,
+            'timestamp': reply.timestamp.isoformat() if reply.timestamp else None,
+            'user': {
+                'id': reply.user.id,
+                'username': reply.user.username,
+                'nickname': reply.user.nickname,
+                'color': reply.user.color,
+                'badge': reply.user.badge
+            } if reply.user else None
+        })
+    
+    return jsonify({
+        'success': True,
+        'thread': {
+            'id': thread.id,
+            'title': thread.title,
+            'content': thread.content,
+            'section_id': thread.section_id,
+            'timestamp': thread.timestamp.isoformat() if thread.timestamp else None,
+            'user': {
+                'id': thread.user.id,
+                'username': thread.user.username,
+                'nickname': thread.user.nickname,
+                'color': thread.user.color,
+                'badge': thread.user.badge
+            } if thread.user else None
+        },
+        'permission': permission,
+        'replies': replies_data
+    })
+
+@app.route('/api/forum/thread', methods=['POST'])
+@login_required
+def api_forum_thread_create():
+    """Create a new forum thread"""
+    section_id = request.form.get('section_id', type=int)
+    title = request.form.get('title', '').strip()
+    content = request.form.get('content', '').strip()
+    
+    if not section_id or not title or not content:
+        return jsonify({'success': False, 'message': '请填写所有必填项'}), 400
+    
+    section = db_session.query(ForumSection).get(section_id)
+    if section is None:
+        return jsonify({'success': False, 'message': 'Section not found'}), 404
+    
+    permission = get_forum_permission_value(current_user, section_id)
+    if permission not in FORUM_POST_PERMISSIONS:
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+    
+    try:
+        thread = ForumThread(
+            title=title,
+            content=content,
+            user_id=current_user.id,
+            section_id=section_id,
+            timestamp=datetime.utcnow()
+        )
+        db_session.add(thread)
+        db_session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '发表成功',
+            'thread_id': thread.id
+        })
+    except Exception as e:
+        db_session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/follow/following')
+@login_required
+def api_follow_following():
+    """Get list of users the current user is following"""
+    follows = db_session.query(Follow).filter_by(follower_id=current_user.id).all()
+    following = []
+    for follow in follows:
+        user = db_session.query(User).get(follow.followed_id)
+        if user:
+            following.append({
+                'id': user.id,
+                'username': user.username,
+                'nickname': user.nickname,
+                'color': user.color,
+                'badge': user.badge
+            })
+    return jsonify({
+        'success': True,
+        'following': following
+    })
+
 # 主程序
 if __name__ == '__main__':
     init_db()
