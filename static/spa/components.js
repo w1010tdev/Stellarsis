@@ -174,9 +174,10 @@ const CommandPaletteComponent = {
                        ref="commandInput"
                        v-model="query" 
                        @keydown="handleKeydown"
-                       placeholder="输入命令（例如: help, theme dark）">
+                       @input="updateSuggestions"
+                       placeholder="输入命令（例如: help, go home, send）">
                 <div class="command-suggestions">
-                    <div v-if="!query" class="command-item" v-for="cmd in defaultCommands" :key="cmd.name" @click="executeCommand(cmd.name)">
+                    <div v-if="!query" class="command-item" v-for="cmd in allCommands.slice(0, 15)" :key="cmd.name" @click="executeCommand(cmd.name)">
                         <i :class="cmd.icon"></i>
                         <span class="command-item-name">{{ cmd.name }}</span>
                         <span class="command-item-desc">{{ cmd.desc }}</span>
@@ -186,10 +187,13 @@ const CommandPaletteComponent = {
                         <span class="command-item-name">{{ result.name }}</span>
                         <span class="command-item-desc">{{ result.desc }}</span>
                     </div>
-                    <div v-if="output" class="command-item">
+                    <div v-if="output" class="command-item output-item">
                         <i class="fas fa-terminal"></i>
                         <span class="command-item-name">{{ output }}</span>
                     </div>
+                </div>
+                <div class="command-help-text">
+                    按 Enter 执行，Tab 补全，Esc 退出 | 支持模糊搜索
                 </div>
             </div>
         </div>
@@ -200,68 +204,221 @@ const CommandPaletteComponent = {
         const output = Vue.ref('');
         const commandInput = Vue.ref(null);
         
-        const defaultCommands = [
-            { name: 'help', desc: '显示可用命令', icon: 'fas fa-question-circle' },
-            { name: 'theme light', desc: '切换到亮色主题', icon: 'fas fa-sun' },
-            { name: 'theme dark', desc: '切换到暗色主题', icon: 'fas fa-moon' },
-            { name: 'cd /', desc: '返回首页', icon: 'fas fa-home' },
-            { name: 'cd /chat', desc: '前往聊天室', icon: 'fas fa-comments' },
-            { name: 'cd /forum', desc: '前往贴吧', icon: 'fas fa-newspaper' },
-            { name: 'cd /settings', desc: '前往设置', icon: 'fas fa-cog' },
-            { name: 'exit', desc: '关闭命令面板', icon: 'fas fa-times' }
-        ];
+        // Get current route info
+        const getCurrentRoute = () => {
+            return StellarisRouter.getRoute();
+        };
         
-        const filteredCommands = Vue.computed(() => {
-            if (!query.value) return defaultCommands;
-            const q = query.value.toLowerCase();
-            return defaultCommands.filter(cmd => 
-                cmd.name.toLowerCase().includes(q) || 
-                cmd.desc.toLowerCase().includes(q)
-            );
+        // All available commands
+        const allCommands = Vue.computed(() => {
+            const route = getCurrentRoute();
+            const commands = [
+                // Help & Info
+                { name: 'help', desc: '显示所有可用命令', icon: 'fas fa-question-circle', category: 'info' },
+                { name: 'pwd', desc: '显示当前页面路径', icon: 'fas fa-map-marker-alt', category: 'info' },
+                
+                // Navigation commands
+                { name: 'go home', desc: '返回首页', icon: 'fas fa-home', category: 'navigation', action: () => StellarisRouter.navigate('/') },
+                { name: 'go chat', desc: '前往聊天室列表', icon: 'fas fa-comments', category: 'navigation', action: () => StellarisRouter.navigate('/chat') },
+                { name: 'go forum', desc: '前往贴吧列表', icon: 'fas fa-newspaper', category: 'navigation', action: () => StellarisRouter.navigate('/forum') },
+                { name: 'go settings', desc: '前往设置页面', icon: 'fas fa-cog', category: 'navigation', action: () => StellarisRouter.navigate('/settings'), authRequired: true },
+                { name: 'go admin', desc: '前往管理面板', icon: 'fas fa-shield-alt', category: 'navigation', action: () => StellarisRouter.navigate('/admin'), adminRequired: true },
+                { name: 'back', desc: '返回上一页', icon: 'fas fa-arrow-left', category: 'navigation', action: () => window.history.back() },
+                
+                // Theme commands
+                { name: 'theme light', desc: '切换到亮色主题', icon: 'fas fa-sun', category: 'theme', action: () => store.setTheme('light') },
+                { name: 'theme dark', desc: '切换到暗色主题', icon: 'fas fa-moon', category: 'theme', action: () => store.setTheme('dark') },
+                { name: 'theme toggle', desc: '切换主题', icon: 'fas fa-adjust', category: 'theme', action: () => store.toggleTheme() },
+                
+                // Focus commands
+                { name: 'focus message', desc: '聚焦消息输入框', icon: 'fas fa-pencil-alt', category: 'focus', action: () => focusElement('#message-text, .message-input, textarea[placeholder*="消息"]') },
+                { name: 'focus search', desc: '聚焦搜索框', icon: 'fas fa-search', category: 'focus', action: () => focusElement('#searchInput, input[type="search"]') },
+                { name: 'focus reply', desc: '聚焦回复框', icon: 'fas fa-reply', category: 'focus', action: () => focusElement('textarea[placeholder*="回复"]') },
+                
+                // UI commands
+                { name: 'sidebar toggle', desc: '切换侧边栏折叠状态', icon: 'fas fa-bars', category: 'ui', action: () => store.toggleSidebar() },
+                { name: 'sidebar show', desc: '展开侧边栏', icon: 'fas fa-chevron-right', category: 'ui', action: () => { if (store.state.sidebarCollapsed) store.toggleSidebar(); } },
+                { name: 'sidebar hide', desc: '折叠侧边栏', icon: 'fas fa-chevron-left', category: 'ui', action: () => { if (!store.state.sidebarCollapsed) store.toggleSidebar(); } },
+                
+                // Refresh commands
+                { name: 'refresh', desc: '刷新当前页面数据', icon: 'fas fa-sync-alt', category: 'action', action: () => { window.location.reload(); } },
+                { name: 'reload', desc: '重新加载页面', icon: 'fas fa-redo', category: 'action', action: () => { window.location.reload(); } },
+                
+                // Exit commands
+                { name: 'exit', desc: '关闭命令面板', icon: 'fas fa-times', category: 'system' },
+                { name: 'close', desc: '关闭命令面板', icon: 'fas fa-times-circle', category: 'system' },
+                { name: 'quit', desc: '关闭命令面板', icon: 'fas fa-door-open', category: 'system' },
+            ];
+            
+            // Add context-specific commands based on current route
+            if (route.path.startsWith('/chat/')) {
+                commands.push(
+                    { name: 'send', desc: '发送消息（聚焦输入框）', icon: 'fas fa-paper-plane', category: 'action', action: () => { focusElement('#message-text, .message-input'); } },
+                    { name: 'scroll bottom', desc: '滚动到底部', icon: 'fas fa-arrow-down', category: 'action', action: () => scrollToBottom() },
+                    { name: 'scroll top', desc: '滚动到顶部', icon: 'fas fa-arrow-up', category: 'action', action: () => scrollToTop() },
+                    { name: 'load more', desc: '加载更多消息', icon: 'fas fa-history', category: 'action', action: () => clickButton('.chat-btn:contains("加载更多"), button:contains("加载更多")') },
+                );
+            }
+            
+            if (route.path.startsWith('/forum/thread/')) {
+                commands.push(
+                    { name: 'reply', desc: '聚焦回复输入框', icon: 'fas fa-reply', category: 'action', action: () => focusElement('textarea[placeholder*="回复"]') },
+                    { name: 'submit reply', desc: '提交回复', icon: 'fas fa-check', category: 'action', action: () => clickButton('button:contains("回复"), .el-button--primary:contains("回复")') },
+                );
+            }
+            
+            if (route.path.startsWith('/forum/') && !route.path.includes('/thread/')) {
+                commands.push(
+                    { name: 'new thread', desc: '创建新帖子', icon: 'fas fa-plus', category: 'action', action: () => clickButton('button:contains("发帖"), .el-button--primary:contains("发帖")') },
+                );
+            }
+            
+            if (route.path === '/settings') {
+                commands.push(
+                    { name: 'profile', desc: '前往个人资料设置', icon: 'fas fa-user', category: 'navigation', action: () => { window.location.href = '/profile'; } },
+                    { name: 'password', desc: '前往修改密码', icon: 'fas fa-key', category: 'navigation', action: () => { window.location.href = '/change_password'; } },
+                    { name: 'logout', desc: '退出登录', icon: 'fas fa-sign-out-alt', category: 'action', action: () => { if (confirm('确定要退出登录吗？')) window.location.href = '/logout'; } },
+                );
+            }
+            
+            // Filter commands based on auth status
+            return commands.filter(cmd => {
+                if (cmd.authRequired && !store.state.user.isAuthenticated) return false;
+                if (cmd.adminRequired && !store.state.user.isAdmin) return false;
+                return true;
+            });
         });
         
+        // Fuzzy match helper
+        const fuzzyMatch = (pattern, text) => {
+            pattern = pattern.toLowerCase();
+            text = text.toLowerCase();
+            let patternIdx = 0;
+            let textIdx = 0;
+            
+            while (patternIdx < pattern.length && textIdx < text.length) {
+                if (pattern[patternIdx] === text[textIdx]) {
+                    patternIdx++;
+                }
+                textIdx++;
+            }
+            
+            return patternIdx === pattern.length;
+        };
+        
+        const filteredCommands = Vue.computed(() => {
+            if (!query.value) return allCommands.value.slice(0, 15);
+            const q = query.value.toLowerCase().trim();
+            
+            // Exact prefix matches first
+            const exactMatches = allCommands.value.filter(cmd => 
+                cmd.name.toLowerCase().startsWith(q)
+            );
+            
+            // Fuzzy matches
+            const fuzzyMatches = allCommands.value.filter(cmd => 
+                !cmd.name.toLowerCase().startsWith(q) && (
+                    cmd.name.toLowerCase().includes(q) ||
+                    cmd.desc.toLowerCase().includes(q) ||
+                    fuzzyMatch(q, cmd.name) ||
+                    fuzzyMatch(q, cmd.desc)
+                )
+            );
+            
+            return [...exactMatches, ...fuzzyMatches].slice(0, 20);
+        });
+        
+        // Helper: Focus an element
+        const focusElement = (selector) => {
+            const el = document.querySelector(selector);
+            if (el) {
+                el.focus();
+                // Move cursor to end for text inputs
+                if (el.setSelectionRange && el.value) {
+                    const len = el.value.length;
+                    el.setSelectionRange(len, len);
+                }
+                output.value = '已聚焦元素';
+                setTimeout(() => store.closeCommandPalette(), 300);
+            } else {
+                output.value = '未找到目标元素';
+            }
+        };
+        
+        // Helper: Click a button
+        const clickButton = (selector) => {
+            const el = document.querySelector(selector);
+            if (el) {
+                el.click();
+                output.value = '已触发点击';
+                setTimeout(() => store.closeCommandPalette(), 300);
+            } else {
+                output.value = '未找到目标按钮';
+            }
+        };
+        
+        // Helper: Scroll to bottom
+        const scrollToBottom = () => {
+            const container = document.querySelector('.messages-container, .content-area');
+            if (container) {
+                container.scrollTop = container.scrollHeight;
+                output.value = '已滚动到底部';
+            }
+        };
+        
+        // Helper: Scroll to top
+        const scrollToTop = () => {
+            const container = document.querySelector('.messages-container, .content-area');
+            if (container) {
+                container.scrollTop = 0;
+                output.value = '已滚动到顶部';
+            }
+        };
+        
+        const updateSuggestions = () => {
+            output.value = '';
+        };
+        
         const executeCommand = (cmdText) => {
-            const parts = (cmdText || query.value).trim().split(/\s+/);
-            const cmd = parts[0];
-            const args = parts.slice(1);
+            const input = (cmdText || query.value).trim();
+            if (!input) return;
             
             output.value = '';
             
-            switch(cmd) {
-                case 'help':
-                    output.value = '可用命令: help, theme, cd, exit';
-                    break;
-                case 'theme':
-                    if (args[0]) {
-                        store.setTheme(args[0]);
-                        output.value = `已切换主题: ${args[0]}`;
-                    } else {
-                        output.value = '用法: theme <light|dark>';
+            // Find matching command
+            const matchedCmd = allCommands.value.find(cmd => cmd.name.toLowerCase() === input.toLowerCase());
+            
+            if (matchedCmd) {
+                // Execute command action
+                if (matchedCmd.action) {
+                    try {
+                        matchedCmd.action();
+                        if (!output.value) {
+                            output.value = `执行: ${matchedCmd.name}`;
+                        }
+                        // Close palette for most commands (except system commands)
+                        if (matchedCmd.category !== 'system' && matchedCmd.category !== 'info') {
+                            setTimeout(() => store.closeCommandPalette(), 500);
+                        }
+                    } catch (err) {
+                        output.value = `执行失败: ${err.message}`;
                     }
-                    break;
-                case 'cd':
-                    const routes = {
-                        '/': '/',
-                        '~': '/',
-                        '/chat': '/chat',
-                        '/forum': '/forum',
-                        '/settings': '/settings',
-                        '/admin': '/admin'
-                    };
-                    if (routes[args[0]]) {
-                        StellarisRouter.navigate(routes[args[0]]);
+                } else {
+                    // Handle special commands
+                    if (input === 'help') {
+                        const categories = [...new Set(allCommands.value.map(c => c.category))];
+                        output.value = `可用命令分类: ${categories.join(', ')}。共 ${allCommands.value.length} 个命令`;
+                    } else if (input === 'pwd') {
+                        const route = getCurrentRoute();
+                        output.value = `当前路径: ${route.path}`;
+                    } else if (input === 'exit' || input === 'close' || input === 'quit') {
                         store.closeCommandPalette();
                     } else {
-                        output.value = '未知路径: ' + args[0];
+                        output.value = `执行: ${matchedCmd.name}`;
                     }
-                    break;
-                case 'exit':
-                case 'close':
-                case 'q':
-                    store.closeCommandPalette();
-                    break;
-                default:
-                    output.value = '未知命令: ' + cmd;
+                }
+            } else {
+                output.value = `未知命令: ${input}。输入 help 查看所有命令`;
             }
             
             query.value = '';
@@ -269,9 +426,29 @@ const CommandPaletteComponent = {
         
         const handleKeydown = (e) => {
             if (e.key === 'Enter') {
+                e.preventDefault();
                 executeCommand();
             } else if (e.key === 'Escape') {
+                e.preventDefault();
                 store.closeCommandPalette();
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                // Tab completion
+                if (filteredCommands.value.length === 1) {
+                    query.value = filteredCommands.value[0].name;
+                } else if (filteredCommands.value.length > 1) {
+                    // Find common prefix
+                    const names = filteredCommands.value.map(c => c.name.toLowerCase());
+                    let prefix = names[0];
+                    for (let i = 1; i < names.length; i++) {
+                        while (!names[i].startsWith(prefix)) {
+                            prefix = prefix.slice(0, -1);
+                        }
+                    }
+                    if (prefix.length > query.value.length) {
+                        query.value = filteredCommands.value[0].name.substring(0, prefix.length);
+                    }
+                }
             }
         };
         
@@ -292,11 +469,12 @@ const CommandPaletteComponent = {
             document.addEventListener('keydown', (e) => {
                 const active = document.activeElement;
                 const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
-                if (e.key === ':' && !isInput) {
+                if (e.key === ':' && !isInput && !store.state.commandPaletteOpen) {
                     e.preventDefault();
                     store.openCommandPalette();
                 }
                 if (e.key === 'Escape' && store.state.commandPaletteOpen) {
+                    e.preventDefault();
                     store.closeCommandPalette();
                 }
             });
@@ -307,10 +485,11 @@ const CommandPaletteComponent = {
             query,
             output,
             commandInput,
-            defaultCommands,
+            allCommands,
             filteredCommands,
             executeCommand,
-            handleKeydown
+            handleKeydown,
+            updateSuggestions
         };
     }
 };
