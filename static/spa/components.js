@@ -204,6 +204,9 @@ const CommandPaletteComponent = {
         const output = Vue.ref('');
         const commandInput = Vue.ref(null);
         
+        // Constants
+        const AUTO_CLOSE_DELAY = 400; // Consistent delay for auto-closing palette
+        
         // Get current route info
         const getCurrentRoute = () => {
             return StellarisRouter.getRoute();
@@ -256,20 +259,20 @@ const CommandPaletteComponent = {
                     { name: 'send', desc: '发送消息（聚焦输入框）', icon: 'fas fa-paper-plane', category: 'action', action: () => { focusElement('#message-text, .message-input'); } },
                     { name: 'scroll bottom', desc: '滚动到底部', icon: 'fas fa-arrow-down', category: 'action', action: () => scrollToBottom() },
                     { name: 'scroll top', desc: '滚动到顶部', icon: 'fas fa-arrow-up', category: 'action', action: () => scrollToTop() },
-                    { name: 'load more', desc: '加载更多消息', icon: 'fas fa-history', category: 'action', action: () => clickButton('.chat-btn:contains("加载更多"), button:contains("加载更多")') },
+                    { name: 'load more', desc: '加载更多消息', icon: 'fas fa-history', category: 'action', action: () => clickButton('加载更多') },
                 );
             }
             
             if (route.path.startsWith('/forum/thread/')) {
                 commands.push(
                     { name: 'reply', desc: '聚焦回复输入框', icon: 'fas fa-reply', category: 'action', action: () => focusElement('textarea[placeholder*="回复"]') },
-                    { name: 'submit reply', desc: '提交回复', icon: 'fas fa-check', category: 'action', action: () => clickButton('button:contains("回复"), .el-button--primary:contains("回复")') },
+                    { name: 'submit reply', desc: '提交回复', icon: 'fas fa-check', category: 'action', action: () => clickButton('回复') },
                 );
             }
             
             if (route.path.startsWith('/forum/') && !route.path.includes('/thread/')) {
                 commands.push(
-                    { name: 'new thread', desc: '创建新帖子', icon: 'fas fa-plus', category: 'action', action: () => clickButton('button:contains("发帖"), .el-button--primary:contains("发帖")') },
+                    { name: 'new thread', desc: '创建新帖子', icon: 'fas fa-plus', category: 'action', action: () => clickButton('发帖') },
                 );
             }
             
@@ -339,19 +342,21 @@ const CommandPaletteComponent = {
                     el.setSelectionRange(len, len);
                 }
                 output.value = '已聚焦元素';
-                setTimeout(() => store.closeCommandPalette(), 300);
+                setTimeout(() => store.closeCommandPalette(), AUTO_CLOSE_DELAY);
             } else {
                 output.value = '未找到目标元素';
             }
         };
         
         // Helper: Click a button
-        const clickButton = (selector) => {
-            const el = document.querySelector(selector);
+        const clickButton = (textContent) => {
+            // Find button by text content
+            const buttons = Array.from(document.querySelectorAll('button, .el-button'));
+            const el = buttons.find(btn => btn.textContent.includes(textContent));
             if (el) {
                 el.click();
                 output.value = '已触发点击';
-                setTimeout(() => store.closeCommandPalette(), 300);
+                setTimeout(() => store.closeCommandPalette(), AUTO_CLOSE_DELAY);
             } else {
                 output.value = '未找到目标按钮';
             }
@@ -397,11 +402,13 @@ const CommandPaletteComponent = {
                             output.value = `执行: ${matchedCmd.name}`;
                         }
                         // Close palette for most commands (except system commands)
+                        // Don't auto-close on error to let user see the error message
                         if (matchedCmd.category !== 'system' && matchedCmd.category !== 'info') {
-                            setTimeout(() => store.closeCommandPalette(), 500);
+                            setTimeout(() => store.closeCommandPalette(), AUTO_CLOSE_DELAY);
                         }
                     } catch (err) {
                         output.value = `执行失败: ${err.message}`;
+                        // Don't auto-close on error
                     }
                 } else {
                     // Handle special commands
@@ -437,16 +444,21 @@ const CommandPaletteComponent = {
                 if (filteredCommands.value.length === 1) {
                     query.value = filteredCommands.value[0].name;
                 } else if (filteredCommands.value.length > 1) {
-                    // Find common prefix
-                    const names = filteredCommands.value.map(c => c.name.toLowerCase());
-                    let prefix = names[0];
-                    for (let i = 1; i < names.length; i++) {
-                        while (!names[i].startsWith(prefix)) {
-                            prefix = prefix.slice(0, -1);
+                    // Find common prefix (preserve original casing)
+                    const first = filteredCommands.value[0].name;
+                    let prefixLen = first.length;
+                    
+                    for (let i = 1; i < filteredCommands.value.length; i++) {
+                        const name = filteredCommands.value[i].name;
+                        let j = 0;
+                        while (j < prefixLen && j < name.length && first[j].toLowerCase() === name[j].toLowerCase()) {
+                            j++;
                         }
+                        prefixLen = j;
                     }
-                    if (prefix.length > query.value.length) {
-                        query.value = filteredCommands.value[0].name.substring(0, prefix.length);
+                    
+                    if (prefixLen > query.value.length) {
+                        query.value = first.substring(0, prefixLen);
                     }
                 }
             }
