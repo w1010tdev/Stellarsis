@@ -607,7 +607,8 @@ const ChatRoomPage = {
             socket.on('message_deleted', (data) => {
                 const index = messages.value.findIndex(m => m.id === data.id || m.id === data.message_id);
                 if (index > -1) {
-                    messages.value[index] = { ...messages.value[index], deleted: true, content: '该消息已被删除' };
+                    // Remove the message from array
+                    messages.value.splice(index, 1);
                 }
             });
             
@@ -975,6 +976,11 @@ const ForumThreadPage = {
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
                         <el-button @click="goBack" :icon="ArrowLeft" circle></el-button>
                         <span style="font-size: 13px; color: var(--text-muted);">返回分区</span>
+                        <div style="margin-left: auto;" v-if="canDeleteThread">
+                            <el-button type="danger" size="small" @click="deleteThread">
+                                <i class="fas fa-trash"></i> 删除帖子
+                            </el-button>
+                        </div>
                     </div>
                     <h1 class="thread-title">{{ thread.title }}</h1>
                     <div class="thread-meta">
@@ -1002,6 +1008,15 @@ const ForumThreadPage = {
                             <span v-if="reply.user?.badge" class="message-badge" :style="{ background: reply.user?.color, marginLeft: '8px' }">{{ reply.user?.badge }}</span>
                         </div>
                         <span style="margin-left: auto; font-size: 12px; color: var(--text-muted);">{{ formatTime(reply.timestamp) }}</span>
+                        <el-button 
+                            v-if="canDeleteReply(reply)" 
+                            type="danger" 
+                            size="small" 
+                            circle
+                            @click="deleteReply(reply)"
+                            style="margin-left: 8px;">
+                            <i class="fas fa-trash"></i>
+                        </el-button>
                     </div>
                     <div class="reply-content" v-html="renderContent(reply.content)"></div>
                 </div>
@@ -1029,6 +1044,18 @@ const ForumThreadPage = {
         const submitting = Vue.ref(false);
         
         const canReply = Vue.computed(() => permission.value === 'su' || permission.value === '777');
+        
+        const canDeleteThread = Vue.computed(() => {
+            if (permission.value === 'su') return true;
+            if (permission.value === '777' && Number(thread.value.user?.id) === Number(store.state.user.id)) return true;
+            return false;
+        });
+        
+        const canDeleteReply = (reply) => {
+            if (permission.value === 'su') return true;
+            if (permission.value === '777' && Number(reply.user?.id) === Number(store.state.user.id)) return true;
+            return false;
+        };
         
         const renderedContent = Vue.computed(() => {
             return StellarisUtils.renderContent(thread.value.content || '');
@@ -1095,6 +1122,54 @@ const ForumThreadPage = {
             submitting.value = false;
         };
         
+        const deleteThread = async () => {
+            try {
+                await ElMessageBox.confirm(
+                    '确定要删除这个帖子吗？此操作不可撤销。',
+                    '删除帖子',
+                    { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
+                );
+                
+                const response = await fetch(`/api/forum/thread/${threadId.value}`, { method: 'DELETE' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    store.showToast('帖子已删除', 'success');
+                    if (thread.value.section_id) {
+                        StellarisRouter.navigate('/forum/' + thread.value.section_id);
+                    } else {
+                        StellarisRouter.navigate('/forum');
+                    }
+                } else {
+                    store.showToast(data.message || '删除失败', 'error');
+                }
+            } catch (e) {
+                // Cancelled or error
+            }
+        };
+        
+        const deleteReply = async (reply) => {
+            try {
+                await ElMessageBox.confirm(
+                    '确定要删除这条回复吗？此操作不可撤销。',
+                    '删除回复',
+                    { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
+                );
+                
+                const response = await fetch(`/api/forum/reply/${reply.id}`, { method: 'DELETE' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    store.showToast('回复已删除', 'success');
+                    replies.value = replies.value.filter(r => r.id !== reply.id);
+                } else {
+                    store.showToast(data.message || '删除失败', 'error');
+                }
+            } catch (e) {
+                // Cancelled or error
+            }
+        };
+        
         Vue.onMounted(loadThread);
         
         window.addEventListener('route-changed', (e) => {
@@ -1102,17 +1177,22 @@ const ForumThreadPage = {
         });
         
         return {
+            store,
             thread,
             replies,
             loading,
             replyContent,
             submitting,
             canReply,
+            canDeleteThread,
+            canDeleteReply,
             renderedContent,
             renderContent,
             formatTime,
             goBack,
             submitReply,
+            deleteThread,
+            deleteReply,
             ArrowLeft: ElementPlusIconsVue.ArrowLeft
         };
     }
@@ -1161,13 +1241,13 @@ const SettingsPage = {
                     <i class="fas fa-user"></i>
                     账户
                 </div>
-                <div class="settings-item" style="cursor: pointer;" @click="goToUrl('/settings/profile')">
+                <div class="settings-item" style="cursor: pointer;" @click="goToUrl('/profile')">
                     <div>
                         <div class="settings-item-label">修改个人资料</div>
                     </div>
                     <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
                 </div>
-                <div class="settings-item" style="cursor: pointer;" @click="goToUrl('/settings/password')">
+                <div class="settings-item" style="cursor: pointer;" @click="goToUrl('/change_password')">
                     <div>
                         <div class="settings-item-label">修改密码</div>
                     </div>

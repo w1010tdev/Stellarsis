@@ -340,8 +340,8 @@ const RoomCardComponent = {
 const MessageComponent = {
     name: 'MessageComponent',
     template: `
-        <div class="message" :class="{ 'heart-border': hasHeartEffect }" :data-message-id="message.id">
-            <div class="message-avatar" :style="{ background: userColor }">
+        <div class="message" :class="{ 'heart-border': hasHeartEffect, 'message-self': isSelf, 'message-other': !isSelf }" :data-message-id="message.id">
+            <div class="message-avatar" v-if="!isSelf" :style="{ background: userColor }">
                 {{ userInitial }}
             </div>
             <div class="message-content">
@@ -355,16 +355,19 @@ const MessageComponent = {
                     <button class="message-action-btn" @click="$emit('quote', message)" title="引用">
                         <i class="fas fa-quote-right"></i>
                     </button>
-                    <button class="message-action-btn" v-if="canDelete" @click="$emit('delete', message)" title="删除">
+                    <button class="message-action-btn" v-if="canDelete" @click.stop="handleDelete" title="删除">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
+            </div>
+            <div class="message-avatar" v-if="isSelf" :style="{ background: userColor }">
+                {{ userInitial }}
             </div>
         </div>
     `,
     props: ['message', 'currentUserId', 'roomPermission', 'showActions'],
     emits: ['quote', 'delete'],
-    setup(props) {
+    setup(props, { emit }) {
         const displayName = Vue.computed(() => {
             return props.message.nickname || props.message.username || '匿名';
         });
@@ -389,12 +392,20 @@ const MessageComponent = {
             return StellarisUtils.hasHeartEffect(props.message.content || props.message.message || '');
         });
         
+        const isSelf = Vue.computed(() => {
+            return Number(props.message.user_id) === Number(props.currentUserId);
+        });
+        
         const canDelete = Vue.computed(() => {
             if (!props.message.id) return false;
             if (props.roomPermission === 'su') return true;
             if (props.roomPermission === '777' && Number(props.message.user_id) === Number(props.currentUserId)) return true;
             return false;
         });
+        
+        const handleDelete = () => {
+            emit('delete', props.message);
+        };
         
         // Load quotes after render
         Vue.onMounted(() => {
@@ -417,7 +428,9 @@ const MessageComponent = {
             formattedTime,
             renderedContent,
             hasHeartEffect,
-            canDelete
+            canDelete,
+            isSelf,
+            handleDelete
         };
     }
 };
