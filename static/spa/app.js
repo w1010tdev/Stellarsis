@@ -103,6 +103,10 @@ const app = Vue.createApp({});
 // Use Element Plus
 app.use(ElementPlus);
 
+// Make ElMessageBox globally available for use in pages/components
+window.ElMessageBox = ElementPlus.ElMessageBox;
+window.ElMessage = ElementPlus.ElMessage;
+
 // Register Element Plus Icons
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
     app.component(key, component);
