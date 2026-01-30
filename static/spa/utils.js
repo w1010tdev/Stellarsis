@@ -169,6 +169,35 @@ const StellarisUtils = {
         return null;
     },
     
+    // Load quotes in an element and replace the placeholders
+    async loadQuotesInElement(element) {
+        if (!element) return;
+        
+        const quoteBlocks = element.querySelectorAll('.quote-block[data-quote-id]');
+        for (const block of quoteBlocks) {
+            const quoteId = block.getAttribute('data-quote-id');
+            if (!quoteId || block.dataset.loaded === 'true') continue;
+            
+            block.dataset.loaded = 'true';
+            const contentEl = block.querySelector('.quote-content');
+            
+            try {
+                const msg = await this.loadQuote(quoteId);
+                if (msg && contentEl) {
+                    const nickname = msg.nickname || msg.username || '匿名';
+                    const preview = (msg.content || '').substring(0, 100);
+                    contentEl.innerHTML = `<strong style="color: ${msg.color || 'inherit'}">${this.escapeHtml(nickname)}</strong>: ${this.escapeHtml(preview)}${msg.content && msg.content.length > 100 ? '...' : ''}`;
+                } else if (contentEl) {
+                    contentEl.textContent = '消息不存在或已删除';
+                }
+            } catch (e) {
+                if (contentEl) {
+                    contentEl.textContent = '加载失败';
+                }
+            }
+        }
+    },
+    
     // Format time for messages
     formatTime(timestamp) {
         if (!timestamp) return '';

@@ -396,6 +396,20 @@ const MessageComponent = {
             return false;
         });
         
+        // Load quotes after render
+        Vue.onMounted(() => {
+            Vue.nextTick(() => {
+                StellarisUtils.loadQuotesInElement(document.querySelector(`[data-message-id="${props.message.id}"]`));
+            });
+        });
+        
+        // Also watch for content changes
+        Vue.watch(() => props.message.content, () => {
+            Vue.nextTick(() => {
+                StellarisUtils.loadQuotesInElement(document.querySelector(`[data-message-id="${props.message.id}"]`));
+            });
+        });
+        
         return {
             displayName,
             userColor,

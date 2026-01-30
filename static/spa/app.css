@@ -560,6 +560,41 @@ html.dark .message:hover {
     margin-bottom: 0;
 }
 
+/* Markdown list styling - proper alignment */
+.message-text ul,
+.message-text ol {
+    padding-left: 24px;
+    margin: 8px 0;
+}
+
+.message-text li {
+    margin: 4px 0;
+    padding-left: 4px;
+}
+
+.message-text li::marker {
+    color: var(--text-secondary);
+}
+
+.thread-content ul,
+.thread-content ol,
+.reply-content ul,
+.reply-content ol {
+    padding-left: 24px;
+    margin: 8px 0;
+}
+
+.thread-content li,
+.reply-content li {
+    margin: 4px 0;
+    padding-left: 4px;
+}
+
+.thread-content li::marker,
+.reply-content li::marker {
+    color: var(--text-secondary);
+}
+
 /* Heart Border Effect */
 .message.heart-border {
     border: 2px solid transparent;

@@ -361,8 +361,15 @@ const ChatRoomPage = {
                     <div class="user-avatar" :style="{ background: user.color || '#409eff', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }">
                         {{ (user.nickname || user.username || '?').charAt(0).toUpperCase() }}
                     </div>
-                    <span :style="{ color: user.color }">{{ user.nickname || user.username }}</span>
+                    <span :style="{ color: user.color }" style="flex: 1;">{{ user.nickname || user.username }}</span>
                     <span v-if="user.badge" style="font-size: 12px; padding: 2px 6px; border-radius: 4px; color: #fff;" :style="{ background: user.color }">{{ user.badge }}</span>
+                    <el-button 
+                        v-if="user.id !== store.state.user.id"
+                        size="small" 
+                        :type="isFollowing(user.id) ? 'default' : 'primary'"
+                        @click="toggleFollow(user)">
+                        {{ isFollowing(user.id) ? '已关注' : '关注' }}
+                    </el-button>
                 </div>
                 <div v-if="onlineUsers.length === 0" style="text-align: center; color: var(--text-muted);">
                     暂无在线用户
@@ -529,16 +536,22 @@ const ChatRoomPage = {
             if (loadingMore.value || !hasMore.value) return;
             loadingMore.value = true;
             
-            const nextPage = currentPage.value - 1;
+            const prevPage = currentPage.value - 1;
+            if (prevPage < 0) {
+                hasMore.value = false;
+                loadingMore.value = false;
+                return;
+            }
+            
             try {
-                const response = await fetch(`/api/chat/${roomId.value}/history?page=${nextPage}&limit=50`);
+                const response = await fetch(`/api/chat/${roomId.value}/history?page=${prevPage}&limit=50`);
                 const data = await response.json();
-                if (data.success && Array.isArray(data.messages)) {
+                if (Array.isArray(data.messages)) {
                     const newMessages = data.messages.filter(m => !processedMessageIds.has(m.id));
                     newMessages.forEach(m => processedMessageIds.add(m.id));
                     messages.value = [...newMessages, ...messages.value];
-                    currentPage.value = nextPage;
-                    hasMore.value = data.has_more || nextPage > 0;
+                    currentPage.value = prevPage;
+                    hasMore.value = prevPage > 0;
                 }
             } catch (e) {
                 store.showToast('加载更多失败', 'error');
@@ -571,12 +584,21 @@ const ChatRoomPage = {
                 if (msg.id && processedMessageIds.has(msg.id)) return;
                 if (msg.id) processedMessageIds.add(msg.id);
                 
-                // Update pending message if matches
-                const pendingIndex = messages.value.findIndex(m => m.pending && m.content === msg.content);
+                // Update pending message if matches by client_id
+                const pendingIndex = messages.value.findIndex(m => 
+                    m.pending && (m.client_id === msg.client_id || m.content === msg.content)
+                );
                 if (pendingIndex > -1) {
-                    messages.value[pendingIndex] = { ...msg, pending: false };
+                    messages.value.splice(pendingIndex, 1, { ...msg, pending: false });
                 } else {
-                    messages.value.push(msg);
+                    // Only add if not from current user (avoid double display)
+                    const isFromSelf = msg.user_id === store.state.user.id;
+                    const hasPendingWithSameContent = messages.value.some(m => 
+                        m.pending && m.content === msg.content && m.user_id === msg.user_id
+                    );
+                    if (!isFromSelf || !hasPendingWithSameContent) {
+                        messages.value.push(msg);
+                    }
                 }
                 
                 scrollToBottom();
@@ -622,19 +644,20 @@ const ChatRoomPage = {
                     permission.value = roomData.permission;
                 }
                 
-                // Load history
-                const historyRes = await fetch(`/api/chat/${roomId.value}/history?limit=50`);
+                // Load history - API returns messages array directly, use page=last for latest
+                const historyRes = await fetch(`/api/chat/${roomId.value}/history?page=last&limit=50`);
                 const historyData = await historyRes.json();
-                if (historyData.success) {
+                if (Array.isArray(historyData.messages)) {
                     messages.value = historyData.messages || [];
                     messages.value.forEach(m => processedMessageIds.add(m.id));
                     currentPage.value = historyData.page || 0;
-                    hasMore.value = historyData.has_more || false;
+                    hasMore.value = historyData.has_more || (historyData.page > 0);
                     scrollToBottom();
                 }
                 
                 initSocket();
             } catch (e) {
+                console.error('加载聊天室失败:', e);
                 store.showToast('加载聊天室失败', 'error');
             }
             loading.value = false;
@@ -653,6 +676,37 @@ const ChatRoomPage = {
         window.addEventListener('route-changed', (e) => {
             route.value = e.detail;
         });
+        
+        // Follow functionality
+        const isFollowing = (userId) => {
+            return store.state.followedUserIds.has(userId);
+        };
+        
+        const toggleFollow = async (user) => {
+            try {
+                if (isFollowing(user.id)) {
+                    // Unfollow
+                    const res = await fetch(`/api/follows/${user.id}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (data.success) {
+                        store.state.followedUserIds.delete(user.id);
+                        store.showToast('已取消关注', 'success');
+                    }
+                } else {
+                    // Follow
+                    const formData = new FormData();
+                    formData.append('followed_id', user.id);
+                    const res = await fetch('/api/follows', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    if (data.success) {
+                        store.state.followedUserIds.add(user.id);
+                        store.showToast('关注成功', 'success');
+                    }
+                }
+            } catch (e) {
+                store.showToast('操作失败', 'error');
+            }
+        };
         
         return {
             store,
@@ -682,6 +736,8 @@ const ChatRoomPage = {
             triggerUpload,
             handleFileUpload,
             loadMore,
+            isFollowing,
+            toggleFollow,
             ArrowLeft: ElementPlusIconsVue.ArrowLeft
         };
     }
@@ -1105,25 +1161,25 @@ const SettingsPage = {
                     <i class="fas fa-user"></i>
                     账户
                 </div>
-                <div class="settings-item" style="cursor: pointer;" @click="window.location.href='/settings/profile'">
+                <div class="settings-item" style="cursor: pointer;" @click="goToUrl('/settings/profile')">
                     <div>
                         <div class="settings-item-label">修改个人资料</div>
                     </div>
                     <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
                 </div>
-                <div class="settings-item" style="cursor: pointer;" @click="window.location.href='/settings/password'">
+                <div class="settings-item" style="cursor: pointer;" @click="goToUrl('/settings/password')">
                     <div>
                         <div class="settings-item-label">修改密码</div>
                     </div>
                     <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
                 </div>
-                <div class="settings-item" style="cursor: pointer;" @click="window.location.href='/settings/images'">
+                <div class="settings-item" style="cursor: pointer;" @click="goToUrl('/settings/images')">
                     <div>
                         <div class="settings-item-label">我的文件</div>
                     </div>
                     <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
                 </div>
-                <div class="settings-item" style="cursor: pointer;" @click="window.location.href='/settings/follows'">
+                <div class="settings-item" style="cursor: pointer;" @click="goToUrl('/settings/follows')">
                     <div>
                         <div class="settings-item-label">关注管理</div>
                     </div>
@@ -1151,6 +1207,10 @@ const SettingsPage = {
             store.setHeartRainEnabled(value);
         };
         
+        const goToUrl = (url) => {
+            window.location.href = url;
+        };
+        
         const logout = () => {
             window.location.href = '/logout';
         };
@@ -1161,6 +1221,7 @@ const SettingsPage = {
             heartRainEnabled,
             toggleTheme,
             toggleHeartRain,
+            goToUrl,
             logout
         };
     }
@@ -1174,28 +1235,28 @@ const AdminPage = {
             <h2 style="margin-bottom: 24px;">管理面板</h2>
             
             <div class="admin-grid">
-                <div class="admin-card" @click="window.location.href='/admin/users'" style="cursor: pointer;">
+                <div class="admin-card" @click="goToUrl('/admin/users')" style="cursor: pointer;">
                     <div class="admin-card-icon blue"><i class="fas fa-users"></i></div>
                     <div class="admin-card-title">用户管理</div>
                     <div class="admin-card-description">管理平台用户，包括创建、删除和修改用户权限</div>
                     <el-button type="primary" size="small">进入</el-button>
                 </div>
                 
-                <div class="admin-card" @click="window.location.href='/admin/chat'" style="cursor: pointer;">
+                <div class="admin-card" @click="goToUrl('/admin/chat')" style="cursor: pointer;">
                     <div class="admin-card-icon green"><i class="fas fa-comments"></i></div>
                     <div class="admin-card-title">聊天管理</div>
                     <div class="admin-card-description">管理聊天室和聊天消息</div>
                     <el-button type="primary" size="small">进入</el-button>
                 </div>
                 
-                <div class="admin-card" @click="window.location.href='/admin/forum'" style="cursor: pointer;">
+                <div class="admin-card" @click="goToUrl('/admin/forum')" style="cursor: pointer;">
                     <div class="admin-card-icon orange"><i class="fas fa-newspaper"></i></div>
                     <div class="admin-card-title">帖子管理</div>
                     <div class="admin-card-description">管理贴吧分区和帖子内容</div>
                     <el-button type="primary" size="small">进入</el-button>
                 </div>
                 
-                <div class="admin-card" @click="window.location.href='/admin/db'" style="cursor: pointer;">
+                <div class="admin-card" @click="goToUrl('/admin/db')" style="cursor: pointer;">
                     <div class="admin-card-icon red"><i class="fas fa-database"></i></div>
                     <div class="admin-card-title">数据库管理</div>
                     <div class="admin-card-description">查看和管理数据库</div>
@@ -1203,7 +1264,16 @@ const AdminPage = {
                 </div>
             </div>
         </div>
-    `
+    `,
+    setup() {
+        const goToUrl = (url) => {
+            window.location.href = url;
+        };
+        
+        return {
+            goToUrl
+        };
+    }
 };
 
 // 404 Page
