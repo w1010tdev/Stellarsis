@@ -97,13 +97,6 @@ app.teardown_appcontext(lambda exc: db_session.remove())
 # 初始化Socket.IO
 socketio = SocketIO(app, async_mode=app.config['SOCKETIO_ASYNC_MODE'], cors_allowed_origins='*')
 
-# 简单的内存结构用于跟踪用户发送速度与验证码
-# 键：captcha_id -> {'answer': int, 'expires': float, 'user_id': int, 'pending': dict}
-captcha_store = {}
-# 键：user_id -> last_send_time (float seconds)
-last_send_times = {}
-captcha_lock = threading.Lock()
-
 # 初始化登录管理
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -3788,119 +3781,8 @@ def handle_message(data):
     
     # XSS基础防护
     content = sanitize_content(content, room_id)
-    # 检查发送速度：如果两次发送间隔小于725ms，则触发验证码流程
-    now_ts = time.time()
-    with captcha_lock:
-        last_ts = last_send_times.get(current_user.id)
-        # 如果前一次发送时间存在且间隔短，并且本次没有携带 captcha_id，则要求验证码
-        if last_ts and (now_ts - last_ts) < 0.725 and not data.get('captcha_id'):
-            # 生成一个简单的算术验证码
-            import secrets
-            import random
-
-            a = random.randint(1, 9)
-            b = random.randint(1, 9)
-            op = random.choice(['+', '-'])
-            answer = a + b if op == '+' else a - b
-            captcha_id = secrets.token_urlsafe(8)
-            captcha_store[captcha_id] = {
-                'answer': answer,
-                'expires': now_ts + 300,
-                'user_id': current_user.id,
-                'pending': {
-                    'room_id': room_id,
-                    'content': content,
-                    'client_id': data.get('client_id')
-                }
-            }
-            # 只发送给当前连接的客户端，要求输入验证码
-            emit('require_captcha', {
-                'captcha_id': captcha_id,
-                'question': f'{a}{op}{b} = ?'
-            }, room=request.sid)
-            return
-
-    # 如果本次请求携带了 captcha_id 与 captcha_answer，进行验证（并允许通过）
-    captcha_id = data.get('captcha_id')
-    captcha_answer = data.get('captcha_answer')
-    if captcha_id:
-        with captcha_lock:
-            info = captcha_store.get(captcha_id)
-            # 验证存在性、过期以及归属
-            if not info or info.get('user_id') != current_user.id:
-                emit('error', {'message': '验证码无效或已过期'})
-                return
-            if time.time() > info.get('expires', 0):
-                captcha_store.pop(captcha_id, None)
-                emit('error', {'message': '验证码已过期'})
-                return
-            try:
-                provided = int(captcha_answer)
-            except Exception:
-                emit('error', {'message': '验证码输入错误'})
-                return
-            if provided != info['answer']:
-                emit('error', {'message': '验证码错误'})
-                return
-            # 验证通过：将待发送消息替换为存储的 pending（以服务器端为准）
-            pending = info.get('pending', {})
-            room_id = pending.get('room_id', room_id)
-            content = pending.get('content', content)
-            client_id = pending.get('client_id') or data.get('client_id')
-            # 清理验证码条目
-            captcha_store.pop(captcha_id, None)
-
-    # 更新最后发送时间（通过验证或正常发送）
-    with captcha_lock:
-        last_send_times[current_user.id] = now_ts
     
-    # 重复消息合并：如果上一条来自同一用户在同一房间且内容相同，则在上一条末尾增加 *2/*3...
-    try:
-        last_msg = db_session.query(ChatMessage).filter_by(
-            user_id=current_user.id, room_id=room_id
-        ).order_by(ChatMessage.id.desc()).first()
-    except Exception:
-        last_msg = None
-
-    if last_msg and last_msg.content:
-        # 提取可能的尾部乘数，例如 "hello*3"
-        m = re.search(r"\*(\d+)$", last_msg.content)
-        base = last_msg.content
-        if m:
-            base = last_msg.content[:m.start()]
-        # 如果基础文本与当前内容相同，则合并计数
-        if base == content:
-            if m:
-                try:
-                    count = int(m.group(1)) + 1
-                except Exception:
-                    count = 2
-            else:
-                count = 2
-            last_msg.content = f"{content}*{count}"
-            db_session.add(last_msg)
-            db_session.commit()
-
-            payload = {
-                'id': last_msg.id,
-                'content': last_msg.content,
-                'timestamp': last_msg.timestamp.isoformat(),
-                'user_id': current_user.id,
-                'username': current_user.username,
-                'nickname': current_user.nickname or current_user.username,
-                'color': current_user.color,
-                'badge': current_user.badge
-            }
-            if client_id:
-                payload['client_id'] = client_id
-            emit('message_updated', payload, room=f'room_{room_id}', include_self=True)
-            
-            # 对于重复消息，也发送acknowledgement
-            if client_id:
-                emit('message_id_response', {'client_id': client_id, 'server_id': last_msg.id}, to=request.sid)
-            return
-
-    # 保存到数据库（非重复的常规消息）
+    # 保存到数据库
     message = ChatMessage(
         content=content,
         user_id=current_user.id,
@@ -4348,6 +4230,282 @@ def create_test_data():
     except Exception as e:
         logger.error(f"创建测试数据失败: {str(e)}")
         db_session.rollback()
+
+# ==============================
+# SPA Routes and API Endpoints
+# ==============================
+
+@app.route('/spa')
+@login_required
+def spa_index():
+    """Serve the SPA interface with all data pre-loaded via Jinja2"""
+    import random
+    
+    # Chat rooms
+    rooms = db_session.query(ChatRoom).all()
+    visible_rooms = []
+    chat_permissions = {}
+    for room in rooms:
+        perm = get_chat_permission_value(current_user, room.id)
+        if perm != 'Null':
+            visible_rooms.append({
+                'id': room.id,
+                'name': room.name,
+                'description': room.description or ''
+            })
+            chat_permissions[room.id] = perm
+    
+    # Forum sections
+    sections = db_session.query(ForumSection).all()
+    visible_sections = []
+    forum_permissions = {}
+    for section in sections:
+        perm = get_forum_permission_value(current_user, section.id)
+        if perm != 'Null':
+            visible_sections.append({
+                'id': section.id,
+                'name': section.name,
+                'description': section.description or ''
+            })
+            forum_permissions[section.id] = perm
+    
+    # Unread counts (same logic as api_unread_counts)
+    chat_unread = {}
+    forum_unread = {}
+    for room in rooms:
+        if get_chat_permission_value(current_user, room.id) == 'Null':
+            continue
+        last = db_session.query(ChatLastView).filter_by(user_id=current_user.id, room_id=room.id).first()
+        if last:
+            cnt = db_session.query(ChatMessage).filter(ChatMessage.room_id == room.id, ChatMessage.timestamp > last.last_view).count()
+        else:
+            cnt = db_session.query(ChatMessage).filter_by(room_id=room.id).count()
+        chat_unread[room.id] = cnt
+    for section in sections:
+        if get_forum_permission_value(current_user, section.id) == 'Null':
+            continue
+        last = db_session.query(ForumLastView).filter_by(user_id=current_user.id, section_id=section.id).first()
+        if last:
+            last_time = last.last_view
+            cnt_threads = db_session.query(ForumThread).filter(ForumThread.section_id == section.id, ForumThread.timestamp > last_time).count()
+            cnt_replies = db_session.query(ForumReply).join(ForumThread, ForumReply.thread_id == ForumThread.id)\
+                .filter(ForumThread.section_id == section.id, ForumReply.timestamp > last_time).count()
+        else:
+            cnt_threads = db_session.query(ForumThread).filter_by(section_id=section.id).count()
+            cnt_replies = db_session.query(ForumReply).join(ForumThread, ForumReply.thread_id == ForumThread.id)\
+                .filter(ForumThread.section_id == section.id).count()
+        forum_unread[section.id] = cnt_threads + cnt_replies
+    
+    # Following list
+    following = db_session.query(UserFollow.followed_id).filter_by(follower_id=current_user.id).all()
+    following_ids = [row[0] for row in following]
+    following_users = db_session.query(User).filter(User.id.in_(following_ids)).all() if following_ids else []
+    following_list = [{
+        'id': u.id,
+        'username': u.username,
+        'nickname': u.nickname or u.username,
+        'color': u.color or '',
+        'badge': u.badge or ''
+    } for u in following_users]
+    
+    # Random quote
+    random_quote = ''
+    try:
+        with open('quotes.json', 'r', encoding='utf-8') as f:
+            quotes_data = json.load(f)
+            quotes = quotes_data.get('quotes', [])
+            formatted_quotes = [f"{q['text']} - {q['author']}" for q in quotes if 'text' in q and 'author' in q]
+            if formatted_quotes:
+                random_quote = random.choice(formatted_quotes)
+    except Exception:
+        pass
+    
+    return render_template('spa.html',
+        spa_data={
+            'rooms': visible_rooms,
+            'chatPermissions': chat_permissions,
+            'sections': visible_sections,
+            'forumPermissions': forum_permissions,
+            'unreadCounts': {
+                'chat': chat_unread,
+                'forum': forum_unread
+            },
+            'following': following_list,
+            'randomQuote': random_quote
+        }
+    )
+
+# SPA Dynamic Data APIs (minimal, required for in-app navigation)
+# ================================================================
+
+@app.route('/api/spa/forum/section/<int:section_id>')
+@login_required
+def api_spa_forum_section(section_id):
+    """Get forum section threads for SPA navigation"""
+    section = db_session.query(ForumSection).get(section_id)
+    if section is None:
+        return jsonify({'success': False, 'message': 'Section not found'}), 404
+    
+    permission = get_forum_permission_value(current_user, section_id)
+    if permission == 'Null':
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+    
+    # Update last view (mark as read)
+    try:
+        last = db_session.query(ForumLastView).filter_by(user_id=current_user.id, section_id=section_id).first()
+        now = datetime.utcnow()
+        if last:
+            last.last_view = now
+        else:
+            db_session.add(ForumLastView(user_id=current_user.id, section_id=section_id, last_view=now))
+        db_session.commit()
+    except Exception:
+        db_session.rollback()
+    
+    threads = db_session.query(ForumThread).filter_by(section_id=section_id)\
+        .order_by(ForumThread.timestamp.desc()).all()
+    
+    threads_data = []
+    for thread in threads:
+        threads_data.append({
+            'id': thread.id,
+            'title': thread.title,
+            'content': html.unescape(thread.content) if thread.content else '',
+            'timestamp': thread.timestamp.isoformat() if thread.timestamp else None,
+            'reply_count': db_session.query(ForumReply).filter_by(thread_id=thread.id).count(),
+            'user': {
+                'id': thread.user.id,
+                'username': thread.user.username,
+                'nickname': thread.user.nickname,
+                'color': thread.user.color,
+                'badge': thread.user.badge
+            } if thread.user else None
+        })
+    
+    return jsonify({
+        'success': True,
+        'section': {
+            'id': section.id,
+            'name': section.name,
+            'description': section.description or ''
+        },
+        'permission': permission,
+        'threads': threads_data
+    })
+
+@app.route('/api/spa/forum/thread/<int:thread_id>')
+@login_required
+def api_spa_forum_thread(thread_id):
+    """Get forum thread with replies for SPA navigation"""
+    thread = db_session.query(ForumThread).get(thread_id)
+    if thread is None:
+        return jsonify({'success': False, 'message': 'Thread not found'}), 404
+    
+    permission = get_forum_permission_value(current_user, thread.section_id)
+    if permission == 'Null':
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+    
+    replies = db_session.query(ForumReply).filter_by(thread_id=thread_id)\
+        .order_by(ForumReply.timestamp.asc()).all()
+    
+    replies_data = []
+    for reply in replies:
+        replies_data.append({
+            'id': reply.id,
+            'content': html.unescape(reply.content) if reply.content else '',
+            'timestamp': reply.timestamp.isoformat() if reply.timestamp else None,
+            'user': {
+                'id': reply.user.id,
+                'username': reply.user.username,
+                'nickname': reply.user.nickname,
+                'color': reply.user.color,
+                'badge': reply.user.badge
+            } if reply.user else None
+        })
+    
+    return jsonify({
+        'success': True,
+        'thread': {
+            'id': thread.id,
+            'title': thread.title,
+            'content': html.unescape(thread.content) if thread.content else '',
+            'section_id': thread.section_id,
+            'timestamp': thread.timestamp.isoformat() if thread.timestamp else None,
+            'user': {
+                'id': thread.user.id,
+                'username': thread.user.username,
+                'nickname': thread.user.nickname,
+                'color': thread.user.color,
+                'badge': thread.user.badge
+            } if thread.user else None
+        },
+        'permission': permission,
+        'replies': replies_data
+    })
+
+@app.route('/api/spa/forum/thread', methods=['POST'])
+@login_required
+def api_spa_forum_thread_create():
+    """Create a new forum thread"""
+    section_id = request.form.get('section_id', type=int)
+    title = request.form.get('title', '').strip()
+    content = request.form.get('content', '').strip()
+    
+    if not section_id or not title or not content:
+        return jsonify({'success': False, 'message': '请填写所有必填项'}), 400
+    
+    section = db_session.query(ForumSection).get(section_id)
+    if section is None:
+        return jsonify({'success': False, 'message': 'Section not found'}), 404
+    
+    permission = get_forum_permission_value(current_user, section_id)
+    if permission not in FORUM_POST_PERMISSIONS:
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+    
+    try:
+        thread = ForumThread(
+            title=title,
+            content=content,
+            user_id=current_user.id,
+            section_id=section_id,
+            timestamp=datetime.utcnow()
+        )
+        db_session.add(thread)
+        db_session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '发表成功',
+            'thread_id': thread.id
+        })
+    except Exception as e:
+        db_session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/spa/chat/<int:room_id>/mark_read', methods=['POST'])
+@login_required
+def api_spa_chat_mark_read(room_id):
+    """Mark a chat room as read (update last view time)"""
+    room = db_session.query(ChatRoom).get(room_id)
+    if room is None:
+        return jsonify({'success': False, 'message': 'Room not found'}), 404
+    
+    permission = get_chat_permission_value(current_user, room_id)
+    if permission == 'Null':
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+    
+    try:
+        last = db_session.query(ChatLastView).filter_by(user_id=current_user.id, room_id=room_id).first()
+        now = datetime.utcnow()
+        if last:
+            last.last_view = now
+        else:
+            db_session.add(ChatLastView(user_id=current_user.id, room_id=room_id, last_view=now))
+        db_session.commit()
+        return jsonify({'success': True})
+    except Exception:
+        db_session.rollback()
+        return jsonify({'success': False, 'message': 'Database error'}), 500
 
 # 主程序
 if __name__ == '__main__':

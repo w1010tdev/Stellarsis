@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>群星议会</title>
+    
+    <!-- Element Plus CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/element-plus@2.9.1/dist/index.css" crossorigin="anonymous">
+    <!-- Element Plus Dark Mode CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/element-plus@2.9.1/theme-chalk/dark/css-vars.css" crossorigin="anonymous">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css" crossorigin="anonymous">
+    <!-- Highlight.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" id="hljs-light">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" id="hljs-dark" disabled>
+    
+    <!-- Custom SPA Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='spa/app.css') }}">
+</head>
+<body>
+    <div id="app">
+        <app-layout></app-layout>
+    </div>
+
+    <!-- Server-side Data Injection -->
+    <script type="application/json" id="server-data">
+    {
+        "user": {% if current_user.is_authenticated %}{
+            "id": {{ current_user.id }},
+            "username": "{{ current_user.username }}",
+            "nickname": "{{ current_user.nickname or current_user.username }}",
+            "color": "{{ current_user.color or '' }}",
+            "badge": "{{ current_user.badge or '' }}",
+            "isAdmin": {{ 'true' if current_user.is_admin() else 'false' }},
+            "isAuthenticated": true
+        }{% else %}{
+            "isAuthenticated": false
+        }{% endif %},
+        "config": {
+            "enableFileUpload": {{ 'true' if app_info.config.ENABLE_FILE_UPLOAD else 'false' }}
+        },
+        "spaData": {{ spa_data | tojson | safe }}
+    }
+    </script>
+
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3.4.38/dist/vue.global.prod.js" crossorigin="anonymous"></script>
+    <!-- Element Plus -->
+    <script src="https://unpkg.com/element-plus@2.9.1/dist/index.full.min.js" crossorigin="anonymous"></script>
+    <!-- Element Plus Icons -->
+    <script src="https://unpkg.com/@element-plus/icons-vue@2.3.1/dist/index.iife.min.js" crossorigin="anonymous"></script>
+    <!-- Socket.IO -->
+    <script src="{{ url_for('static', filename='js/vendor/socket.io.min.js') }}"></script>
+    <!-- Marked.js for Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.0.0/marked.min.js" crossorigin="anonymous"></script>
+    <!-- KaTeX -->
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js" crossorigin="anonymous"></script>
+    <!-- Highlight.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    
+    <!-- SPA Application -->
+    <script src="{{ url_for('static', filename='spa/router.js') }}"></script>
+    <script src="{{ url_for('static', filename='spa/store.js') }}"></script>
+    <script src="{{ url_for('static', filename='spa/utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='spa/components.js') }}"></script>
+    <script src="{{ url_for('static', filename='spa/pages.js') }}"></script>
+    <script src="{{ url_for('static', filename='spa/app.js') }}"></script>
+</body>
+</html>
