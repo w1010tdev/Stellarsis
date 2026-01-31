@@ -1366,6 +1366,29 @@ html.dark .quote-block {
     margin-left: auto;
 }
 
+.command-item.output-item {
+    background: rgba(99, 102, 241, 0.05);
+    border-left: 3px solid var(--primary);
+    cursor: default;
+}
+
+.command-item.output-item:hover {
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.command-help-text {
+    padding: 10px 20px;
+    font-size: 12px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.02);
+    text-align: center;
+}
+
+html.dark .command-help-text {
+    background: rgba(0, 0, 0, 0.2);
+}
+
 /* Scrollbar Styles */
 ::-webkit-scrollbar {
     width: 8px;
