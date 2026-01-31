@@ -41,7 +41,8 @@
         }{% endif %},
         "config": {
             "enableFileUpload": {{ 'true' if app_info.config.ENABLE_FILE_UPLOAD else 'false' }}
-        }
+        },
+        "spaData": {{ spa_data | tojson | safe }}
     }
     </script>
 

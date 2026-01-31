@@ -4238,95 +4238,110 @@ def create_test_data():
 @app.route('/spa')
 @login_required
 def spa_index():
-    """Serve the SPA interface"""
-    return render_template('spa.html')
-
-@app.route('/api/chat/rooms')
-@login_required
-def api_chat_rooms():
-    """Get list of accessible chat rooms"""
+    """Serve the SPA interface with all data pre-loaded via Jinja2"""
+    import random
+    
+    # Chat rooms
     rooms = db_session.query(ChatRoom).all()
     visible_rooms = []
-    permissions = {}
-    
+    chat_permissions = {}
     for room in rooms:
         perm = get_chat_permission_value(current_user, room.id)
         if perm != 'Null':
             visible_rooms.append({
                 'id': room.id,
                 'name': room.name,
-                'description': room.description
+                'description': room.description or ''
             })
-            permissions[room.id] = perm
+            chat_permissions[room.id] = perm
     
-    return jsonify({
-        'success': True,
-        'rooms': visible_rooms,
-        'permissions': permissions
-    })
-
-@app.route('/api/chat/room/<int:room_id>')
-@login_required
-def api_chat_room(room_id):
-    """Get chat room details"""
-    room = db_session.query(ChatRoom).get(room_id)
-    if room is None:
-        return jsonify({'success': False, 'message': 'Room not found'}), 404
-    
-    permission = get_chat_permission_value(current_user, room_id)
-    if permission == 'Null':
-        return jsonify({'success': False, 'message': 'Permission denied'}), 403
-    
-    # Update last view
-    try:
-        last = db_session.query(ChatLastView).filter_by(user_id=current_user.id, room_id=room_id).first()
-        now = datetime.utcnow()
-        if last:
-            last.last_view = now
-        else:
-            db_session.add(ChatLastView(user_id=current_user.id, room_id=room_id, last_view=now))
-        db_session.commit()
-    except Exception:
-        db_session.rollback()
-    
-    return jsonify({
-        'success': True,
-        'room': {
-            'id': room.id,
-            'name': room.name,
-            'description': room.description
-        },
-        'permission': permission
-    })
-
-@app.route('/api/forum/sections')
-@login_required
-def api_forum_sections():
-    """Get list of accessible forum sections"""
+    # Forum sections
     sections = db_session.query(ForumSection).all()
     visible_sections = []
-    permissions = {}
-    
+    forum_permissions = {}
     for section in sections:
         perm = get_forum_permission_value(current_user, section.id)
         if perm != 'Null':
             visible_sections.append({
                 'id': section.id,
                 'name': section.name,
-                'description': section.description
+                'description': section.description or ''
             })
-            permissions[section.id] = perm
+            forum_permissions[section.id] = perm
     
-    return jsonify({
-        'success': True,
-        'sections': visible_sections,
-        'permissions': permissions
-    })
+    # Unread counts (same logic as api_unread_counts)
+    chat_unread = {}
+    forum_unread = {}
+    for room in rooms:
+        if get_chat_permission_value(current_user, room.id) == 'Null':
+            continue
+        last = db_session.query(ChatLastView).filter_by(user_id=current_user.id, room_id=room.id).first()
+        if last:
+            cnt = db_session.query(ChatMessage).filter(ChatMessage.room_id == room.id, ChatMessage.timestamp > last.last_view).count()
+        else:
+            cnt = db_session.query(ChatMessage).filter_by(room_id=room.id).count()
+        chat_unread[room.id] = cnt
+    for section in sections:
+        if get_forum_permission_value(current_user, section.id) == 'Null':
+            continue
+        last = db_session.query(ForumLastView).filter_by(user_id=current_user.id, section_id=section.id).first()
+        if last:
+            last_time = last.last_view
+            cnt_threads = db_session.query(ForumThread).filter(ForumThread.section_id == section.id, ForumThread.timestamp > last_time).count()
+            cnt_replies = db_session.query(ForumReply).join(ForumThread, ForumReply.thread_id == ForumThread.id)\
+                .filter(ForumThread.section_id == section.id, ForumReply.timestamp > last_time).count()
+        else:
+            cnt_threads = db_session.query(ForumThread).filter_by(section_id=section.id).count()
+            cnt_replies = db_session.query(ForumReply).join(ForumThread, ForumReply.thread_id == ForumThread.id)\
+                .filter(ForumThread.section_id == section.id).count()
+        forum_unread[section.id] = cnt_threads + cnt_replies
+    
+    # Following list
+    following = db_session.query(UserFollow.followed_id).filter_by(follower_id=current_user.id).all()
+    following_ids = [row[0] for row in following]
+    following_users = db_session.query(User).filter(User.id.in_(following_ids)).all() if following_ids else []
+    following_list = [{
+        'id': u.id,
+        'username': u.username,
+        'nickname': u.nickname or u.username,
+        'color': u.color or '',
+        'badge': u.badge or ''
+    } for u in following_users]
+    
+    # Random quote
+    random_quote = ''
+    try:
+        with open('quotes.json', 'r', encoding='utf-8') as f:
+            quotes_data = json.load(f)
+            quotes = quotes_data.get('quotes', [])
+            formatted_quotes = [f"{q['text']} - {q['author']}" for q in quotes if 'text' in q and 'author' in q]
+            if formatted_quotes:
+                random_quote = random.choice(formatted_quotes)
+    except Exception:
+        pass
+    
+    return render_template('spa.html',
+        spa_data={
+            'rooms': visible_rooms,
+            'chatPermissions': chat_permissions,
+            'sections': visible_sections,
+            'forumPermissions': forum_permissions,
+            'unreadCounts': {
+                'chat': chat_unread,
+                'forum': forum_unread
+            },
+            'following': following_list,
+            'randomQuote': random_quote
+        }
+    )
 
-@app.route('/api/forum/section/<int:section_id>')
+# SPA Dynamic Data APIs (minimal, required for in-app navigation)
+# ================================================================
+
+@app.route('/api/spa/forum/section/<int:section_id>')
 @login_required
-def api_forum_section(section_id):
-    """Get forum section details with threads"""
+def api_spa_forum_section(section_id):
+    """Get forum section threads for SPA navigation"""
     section = db_session.query(ForumSection).get(section_id)
     if section is None:
         return jsonify({'success': False, 'message': 'Section not found'}), 404
@@ -4335,7 +4350,7 @@ def api_forum_section(section_id):
     if permission == 'Null':
         return jsonify({'success': False, 'message': 'Permission denied'}), 403
     
-    # Update last view
+    # Update last view (mark as read)
     try:
         last = db_session.query(ForumLastView).filter_by(user_id=current_user.id, section_id=section_id).first()
         now = datetime.utcnow()
@@ -4355,7 +4370,7 @@ def api_forum_section(section_id):
         threads_data.append({
             'id': thread.id,
             'title': thread.title,
-            'content': thread.content,
+            'content': html.unescape(thread.content) if thread.content else '',
             'timestamp': thread.timestamp.isoformat() if thread.timestamp else None,
             'reply_count': db_session.query(ForumReply).filter_by(thread_id=thread.id).count(),
             'user': {
@@ -4372,16 +4387,16 @@ def api_forum_section(section_id):
         'section': {
             'id': section.id,
             'name': section.name,
-            'description': section.description
+            'description': section.description or ''
         },
         'permission': permission,
         'threads': threads_data
     })
 
-@app.route('/api/forum/thread/<int:thread_id>', methods=['GET'])
+@app.route('/api/spa/forum/thread/<int:thread_id>')
 @login_required
-def api_forum_thread_get(thread_id):
-    """Get forum thread details with replies"""
+def api_spa_forum_thread(thread_id):
+    """Get forum thread with replies for SPA navigation"""
     thread = db_session.query(ForumThread).get(thread_id)
     if thread is None:
         return jsonify({'success': False, 'message': 'Thread not found'}), 404
@@ -4397,7 +4412,7 @@ def api_forum_thread_get(thread_id):
     for reply in replies:
         replies_data.append({
             'id': reply.id,
-            'content': reply.content,
+            'content': html.unescape(reply.content) if reply.content else '',
             'timestamp': reply.timestamp.isoformat() if reply.timestamp else None,
             'user': {
                 'id': reply.user.id,
@@ -4413,7 +4428,7 @@ def api_forum_thread_get(thread_id):
         'thread': {
             'id': thread.id,
             'title': thread.title,
-            'content': thread.content,
+            'content': html.unescape(thread.content) if thread.content else '',
             'section_id': thread.section_id,
             'timestamp': thread.timestamp.isoformat() if thread.timestamp else None,
             'user': {
@@ -4428,9 +4443,9 @@ def api_forum_thread_get(thread_id):
         'replies': replies_data
     })
 
-@app.route('/api/forum/thread', methods=['POST'])
+@app.route('/api/spa/forum/thread', methods=['POST'])
 @login_required
-def api_forum_thread_create():
+def api_spa_forum_thread_create():
     """Create a new forum thread"""
     section_id = request.form.get('section_id', type=int)
     title = request.form.get('title', '').strip()
@@ -4467,26 +4482,30 @@ def api_forum_thread_create():
         db_session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@app.route('/api/follow/following')
+@app.route('/api/spa/chat/<int:room_id>/mark_read', methods=['POST'])
 @login_required
-def api_follow_following():
-    """Get list of users the current user is following"""
-    follows = db_session.query(Follow).filter_by(follower_id=current_user.id).all()
-    following = []
-    for follow in follows:
-        user = db_session.query(User).get(follow.followed_id)
-        if user:
-            following.append({
-                'id': user.id,
-                'username': user.username,
-                'nickname': user.nickname,
-                'color': user.color,
-                'badge': user.badge
-            })
-    return jsonify({
-        'success': True,
-        'following': following
-    })
+def api_spa_chat_mark_read(room_id):
+    """Mark a chat room as read (update last view time)"""
+    room = db_session.query(ChatRoom).get(room_id)
+    if room is None:
+        return jsonify({'success': False, 'message': 'Room not found'}), 404
+    
+    permission = get_chat_permission_value(current_user, room_id)
+    if permission == 'Null':
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+    
+    try:
+        last = db_session.query(ChatLastView).filter_by(user_id=current_user.id, room_id=room_id).first()
+        now = datetime.utcnow()
+        if last:
+            last.last_view = now
+        else:
+            db_session.add(ChatLastView(user_id=current_user.id, room_id=room_id, last_view=now))
+        db_session.commit()
+        return jsonify({'success': True})
+    except Exception:
+        db_session.rollback()
+        return jsonify({'success': False, 'message': 'Database error'}), 500
 
 # 主程序
 if __name__ == '__main__':

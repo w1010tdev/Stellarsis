@@ -64,6 +64,20 @@ const StellarisStore = {
                 if (data.config) {
                     this.state.config = { ...this.state.config, ...data.config };
                 }
+                // Load data from Jinja2-injected spaData
+                if (data.spaData) {
+                    // Store rooms and sections for use by pages
+                    this.state.spaData = data.spaData;
+                    // Unread counts
+                    if (data.spaData.unreadCounts) {
+                        this.state.unreadCounts.chat = data.spaData.unreadCounts.chat || {};
+                        this.state.unreadCounts.forum = data.spaData.unreadCounts.forum || {};
+                    }
+                    // Following list
+                    if (data.spaData.following) {
+                        this.state.followedUserIds = new Set(data.spaData.following.map(u => u.id));
+                    }
+                }
             }
         } catch (e) {
             console.error('Failed to parse server data:', e);
@@ -71,14 +85,6 @@ const StellarisStore = {
         
         // Apply theme
         this.applyTheme(this.state.theme);
-        
-        // Load unread counts
-        this.loadUnreadCounts();
-        
-        // Load following list
-        if (this.state.user.isAuthenticated) {
-            this.loadFollowing();
-        }
     },
     
     // Theme management
@@ -140,33 +146,25 @@ const StellarisStore = {
         }
     },
     
-    // Unread counts
-    async loadUnreadCounts() {
-        try {
-            const response = await fetch('/api/last_views/unread_counts');
-            const data = await response.json();
-            if (data.success) {
-                this.state.unreadCounts.chat = data.chat || {};
-                this.state.unreadCounts.forum = data.forum || {};
-            }
-        } catch (e) {
-            console.error('Failed to load unread counts:', e);
+    // Unread counts - now loaded from Jinja2 data, these methods are for reactively clearing them
+    markChatRoomAsRead(roomId) {
+        if (this.state.unreadCounts.chat[roomId] !== undefined) {
+            this.state.unreadCounts.chat[roomId] = 0;
         }
     },
     
-    // Following
-    async loadFollowing() {
-        try {
-            const response = await fetch('/api/follow/following');
-            const data = await response.json();
-            if (data.success) {
-                this.state.followedUserIds = new Set(data.following.map(u => u.id));
-            }
-        } catch (e) {
-            console.error('Failed to load following:', e);
+    markForumSectionAsRead(sectionId) {
+        if (this.state.unreadCounts.forum[sectionId] !== undefined) {
+            this.state.unreadCounts.forum[sectionId] = 0;
         }
     },
     
+    // Get spa data (rooms, sections, permissions, quote)
+    getSpaData() {
+        return this.state.spaData || {};
+    },
+    
+    // Following - now loaded from Jinja2 data
     isFollowing(userId) {
         return this.state.followedUserIds.has(userId);
     },

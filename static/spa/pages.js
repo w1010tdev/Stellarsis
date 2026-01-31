@@ -115,14 +115,24 @@ const HomePage = {
     `,
     setup() {
         const store = StellarisStore;
-        const loading = Vue.ref(true);
-        const rooms = Vue.ref([]);
-        const sections = Vue.ref([]);
-        const roomPermissions = Vue.ref({});
-        const sectionPermissions = Vue.ref({});
+        const loading = Vue.ref(false);
+        const spaData = store.getSpaData();
+        const rooms = Vue.ref(spaData.rooms || []);
+        const sections = Vue.ref(spaData.sections || []);
+        const roomPermissions = Vue.ref(spaData.chatPermissions || {});
+        const sectionPermissions = Vue.ref(spaData.forumPermissions || {});
         const unreadCounts = Vue.computed(() => store.state.unreadCounts);
         
-        const quote = Vue.ref({ text: '加载中...', author: '' });
+        // Parse random quote from server data
+        const parseQuote = (quoteStr) => {
+            if (!quoteStr) return { text: '暂无名言', author: '' };
+            const parts = quoteStr.split(' - ');
+            return {
+                text: parts[0] || quoteStr,
+                author: parts[1] || ''
+            };
+        };
+        const quote = Vue.ref(parseQuote(spaData.randomQuote));
         const commits = Vue.ref([]);
         
         const unreadRooms = Vue.computed(() => {
@@ -142,11 +152,7 @@ const HomePage = {
                 const response = await fetch('/api/random_quote');
                 const data = await response.json();
                 if (data.success) {
-                    const parts = data.quote.split(' - ');
-                    quote.value = {
-                        text: parts[0] || data.quote,
-                        author: parts[1] || ''
-                    };
+                    quote.value = parseQuote(data.quote);
                 }
             } catch (e) {
                 console.error('Failed to load quote:', e);
@@ -177,33 +183,7 @@ const HomePage = {
             }
         };
         
-        const loadData = async () => {
-            loading.value = true;
-            try {
-                // Load chat rooms
-                const roomsRes = await fetch('/api/chat/rooms');
-                const roomsData = await roomsRes.json();
-                if (roomsData.success) {
-                    rooms.value = roomsData.rooms || [];
-                    roomPermissions.value = roomsData.permissions || {};
-                }
-                
-                // Load forum sections
-                const sectionsRes = await fetch('/api/forum/sections');
-                const sectionsData = await sectionsRes.json();
-                if (sectionsData.success) {
-                    sections.value = sectionsData.sections || [];
-                    sectionPermissions.value = sectionsData.permissions || {};
-                }
-            } catch (e) {
-                console.error('Failed to load data:', e);
-            }
-            loading.value = false;
-        };
-        
         Vue.onMounted(() => {
-            loadData();
-            refreshQuote();
             loadCommits();
         });
         
@@ -258,32 +238,17 @@ const ChatListPage = {
     `,
     setup() {
         const store = StellarisStore;
-        const loading = Vue.ref(true);
-        const rooms = Vue.ref([]);
-        const permissions = Vue.ref({});
+        const spaData = store.getSpaData();
+        const loading = Vue.ref(false);
+        const rooms = Vue.ref(spaData.rooms || []);
+        const permissions = Vue.ref(spaData.chatPermissions || {});
         const unreadCounts = Vue.computed(() => store.state.unreadCounts.chat);
         
         const navigateTo = (path) => {
             StellarisRouter.navigate(path);
         };
         
-        const loadRooms = async () => {
-            loading.value = true;
-            try {
-                const response = await fetch('/api/chat/rooms');
-                const data = await response.json();
-                if (data.success) {
-                    rooms.value = data.rooms || [];
-                    permissions.value = data.permissions || {};
-                }
-            } catch (e) {
-                console.error('Failed to load rooms:', e);
-                store.showToast('加载聊天室失败', 'error');
-            }
-            loading.value = false;
-        };
-        
-        Vue.onMounted(loadRooms);
+        Vue.onMounted(() => {});
         
         return {
             loading,
@@ -661,12 +626,19 @@ const ChatRoomPage = {
         const loadRoom = async () => {
             loading.value = true;
             try {
-                // Load room info
-                const roomRes = await fetch(`/api/chat/room/${roomId.value}`);
-                const roomData = await roomRes.json();
-                if (roomData.success) {
-                    room.value = roomData.room;
-                    permission.value = roomData.permission;
+                // Get room info from spaData
+                const spaData = store.getSpaData();
+                const roomInfo = (spaData.rooms || []).find(r => r.id === roomId.value);
+                const perm = (spaData.chatPermissions || {})[roomId.value] || 'Read';
+                
+                if (roomInfo) {
+                    room.value = roomInfo;
+                    permission.value = perm;
+                } else {
+                    // Fallback: room not found in spaData, show error
+                    store.showToast('聊天室不存在或无权限', 'error');
+                    loading.value = false;
+                    return;
                 }
                 
                 // Load history - API returns messages array directly, use page=last for latest
@@ -679,6 +651,11 @@ const ChatRoomPage = {
                     hasMore.value = historyData.has_more || (historyData.page > 0);
                     scrollToBottom();
                 }
+                
+                // Mark as read on server (update last view time)
+                fetch(`/api/spa/chat/${roomId.value}/mark_read`, { method: 'POST' });
+                // Mark as read in store (update unread count in sidebar/homepage)
+                store.markChatRoomAsRead(roomId.value);
                 
                 initSocket();
             } catch (e) {
@@ -803,31 +780,17 @@ const ForumListPage = {
     `,
     setup() {
         const store = StellarisStore;
-        const loading = Vue.ref(true);
-        const sections = Vue.ref([]);
-        const permissions = Vue.ref({});
+        const spaData = store.getSpaData();
+        const loading = Vue.ref(false);
+        const sections = Vue.ref(spaData.sections || []);
+        const permissions = Vue.ref(spaData.forumPermissions || {});
         const unreadCounts = Vue.computed(() => store.state.unreadCounts.forum);
         
         const navigateTo = (path) => {
             StellarisRouter.navigate(path);
         };
         
-        const loadSections = async () => {
-            loading.value = true;
-            try {
-                const response = await fetch('/api/forum/sections');
-                const data = await response.json();
-                if (data.success) {
-                    sections.value = data.sections || [];
-                    permissions.value = data.permissions || {};
-                }
-            } catch (e) {
-                store.showToast('加载贴吧分区失败', 'error');
-            }
-            loading.value = false;
-        };
-        
-        Vue.onMounted(loadSections);
+        Vue.onMounted(() => {});
         
         return {
             loading,
@@ -963,12 +926,14 @@ const ForumSectionPage = {
         const loadSection = async () => {
             loading.value = true;
             try {
-                const response = await fetch(`/api/forum/section/${sectionId.value}`);
+                const response = await fetch(`/api/spa/forum/section/${sectionId.value}`);
                 const data = await response.json();
                 if (data.success) {
                     section.value = data.section;
                     permission.value = data.permission;
                     threads.value = data.threads || [];
+                    // Mark as read in store (update unread count in sidebar/homepage)
+                    store.markForumSectionAsRead(sectionId.value);
                 }
             } catch (e) {
                 store.showToast('加载分区失败', 'error');
@@ -989,7 +954,7 @@ const ForumSectionPage = {
                 formData.append('title', newThread.title);
                 formData.append('content', newThread.content);
                 
-                const response = await fetch('/api/forum/thread', { method: 'POST', body: formData });
+                const response = await fetch('/api/spa/forum/thread', { method: 'POST', body: formData });
                 const data = await response.json();
                 
                 if (data.success) {
@@ -1192,7 +1157,7 @@ const ForumThreadPage = {
         const loadThread = async () => {
             loading.value = true;
             try {
-                const response = await fetch(`/api/forum/thread/${threadId.value}`);
+                const response = await fetch(`/api/spa/forum/thread/${threadId.value}`);
                 const data = await response.json();
                 if (data.success) {
                     thread.value = data.thread;
