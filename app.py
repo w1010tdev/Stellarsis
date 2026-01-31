@@ -535,7 +535,7 @@ class ChangePasswordForm(FlaskForm):
     ])
     new_password = PasswordField('新密码', validators=[
         DataRequired(message="新密码不能为空"),
-        Length(min=6, message="密码至少6个字符"),
+        Length(min=app.config['MIN_PASSWORD_LENGTH'], message=f"密码至少{app.config['MIN_PASSWORD_LENGTH']}个字符"),
         EqualTo('confirm_password', message='两次输入的密码必须一致')
     ])
     confirm_password = PasswordField('确认新密码', validators=[
@@ -1007,8 +1007,9 @@ def api_change_password():
         if not old_password or not new_password or not confirm_password:
             return jsonify({'success': False, 'message': '请填写所有字段'}), 400
         
-        if len(new_password) < 6:
-            return jsonify({'success': False, 'message': '新密码至少需要6个字符'}), 400
+        min_length = app.config.get('MIN_PASSWORD_LENGTH', 6)
+        if len(new_password) < min_length:
+            return jsonify({'success': False, 'message': f'新密码至少需要{min_length}个字符'}), 400
         
         if new_password != confirm_password:
             return jsonify({'success': False, 'message': '新密码和确认密码不一致'}), 400

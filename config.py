@@ -36,3 +36,6 @@ class Config:
     # 管理面板开关：用于在生产环境中禁用高风险功能
     ENABLE_FILE_MANAGER = os.environ.get('ENABLE_FILE_MANAGER', 'False').lower() in ('1','true','yes')
     ENABLE_SERVER_CONTROL = os.environ.get('ENABLE_SERVER_CONTROL', 'False').lower() in ('1','true','yes')
+    
+    # 密码验证配置
+    MIN_PASSWORD_LENGTH = 6  # 最小密码长度

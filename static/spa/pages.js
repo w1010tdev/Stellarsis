@@ -1427,10 +1427,12 @@ const SettingsPage = {
         const heartRainEnabled = Vue.ref(store.isHeartRainEnabled());
         const saving = Vue.ref(false);
         
+        // Safely initialize profile form with defaults
+        const user = store.state.user || {};
         const profileForm = Vue.reactive({
-            nickname: store.state.user.nickname || '',
-            color: store.state.user.color || '#000000',
-            badge: store.state.user.badge || ''
+            nickname: user.nickname || '',
+            color: user.color || '#000000',
+            badge: user.badge || ''
         });
         
         const passwordForm = Vue.reactive({
@@ -1487,8 +1489,10 @@ const SettingsPage = {
                 return;
             }
             
-            if (passwordForm.newPassword.length < 6) {
-                ElMessage.warning('新密码至少需要6个字符');
+            // Use constant from config (default to 6 if not available)
+            const minPasswordLength = 6; // TODO: Get from server config
+            if (passwordForm.newPassword.length < minPasswordLength) {
+                ElMessage.warning(`新密码至少需要${minPasswordLength}个字符`);
                 return;
             }
             
@@ -1719,7 +1723,7 @@ const AdminPage = {
                 const response = await fetch('/api/admin/system-info');
                 const data = await response.json();
                 if (data.success) {
-                    const info = `内存: ${data.memory_usage}\n时间: ${data.server_time}\nPython: ${data.python_version}\nFlask: ${data.flask_version}`;
+                    const info = `内存: ${data.memory_usage || 'N/A'}\n时间: ${data.server_time || 'N/A'}\nPython: ${data.python_version || 'N/A'}\nFlask: ${data.flask_version || 'N/A'}`;
                     showOutput(info, false);
                 } else {
                     showOutput('错误: ' + (data.message || JSON.stringify(data)), true);
