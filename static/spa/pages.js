@@ -349,7 +349,7 @@ const ChatRoomPage = {
                         </button>
                     </div>
                 </div>
-                <input type="file" ref="fileInput" style="display: none" @change="handleFileUpload">
+                <input type="file" ref="fileInput" style="display: none" @change="handleFileUpload" :accept="enableFileUpload ? '' : 'image/*'">
             </div>
             <div v-else class="chat-input-container" style="text-align: center; padding: 20px; color: var(--text-muted);">
                 当前权限不允许发送消息
@@ -404,6 +404,10 @@ const ChatRoomPage = {
         
         const canSend = Vue.computed(() => {
             return permission.value === 'su' || permission.value === '777';
+        });
+        
+        const enableFileUpload = Vue.computed(() => {
+            return store.state.config?.enableFileUpload || false;
         });
         
         const navigateTo = (path) => {
@@ -516,12 +520,17 @@ const ChatRoomPage = {
             const formData = new FormData();
             formData.append('file', file);
             
+            // Use the correct API endpoint based on config
+            const enableFileUpload = store.state.config?.enableFileUpload || false;
+            const uploadUrl = enableFileUpload ? '/api/upload/file' : '/api/upload/image';
+            
             try {
-                const response = await fetch('/api/upload', { method: 'POST', body: formData });
+                const response = await fetch(uploadUrl, { method: 'POST', body: formData });
                 const data = await response.json();
                 if (data.success) {
-                    messageText.value += ` ![${file.name}](${data.url})`;
-                    store.showToast('文件上传成功', 'success');
+                    // Use the markdown link from server response
+                    messageText.value += ` ${data.markdown || '![' + file.name + '](' + data.url + ')'}`;
+                    store.showToast((data.is_image ? '图片' : '文件') + '上传成功', 'success');
                 } else {
                     store.showToast('上传失败: ' + data.message, 'error');
                 }
@@ -725,6 +734,7 @@ const ChatRoomPage = {
             messageInput,
             fileInput,
             canSend,
+            enableFileUpload,
             navigateTo,
             formatDate,
             shouldShowDate,
@@ -862,11 +872,17 @@ const ForumSectionPage = {
                     <el-form-item label="内容">
                         <el-input v-model="newThread.content" type="textarea" :rows="8" placeholder="请输入帖子内容（支持Markdown和LaTeX）"></el-input>
                     </el-form-item>
+                    <el-form-item>
+                        <el-button @click="triggerUpload">
+                            <i class="fas fa-paperclip"></i> {{ enableFileUpload ? '上传文件' : '上传图片' }}
+                        </el-button>
+                    </el-form-item>
                 </el-form>
                 <template #footer>
                     <el-button @click="showNewThread = false">取消</el-button>
                     <el-button type="primary" @click="createThread" :loading="creating">发表</el-button>
                 </template>
+                <input type="file" ref="fileInput" style="display: none" @change="handleFileUpload" :accept="enableFileUpload ? '' : 'image/*'">
             </el-dialog>
         </div>
     `,
@@ -883,8 +899,45 @@ const ForumSectionPage = {
         const showNewThread = Vue.ref(false);
         const creating = Vue.ref(false);
         const newThread = Vue.reactive({ title: '', content: '' });
+        const fileInput = Vue.ref(null);
         
         const canPost = Vue.computed(() => permission.value === 'su' || permission.value === '777');
+        
+        const enableFileUpload = Vue.computed(() => {
+            return store.state.config?.enableFileUpload || false;
+        });
+        
+        const triggerUpload = () => {
+            fileInput.value?.click();
+        };
+        
+        const handleFileUpload = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // Use the correct API endpoint based on config
+            const uploadUrl = enableFileUpload.value ? '/api/upload/file' : '/api/upload/image';
+            
+            try {
+                const response = await fetch(uploadUrl, { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.success) {
+                    // Insert markdown link into content
+                    const markdown = data.markdown || '![' + file.name + '](' + data.url + ')';
+                    newThread.content = (newThread.content ? newThread.content + '\n' : '') + markdown;
+                    store.showToast((data.is_image ? '图片' : '文件') + '上传成功', 'success');
+                } else {
+                    store.showToast('上传失败: ' + data.message, 'error');
+                }
+            } catch (err) {
+                store.showToast('上传失败', 'error');
+            }
+            
+            fileInput.value.value = '';
+        };
         
         const navigateTo = (path) => {
             StellarisRouter.navigate(path);
@@ -955,10 +1008,14 @@ const ForumSectionPage = {
             showNewThread,
             creating,
             newThread,
+            fileInput,
             canPost,
+            enableFileUpload,
             navigateTo,
             formatTime,
             createThread,
+            triggerUpload,
+            handleFileUpload,
             ArrowLeft: ElementPlusIconsVue.ArrowLeft
         };
     }
@@ -1025,7 +1082,13 @@ const ForumThreadPage = {
                 <div v-if="canReply" class="card" style="margin-top: 24px;">
                     <h3 style="margin-bottom: 16px;">添加回复</h3>
                     <el-input v-model="replyContent" type="textarea" :rows="4" placeholder="输入回复内容...（支持Markdown和LaTeX）"></el-input>
-                    <el-button type="primary" style="margin-top: 16px;" @click="submitReply" :loading="submitting">回复</el-button>
+                    <div style="display: flex; gap: 12px; margin-top: 16px;">
+                        <el-button type="primary" @click="submitReply" :loading="submitting">回复</el-button>
+                        <el-button @click="triggerUpload">
+                            <i class="fas fa-paperclip"></i> {{ enableFileUpload ? '上传文件' : '上传图片' }}
+                        </el-button>
+                    </div>
+                    <input type="file" ref="fileInput" style="display: none" @change="handleFileUpload" :accept="enableFileUpload ? '' : 'image/*'">
                 </div>
             </template>
         </div>
@@ -1042,8 +1105,13 @@ const ForumThreadPage = {
         
         const replyContent = Vue.ref('');
         const submitting = Vue.ref(false);
+        const fileInput = Vue.ref(null);
         
         const canReply = Vue.computed(() => permission.value === 'su' || permission.value === '777');
+        
+        const enableFileUpload = Vue.computed(() => {
+            return store.state.config?.enableFileUpload || false;
+        });
         
         const canDeleteThread = Vue.computed(() => {
             if (permission.value === 'su') return true;
@@ -1055,6 +1123,38 @@ const ForumThreadPage = {
             if (permission.value === 'su') return true;
             if (permission.value === '777' && Number(reply.user?.id) === Number(store.state.user.id)) return true;
             return false;
+        };
+        
+        const triggerUpload = () => {
+            fileInput.value?.click();
+        };
+        
+        const handleFileUpload = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // Use the correct API endpoint based on config
+            const uploadUrl = enableFileUpload.value ? '/api/upload/file' : '/api/upload/image';
+            
+            try {
+                const response = await fetch(uploadUrl, { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.success) {
+                    // Insert markdown link into reply content
+                    const markdown = data.markdown || '![' + file.name + '](' + data.url + ')';
+                    replyContent.value = (replyContent.value ? replyContent.value + '\n' : '') + markdown;
+                    store.showToast((data.is_image ? '图片' : '文件') + '上传成功', 'success');
+                } else {
+                    store.showToast('上传失败: ' + data.message, 'error');
+                }
+            } catch (err) {
+                store.showToast('上传失败', 'error');
+            }
+            
+            fileInput.value.value = '';
         };
         
         const renderedContent = Vue.computed(() => {
@@ -1183,7 +1283,9 @@ const ForumThreadPage = {
             loading,
             replyContent,
             submitting,
+            fileInput,
             canReply,
+            enableFileUpload,
             canDeleteThread,
             canDeleteReply,
             renderedContent,
@@ -1193,6 +1295,8 @@ const ForumThreadPage = {
             submitReply,
             deleteThread,
             deleteReply,
+            triggerUpload,
+            handleFileUpload,
             ArrowLeft: ElementPlusIconsVue.ArrowLeft
         };
     }
