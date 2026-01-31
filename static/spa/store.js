@@ -148,14 +148,16 @@ const StellarisStore = {
     
     // Unread counts - now loaded from Jinja2 data, these methods are for reactively clearing them
     markChatRoomAsRead(roomId) {
-        if (this.state.unreadCounts.chat[roomId] !== undefined) {
-            this.state.unreadCounts.chat[roomId] = 0;
+        const id = parseInt(roomId, 10);
+        if (this.state.unreadCounts.chat[id] !== undefined) {
+            this.state.unreadCounts.chat[id] = 0;
         }
     },
     
     markForumSectionAsRead(sectionId) {
-        if (this.state.unreadCounts.forum[sectionId] !== undefined) {
-            this.state.unreadCounts.forum[sectionId] = 0;
+        const id = parseInt(sectionId, 10);
+        if (this.state.unreadCounts.forum[id] !== undefined) {
+            this.state.unreadCounts.forum[id] = 0;
         }
     },
     

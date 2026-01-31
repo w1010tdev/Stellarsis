@@ -628,8 +628,9 @@ const ChatRoomPage = {
             try {
                 // Get room info from spaData
                 const spaData = store.getSpaData();
-                const roomInfo = (spaData.rooms || []).find(r => r.id === roomId.value);
-                const perm = (spaData.chatPermissions || {})[roomId.value] || 'Read';
+                const roomIdNum = parseInt(roomId.value, 10);
+                const roomInfo = (spaData.rooms || []).find(r => r.id === roomIdNum);
+                const perm = (spaData.chatPermissions || {})[roomIdNum] || 'Read';
                 
                 if (roomInfo) {
                     room.value = roomInfo;
