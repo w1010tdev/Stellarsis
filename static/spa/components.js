@@ -333,26 +333,61 @@ const CommandPaletteComponent = {
         
         // Helper: Focus an element
         const focusElement = (selector) => {
-            const el = document.querySelector(selector);
+            const candidates = document.querySelectorAll(selector);
+            const isFocusable = (el) => {
+                if (!(el instanceof HTMLElement)) return false;
+                // Skip disabled controls
+                if (typeof el.disabled !== 'undefined' && el.disabled) return false;
+                const style = window.getComputedStyle(el);
+                if (style.display === 'none' || style.visibility === 'hidden') return false;
+                const rect = el.getBoundingClientRect();
+                if (rect.width === 0 && rect.height === 0) return false;
+                return true;
+            };
+
+            const el = Array.from(candidates).find(isFocusable);
+
             if (el) {
                 el.focus();
                 // Move cursor to end for text inputs
-                if (el.setSelectionRange && el.value) {
+                if (typeof el.setSelectionRange === 'function' && typeof el.value === 'string') {
                     const len = el.value.length;
                     el.setSelectionRange(len, len);
                 }
                 output.value = '已聚焦元素';
                 setTimeout(() => store.closeCommandPalette(), AUTO_CLOSE_DELAY);
             } else {
-                output.value = '未找到目标元素';
+                output.value = '未找到可聚焦的目标元素';
             }
         };
         
         // Helper: Click a button
         const clickButton = (textContent) => {
-            // Find button by text content
+            // Guard against empty search text
+            if (!textContent) {
+                output.value = '未找到目标按钮';
+                return;
+            }
+
+            // Normalize target text: trim, collapse whitespace, lowercase
+            const normalizedTarget = textContent.trim().toLowerCase();
+
+            // Find button by (normalized) text content
             const buttons = Array.from(document.querySelectorAll('button, .el-button'));
-            const el = buttons.find(btn => btn.textContent.includes(textContent));
+            const normalize = (node) =>
+                (node.textContent || '')
+                    .replace(/\s+/g, ' ')
+                    .trim()
+                    .toLowerCase();
+
+            // Prefer exact normalized text matches
+            let el = buttons.find(btn => normalize(btn) === normalizedTarget);
+
+            // Fallback: substring match on normalized text (preserves previous behavior)
+            if (!el) {
+                el = buttons.find(btn => normalize(btn).includes(normalizedTarget));
+            }
+
             if (el) {
                 el.click();
                 output.value = '已触发点击';
@@ -368,6 +403,8 @@ const CommandPaletteComponent = {
             if (container) {
                 container.scrollTop = container.scrollHeight;
                 output.value = '已滚动到底部';
+            } else {
+                output.value = '未找到滚动容器';
             }
         };
         
@@ -377,12 +414,18 @@ const CommandPaletteComponent = {
             if (container) {
                 container.scrollTop = 0;
                 output.value = '已滚动到顶部';
+            } else {
+                output.value = '未找到滚动容器';
             }
         };
         
-        const updateSuggestions = () => {
+        // Clear output when user types (suggestions update automatically via computed property)
+        const clearOutputOnInput = () => {
             output.value = '';
         };
+        
+        // Backwards-compatible alias for template binding
+        const updateSuggestions = clearOutputOnInput;
         
         const executeCommand = (cmdText) => {
             const input = (cmdText || query.value).trim();
@@ -444,21 +487,32 @@ const CommandPaletteComponent = {
                 if (filteredCommands.value.length === 1) {
                     query.value = filteredCommands.value[0].name;
                 } else if (filteredCommands.value.length > 1) {
-                    // Find common prefix (preserve original casing)
+                    // Find common prefix (case-insensitive comparison)
                     const first = filteredCommands.value[0].name;
-                    let prefixLen = first.length;
+                    const firstLower = first.toLowerCase();
+                    let prefixLen = firstLower.length;
                     
                     for (let i = 1; i < filteredCommands.value.length; i++) {
                         const name = filteredCommands.value[i].name;
+                        const nameLower = name.toLowerCase();
                         let j = 0;
-                        while (j < prefixLen && j < name.length && first[j].toLowerCase() === name[j].toLowerCase()) {
+                        while (j < prefixLen && j < nameLower.length && firstLower[j] === nameLower[j]) {
                             j++;
                         }
                         prefixLen = j;
                     }
                     
                     if (prefixLen > query.value.length) {
-                        query.value = first.substring(0, prefixLen);
+                        // Preserve user-typed casing, use command name casing for new characters
+                        let completed = '';
+                        for (let i = 0; i < prefixLen; i++) {
+                            if (i < query.value.length) {
+                                completed += query.value[i];
+                            } else {
+                                completed += first[i];
+                            }
+                        }
+                        query.value = completed;
                     }
                 }
             }
@@ -481,6 +535,8 @@ const CommandPaletteComponent = {
             document.addEventListener('keydown', (e) => {
                 const active = document.activeElement;
                 const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
+                // Open palette when ':' is pressed outside input fields
+                // Note: If palette is open and user types in command input, ':' is handled by the input itself (isInput is true)
                 if (e.key === ':' && !isInput && !store.state.commandPaletteOpen) {
                     e.preventDefault();
                     store.openCommandPalette();
