@@ -3,6 +3,24 @@
  * Vue page components for routing
  */
 
+// Upload Helper Functions
+const uploadHelpers = {
+    // Get the correct upload URL based on config
+    getUploadUrl(enableFileUpload) {
+        return enableFileUpload ? '/api/upload/file' : '/api/upload/image';
+    },
+    
+    // Generate markdown link from upload response
+    getMarkdown(data, fileName) {
+        return data.markdown || '![' + fileName + '](' + data.url + ')';
+    },
+    
+    // Get success message based on file type
+    getSuccessMessage(data) {
+        return (data.is_image ? '图片' : '文件') + '上传成功';
+    }
+};
+
 // Home Page
 const HomePage = {
     name: 'HomePage',
@@ -520,17 +538,14 @@ const ChatRoomPage = {
             const formData = new FormData();
             formData.append('file', file);
             
-            // Use the correct API endpoint based on config
-            const enableFileUpload = store.state.config?.enableFileUpload || false;
-            const uploadUrl = enableFileUpload ? '/api/upload/file' : '/api/upload/image';
+            const uploadUrl = uploadHelpers.getUploadUrl(enableFileUpload.value);
             
             try {
                 const response = await fetch(uploadUrl, { method: 'POST', body: formData });
                 const data = await response.json();
                 if (data.success) {
-                    // Use the markdown link from server response
-                    messageText.value += ` ${data.markdown || '![' + file.name + '](' + data.url + ')'}`;
-                    store.showToast((data.is_image ? '图片' : '文件') + '上传成功', 'success');
+                    messageText.value += ` ${uploadHelpers.getMarkdown(data, file.name)}`;
+                    store.showToast(uploadHelpers.getSuccessMessage(data), 'success');
                 } else {
                     store.showToast('上传失败: ' + data.message, 'error');
                 }
@@ -918,17 +933,15 @@ const ForumSectionPage = {
             const formData = new FormData();
             formData.append('file', file);
             
-            // Use the correct API endpoint based on config
-            const uploadUrl = enableFileUpload.value ? '/api/upload/file' : '/api/upload/image';
+            const uploadUrl = uploadHelpers.getUploadUrl(enableFileUpload.value);
             
             try {
                 const response = await fetch(uploadUrl, { method: 'POST', body: formData });
                 const data = await response.json();
                 if (data.success) {
-                    // Insert markdown link into content
-                    const markdown = data.markdown || '![' + file.name + '](' + data.url + ')';
+                    const markdown = uploadHelpers.getMarkdown(data, file.name);
                     newThread.content = (newThread.content ? newThread.content + '\n' : '') + markdown;
-                    store.showToast((data.is_image ? '图片' : '文件') + '上传成功', 'success');
+                    store.showToast(uploadHelpers.getSuccessMessage(data), 'success');
                 } else {
                     store.showToast('上传失败: ' + data.message, 'error');
                 }
@@ -1136,17 +1149,15 @@ const ForumThreadPage = {
             const formData = new FormData();
             formData.append('file', file);
             
-            // Use the correct API endpoint based on config
-            const uploadUrl = enableFileUpload.value ? '/api/upload/file' : '/api/upload/image';
+            const uploadUrl = uploadHelpers.getUploadUrl(enableFileUpload.value);
             
             try {
                 const response = await fetch(uploadUrl, { method: 'POST', body: formData });
                 const data = await response.json();
                 if (data.success) {
-                    // Insert markdown link into reply content
-                    const markdown = data.markdown || '![' + file.name + '](' + data.url + ')';
+                    const markdown = uploadHelpers.getMarkdown(data, file.name);
                     replyContent.value = (replyContent.value ? replyContent.value + '\n' : '') + markdown;
-                    store.showToast((data.is_image ? '图片' : '文件') + '上传成功', 'success');
+                    store.showToast(uploadHelpers.getSuccessMessage(data), 'success');
                 } else {
                     store.showToast('上传失败: ' + data.message, 'error');
                 }
