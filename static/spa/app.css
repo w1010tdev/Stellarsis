@@ -1389,6 +1389,131 @@ html.dark .command-help-text {
     background: rgba(0, 0, 0, 0.2);
 }
 
+/* Command Palette Help View */
+.command-palette.help-mode {
+    max-width: 720px;
+}
+
+.command-help-view {
+    max-height: 500px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.help-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.help-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.help-header h3 i {
+    color: var(--primary);
+}
+
+.help-close-btn {
+    background: none;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    color: var(--text-muted);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.help-close-btn:hover {
+    background: var(--border-color);
+    color: var(--text-primary);
+}
+
+.help-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+}
+
+.help-category {
+    margin-bottom: 20px;
+}
+
+.help-category:last-child {
+    margin-bottom: 0;
+}
+
+.help-category-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.help-command-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.help-command-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.help-command-item:hover {
+    background: rgba(99, 102, 241, 0.08);
+}
+
+.help-cmd-icon {
+    width: 18px;
+    text-align: center;
+    color: var(--primary);
+    font-size: 13px;
+}
+
+.help-cmd-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-primary);
+    min-width: 120px;
+}
+
+.help-cmd-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.help-footer {
+    padding: 12px 20px;
+    font-size: 12px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.02);
+    text-align: center;
+}
+
+html.dark .help-footer {
+    background: rgba(0, 0, 0, 0.2);
+}
+
 /* Scrollbar Styles */
 ::-webkit-scrollbar {
     width: 8px;

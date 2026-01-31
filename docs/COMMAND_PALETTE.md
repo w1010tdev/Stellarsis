@@ -1,5 +1,7 @@
 # 命令面板使用指南 / Command Palette Guide
 
+> ⚠️ **注意**: 本文档是传统版本（非 SPA）的命令面板文档。如果您使用的是 SPA 版本（/spa），请参阅 [COMMAND_PALETTE_SPA.md](./COMMAND_PALETTE_SPA.md)。
+
 本文档详细介绍 Stellarsis 命令面板的使用方法和 Bash 风格特性。
 
 ## 概览 / Overview

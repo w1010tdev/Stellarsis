@@ -169,14 +169,41 @@ const CommandPaletteComponent = {
     name: 'CommandPaletteComponent',
     template: `
         <div class="command-palette-overlay" :class="{ show: store.state.commandPaletteOpen }" @click.self="store.closeCommandPalette()">
-            <div class="command-palette">
+            <div class="command-palette" :class="{ 'help-mode': showHelpView }">
                 <input class="command-input" 
                        ref="commandInput"
                        v-model="query" 
                        @keydown="handleKeydown"
                        @input="updateSuggestions"
                        placeholder="输入命令（例如: help, go home, send）">
-                <div class="command-suggestions">
+                
+                <!-- Help View - Full Command List -->
+                <div v-if="showHelpView" class="command-help-view">
+                    <div class="help-header">
+                        <h3><i class="fas fa-question-circle"></i> 命令帮助</h3>
+                        <button class="help-close-btn" @click="showHelpView = false">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="help-content">
+                        <div v-for="(commands, category) in commandsByCategory" :key="category" class="help-category">
+                            <h4 class="help-category-title">{{ getCategoryName(category) }}</h4>
+                            <div class="help-command-list">
+                                <div v-for="cmd in commands" :key="cmd.name" class="help-command-item" @click="executeCommand(cmd.name); showHelpView = false">
+                                    <i :class="cmd.icon" class="help-cmd-icon"></i>
+                                    <span class="help-cmd-name">{{ cmd.name }}</span>
+                                    <span class="help-cmd-desc">{{ cmd.desc }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="help-footer">
+                        共 {{ allCommands.length }} 个命令可用 | 点击命令可直接执行
+                    </div>
+                </div>
+                
+                <!-- Normal Command Suggestions -->
+                <div v-else class="command-suggestions">
                     <div v-if="output" class="command-item output-item">
                         <i class="fas fa-terminal"></i>
                         <span class="command-item-name">{{ output }}</span>
@@ -192,8 +219,8 @@ const CommandPaletteComponent = {
                         <span class="command-item-desc">{{ result.desc }}</span>
                     </div>
                 </div>
-                <div class="command-help-text">
-                    按 Enter 执行，Tab 补全，Esc 退出 | 支持模糊搜索
+                <div class="command-help-text" v-if="!showHelpView">
+                    按 Enter 执行，Tab 补全，Esc 退出 | 输入 help 查看完整命令列表
                 </div>
             </div>
         </div>
@@ -204,6 +231,7 @@ const CommandPaletteComponent = {
         const output = Vue.ref('');
         const commandInput = Vue.ref(null);
         const commandHistory = Vue.ref([]); // Store recently executed command names
+        const showHelpView = Vue.ref(false); // Show full help view
         
         // Constants
         const AUTO_CLOSE_DELAY = 400; // Consistent delay for auto-closing palette
@@ -292,6 +320,34 @@ const CommandPaletteComponent = {
                 return true;
             });
         });
+        
+        // Group commands by category for help view
+        const commandsByCategory = Vue.computed(() => {
+            const grouped = {};
+            allCommands.value.forEach(cmd => {
+                const cat = cmd.category || 'other';
+                if (!grouped[cat]) {
+                    grouped[cat] = [];
+                }
+                grouped[cat].push(cmd);
+            });
+            return grouped;
+        });
+        
+        // Get human-readable category name
+        const getCategoryName = (category) => {
+            const names = {
+                'info': '📋 信息与帮助',
+                'navigation': '🧭 导航',
+                'theme': '🎨 主题',
+                'focus': '🎯 焦点',
+                'ui': '🖼️ 界面',
+                'action': '⚡ 操作',
+                'system': '⚙️ 系统',
+                'other': '📦 其他'
+            };
+            return names[category] || category;
+        };
         
         // Display commands - put recently executed commands at the top
         const displayCommands = Vue.computed(() => {
@@ -497,8 +553,9 @@ const CommandPaletteComponent = {
                 } else {
                     // Handle special commands
                     if (input === 'help') {
-                        const categories = [...new Set(allCommands.value.map(c => c.category))];
-                        output.value = `可用命令分类: ${categories.join(', ')}。共 ${allCommands.value.length} 个命令`;
+                        // Show the full help view with all commands
+                        showHelpView.value = true;
+                        output.value = '';
                     } else if (input === 'pwd') {
                         const route = getCurrentRoute();
                         output.value = `当前路径: ${route.path}`;
@@ -568,6 +625,7 @@ const CommandPaletteComponent = {
             } else {
                 query.value = '';
                 output.value = '';
+                showHelpView.value = false;
             }
         });
         
@@ -584,7 +642,11 @@ const CommandPaletteComponent = {
                 }
                 if (e.key === 'Escape' && store.state.commandPaletteOpen) {
                     e.preventDefault();
-                    store.closeCommandPalette();
+                    if (showHelpView.value) {
+                        showHelpView.value = false;
+                    } else {
+                        store.closeCommandPalette();
+                    }
                 }
             });
         });
@@ -594,9 +656,12 @@ const CommandPaletteComponent = {
             query,
             output,
             commandInput,
+            showHelpView,
             allCommands,
             displayCommands,
             filteredCommands,
+            commandsByCategory,
+            getCategoryName,
             executeCommand,
             handleKeydown,
             updateSuggestions
