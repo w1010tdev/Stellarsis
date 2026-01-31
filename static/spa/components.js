@@ -695,12 +695,12 @@ const MessageComponent = {
     name: 'MessageComponent',
     template: `
         <div class="message" :class="{ 'heart-border': hasHeartEffect, 'message-self': isSelf, 'message-other': !isSelf }" :data-message-id="message.id">
-            <div class="message-avatar" v-if="!isSelf" :style="{ background: userColor }">
+            <div class="message-avatar" :style="{ background: userColor }">
                 {{ userInitial }}
             </div>
             <div class="message-content">
                 <div class="message-header">
-                    <span class="message-username" :style="{ color: userColor }">{{ displayName }}</span>
+                    <span class="message-username" :style="{ color: isSelf ? 'rgba(255, 255, 255, 0.95)' : userColor }">{{ displayName }}</span>
                     <span class="message-badge" v-if="message.badge" :style="{ background: userColor }">{{ message.badge }}</span>
                     <span class="message-time">{{ formattedTime }}</span>
                 </div>
@@ -713,9 +713,6 @@ const MessageComponent = {
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
-            </div>
-            <div class="message-avatar" v-if="isSelf" :style="{ background: userColor }">
-                {{ userInitial }}
             </div>
         </div>
     `,

@@ -605,14 +605,13 @@ html.dark .user-info:hover {
     transform: translateY(-1px);
 }
 
-/* Self messages - Right aligned, gradient background */
+/* Self messages - Left aligned (same as others), gradient background for distinction */
 .message-self {
-    align-self: flex-end;
-    flex-direction: row-reverse;
+    align-self: flex-start;
     background: var(--bubble-self);
     color: var(--bubble-self-text);
     border: none;
-    border-bottom-right-radius: 6px;
+    border-radius: var(--radius-lg);
     box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25);
 }
 
@@ -622,11 +621,11 @@ html.dark .user-info:hover {
 }
 
 .message-self .message-content {
-    text-align: right;
+    text-align: left;
 }
 
 .message-self .message-header {
-    justify-content: flex-end;
+    justify-content: flex-start;
 }
 
 .message-self .message-username,
@@ -644,7 +643,7 @@ html.dark .user-info:hover {
 }
 
 .message-self .message-actions {
-    justify-content: flex-end;
+    justify-content: flex-start;
 }
 
 .message-avatar {
@@ -696,6 +695,34 @@ html.dark .user-info:hover {
     font-size: 15px;
     line-height: 1.65;
     word-break: break-word;
+}
+
+/* Scale images in messages */
+.message-text img {
+    max-width: 300px;
+    max-height: 200px;
+    width: auto;
+    height: auto;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: transform var(--transition-fast);
+    object-fit: contain;
+}
+
+.message-text img:hover {
+    transform: scale(1.02);
+}
+
+/* Click to view full-size image */
+.message-text img.fullsize {
+    max-width: 90vw;
+    max-height: 90vh;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10000;
+    box-shadow: var(--shadow-xl);
 }
 
 .message-text pre {
