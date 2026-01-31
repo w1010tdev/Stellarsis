@@ -177,7 +177,11 @@ const CommandPaletteComponent = {
                        @input="updateSuggestions"
                        placeholder="输入命令（例如: help, go home, send）">
                 <div class="command-suggestions">
-                    <div v-if="!query" class="command-item" v-for="cmd in allCommands.slice(0, 15)" :key="cmd.name" @click="executeCommand(cmd.name)">
+                    <div v-if="output" class="command-item output-item">
+                        <i class="fas fa-terminal"></i>
+                        <span class="command-item-name">{{ output }}</span>
+                    </div>
+                    <div v-if="!query" class="command-item" v-for="cmd in displayCommands" :key="cmd.name" @click="executeCommand(cmd.name)">
                         <i :class="cmd.icon"></i>
                         <span class="command-item-name">{{ cmd.name }}</span>
                         <span class="command-item-desc">{{ cmd.desc }}</span>
@@ -186,10 +190,6 @@ const CommandPaletteComponent = {
                         <i :class="result.icon"></i>
                         <span class="command-item-name">{{ result.name }}</span>
                         <span class="command-item-desc">{{ result.desc }}</span>
-                    </div>
-                    <div v-if="output" class="command-item output-item">
-                        <i class="fas fa-terminal"></i>
-                        <span class="command-item-name">{{ output }}</span>
                     </div>
                 </div>
                 <div class="command-help-text">
@@ -203,6 +203,7 @@ const CommandPaletteComponent = {
         const query = Vue.ref('');
         const output = Vue.ref('');
         const commandInput = Vue.ref(null);
+        const commandHistory = Vue.ref([]); // Store recently executed command names
         
         // Constants
         const AUTO_CLOSE_DELAY = 400; // Consistent delay for auto-closing palette
@@ -290,6 +291,28 @@ const CommandPaletteComponent = {
                 if (cmd.adminRequired && !store.state.user.isAdmin) return false;
                 return true;
             });
+        });
+        
+        // Display commands - put recently executed commands at the top
+        const displayCommands = Vue.computed(() => {
+            const history = commandHistory.value;
+            const all = allCommands.value;
+            
+            // Get recently executed commands (in reverse order, most recent first)
+            const recentCmds = [];
+            for (let i = history.length - 1; i >= 0 && recentCmds.length < 5; i--) {
+                const cmdName = history[i];
+                const cmd = all.find(c => c.name === cmdName);
+                if (cmd && !recentCmds.some(c => c.name === cmdName)) {
+                    recentCmds.push({ ...cmd, isRecent: true });
+                }
+            }
+            
+            // Get other commands (excluding recent ones)
+            const otherCmds = all.filter(cmd => !recentCmds.some(r => r.name === cmd.name));
+            
+            // Return recent commands first, then others
+            return [...recentCmds, ...otherCmds].slice(0, 15);
         });
         
         // Fuzzy match helper
@@ -427,6 +450,21 @@ const CommandPaletteComponent = {
         // Backwards-compatible alias for template binding
         const updateSuggestions = clearOutputOnInput;
         
+        // Add command to history (most recent at the end, but displayed in reverse)
+        const addToHistory = (cmdName) => {
+            // Remove duplicate if exists
+            const index = commandHistory.value.indexOf(cmdName);
+            if (index > -1) {
+                commandHistory.value.splice(index, 1);
+            }
+            // Add to end (will be shown first due to reverse iteration)
+            commandHistory.value.push(cmdName);
+            // Keep only last 10 commands
+            if (commandHistory.value.length > 10) {
+                commandHistory.value.shift();
+            }
+        };
+        
         const executeCommand = (cmdText) => {
             const input = (cmdText || query.value).trim();
             if (!input) return;
@@ -437,6 +475,9 @@ const CommandPaletteComponent = {
             const matchedCmd = allCommands.value.find(cmd => cmd.name.toLowerCase() === input.toLowerCase());
             
             if (matchedCmd) {
+                // Add to history
+                addToHistory(matchedCmd.name);
+                
                 // Execute command action
                 if (matchedCmd.action) {
                     try {
@@ -554,6 +595,7 @@ const CommandPaletteComponent = {
             output,
             commandInput,
             allCommands,
+            displayCommands,
             filteredCommands,
             executeCommand,
             handleKeydown,
