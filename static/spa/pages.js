@@ -1450,32 +1450,28 @@ const SettingsPage = {
         const saveProfile = async () => {
             saving.value = true;
             try {
-                const formData = new FormData();
-                formData.append('nickname', profileForm.nickname || '');
-                formData.append('color', profileForm.color || '#000000');
-                formData.append('badge', profileForm.badge || '');
-                
-                // Need CSRF token - use standard form approach
-                const response = await fetch('/profile', {
-                    method: 'POST',
+                const response = await fetch('/api/profile', {
+                    method: 'PUT',
                     headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Content-Type': 'application/json',
                     },
-                    body: new URLSearchParams({
+                    body: JSON.stringify({
                         nickname: profileForm.nickname || '',
                         color: profileForm.color || '#000000',
                         badge: profileForm.badge || ''
                     })
                 });
                 
-                if (response.ok) {
-                    ElMessage.success('个人资料已更新');
+                const data = await response.json();
+                
+                if (data.success) {
+                    ElMessage.success(data.message);
                     // Update store
                     store.state.user.nickname = profileForm.nickname;
                     store.state.user.color = profileForm.color;
                     store.state.user.badge = profileForm.badge;
                 } else {
-                    ElMessage.error('保存失败，请重试');
+                    ElMessage.error(data.message || '保存失败，请重试');
                 }
             } catch (error) {
                 console.error('Save profile error:', error);
@@ -1503,30 +1499,27 @@ const SettingsPage = {
             
             saving.value = true;
             try {
-                const response = await fetch('/change_password', {
-                    method: 'POST',
+                const response = await fetch('/api/change_password', {
+                    method: 'PUT',
                     headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Content-Type': 'application/json',
                     },
-                    body: new URLSearchParams({
+                    body: JSON.stringify({
                         old_password: passwordForm.oldPassword,
                         new_password: passwordForm.newPassword,
                         confirm_password: passwordForm.confirmPassword
                     })
                 });
                 
-                if (response.ok) {
-                    ElMessage.success('密码已成功修改');
+                const data = await response.json();
+                
+                if (data.success) {
+                    ElMessage.success(data.message);
                     passwordForm.oldPassword = '';
                     passwordForm.newPassword = '';
                     passwordForm.confirmPassword = '';
                 } else {
-                    const text = await response.text();
-                    if (text.includes('当前密码错误')) {
-                        ElMessage.error('当前密码错误');
-                    } else {
-                        ElMessage.error('修改失败，请重试');
-                    }
+                    ElMessage.error(data.message || '修改失败，请重试');
                 }
             } catch (error) {
                 console.error('Change password error:', error);
