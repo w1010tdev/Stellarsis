@@ -1489,8 +1489,8 @@ const SettingsPage = {
                 return;
             }
             
-            // Use constant from config (default to 6 if not available)
-            const minPasswordLength = 6; // TODO: Get from server config
+            // Get minimum password length from server config
+            const minPasswordLength = StellarisStore.state.config?.minPasswordLength || 6;
             if (passwordForm.newPassword.length < minPasswordLength) {
                 ElMessage.warning(`新密码至少需要${minPasswordLength}个字符`);
                 return;

@@ -535,7 +535,7 @@ class ChangePasswordForm(FlaskForm):
     ])
     new_password = PasswordField('新密码', validators=[
         DataRequired(message="新密码不能为空"),
-        Length(min=app.config['MIN_PASSWORD_LENGTH'], message=f"密码至少{app.config['MIN_PASSWORD_LENGTH']}个字符"),
+        Length(min=6, message="密码至少6个字符"),  # Note: Using constant 6 to match Config.MIN_PASSWORD_LENGTH
         EqualTo('confirm_password', message='两次输入的密码必须一致')
     ])
     confirm_password = PasswordField('确认新密码', validators=[
