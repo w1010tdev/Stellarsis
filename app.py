@@ -957,6 +957,7 @@ def profile():
 # API endpoints for SPA
 @app.route('/api/profile', methods=['PUT'])
 @login_required
+@limiter.limit("10 per minute")
 def api_update_profile():
     """API endpoint for updating user profile from SPA"""
     try:
@@ -964,7 +965,6 @@ def api_update_profile():
         
         # Validate color format if provided
         if 'color' in data and data['color']:
-            import re
             if not re.match(r'^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$', data['color']):
                 return jsonify({'success': False, 'message': '颜色格式必须是#RGB或#RRGGBB'}), 400
         
@@ -994,6 +994,7 @@ def api_update_profile():
 
 @app.route('/api/change_password', methods=['PUT'])
 @login_required
+@limiter.limit("3 per minute")
 def api_change_password():
     """API endpoint for changing password from SPA"""
     try:

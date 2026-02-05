@@ -1370,7 +1370,7 @@ const SettingsPage = {
                         <div class="requirements" style="margin-bottom: 20px; padding: 15px; background: var(--surface-color); border-radius: 8px;">
                             <p style="font-weight: 600; margin-bottom: 8px;">密码要求:</p>
                             <ul style="margin-left: 20px;">
-                                <li>至少6个字符</li>
+                                <li>至少{{ store.state.config?.minPasswordLength || 6 }}个字符</li>
                                 <li>新密码和确认密码必须一致</li>
                             </ul>
                         </div>
@@ -1705,7 +1705,7 @@ const AdminPage = {
         const outputVisible = Vue.ref(false);
         const outputText = Vue.ref('');
         const outputError = Vue.ref(false);
-        const serverControlEnabled = Vue.ref(false); // Will be set from config
+        const serverControlEnabled = Vue.ref(StellarisStore.state.config?.enableServerControl || false);
         
         const showOutput = (text, isError = false) => {
             outputText.value = text;
@@ -1741,7 +1741,7 @@ const AdminPage = {
                 const response = await fetch('/api/admin/system-log');
                 const data = await response.json();
                 if (data.success) {
-                    const logs = data.logs.map(l => `[${l.timestamp}] ${l.message}`).join('\n\n');
+                    const logs = (data.logs || []).map(l => `[${l.timestamp}] ${l.message}`).join('\n\n');
                     showOutput(logs || '无日志', false);
                 } else {
                     showOutput('获取日志失败: ' + (data.message || JSON.stringify(data)), true);
