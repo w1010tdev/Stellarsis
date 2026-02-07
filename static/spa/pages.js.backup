@@ -1933,392 +1933,131 @@ const AdminPage = {
         <div class="page-container">
             <h2 style="margin-bottom: 24px;">管理面板</h2>
             
-            <el-tabs v-model="activeTab" type="border-card">
-                <!-- System Tools Tab -->
-                <el-tab-pane label="系统工具" name="system">
-                    <el-card shadow="hover" style="margin-bottom: 24px;">
-                        <template #header>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <i class="fas fa-tools"></i>
-                                <span>系统工具</span>
-                            </div>
-                        </template>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-                            <el-button @click="getSystemInfo" :loading="loading.systemInfo">
-                                <i class="fas fa-info-circle"></i> 系统信息
-                            </el-button>
-                            <el-button @click="viewLogs" :loading="loading.logs">
-                                <i class="fas fa-file-alt"></i> 查看日志
-                            </el-button>
-                            <el-button @click="clearCache" :loading="loading.clearCache">
-                                <i class="fas fa-broom"></i> 清除缓存
-                            </el-button>
-                            <el-button @click="backupDatabase" :loading="loading.backup">
-                                <i class="fas fa-save"></i> 备份数据库
-                            </el-button>
-                            <el-button @click="optimizeDatabase" :loading="loading.optimize">
-                                <i class="fas fa-cog"></i> 优化数据库
-                            </el-button>
-                            <el-button @click="recountFiles" :loading="loading.recount">
-                                <i class="fas fa-sync"></i> 重新统计文件
-                            </el-button>
-                        </div>
-                    </el-card>
-                    
-                    <!-- Backup & Download -->
-                    <el-card shadow="hover" style="margin-bottom: 24px;">
-                        <template #header>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <i class="fas fa-download"></i>
-                                <span>备份下载</span>
-                            </div>
-                        </template>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-                            <el-button @click="downloadProject">
-                                <i class="fas fa-folder-open"></i> 下载项目根目录
-                            </el-button>
-                            <el-button @click="downloadDatabase">
-                                <i class="fas fa-database"></i> 下载数据库文件
-                            </el-button>
-                            <el-button @click="downloadImages">
-                                <i class="fas fa-images"></i> 下载图片压缩包
-                            </el-button>
-                        </div>
-                    </el-card>
-                    
-                    <!-- Server Control (if enabled) -->
-                    <el-card shadow="hover" v-if="serverControlEnabled">
-                        <template #header>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <i class="fas fa-server"></i>
-                                <span style="color: var(--danger-color);">服务器控制</span>
-                            </div>
-                        </template>
-                        <el-alert type="warning" :closable="false" style="margin-bottom: 16px;">
-                            <template #title>危险操作：请谨慎使用以下功能</template>
-                        </el-alert>
-                        <div style="display: flex; gap: 12px;">
-                            <el-button type="warning" @click="restartServer" :loading="loading.restart">
-                                <i class="fas fa-redo"></i> 重启服务器
-                            </el-button>
-                            <el-button type="danger" @click="shutdownServer" :loading="loading.shutdown">
-                                <i class="fas fa-power-off"></i> 关停服务器
-                            </el-button>
-                        </div>
-                    </el-card>
-                    
-                    <!-- Output Display -->
-                    <el-card v-if="outputVisible" shadow="hover" :class="outputError ? 'error-output' : 'success-output'">
-                        <template #header>
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span>{{ outputError ? '错误信息' : '执行结果' }}</span>
-                                <el-button size="small" text @click="outputVisible = false">
-                                    <i class="fas fa-times"></i>
-                                </el-button>
-                            </div>
-                        </template>
-                        <pre style="white-space: pre-wrap; word-break: break-word; margin: 0; font-size: 14px; max-height: 400px; overflow-y: auto;">{{ outputText }}</pre>
-                    </el-card>
-                </el-tab-pane>
+            <!-- Management Cards -->
+            <div class="admin-grid" style="margin-bottom: 32px;">
+                <div class="admin-card" @click="goToUrl('/admin/users')" style="cursor: pointer;">
+                    <div class="admin-card-icon blue"><i class="fas fa-users"></i></div>
+                    <div class="admin-card-title">用户管理</div>
+                    <div class="admin-card-description">管理平台用户，包括创建、删除和修改用户权限</div>
+                    <el-button type="primary" size="small">进入</el-button>
+                </div>
                 
-                <!-- User Management Tab -->
-                <el-tab-pane label="用户管理" name="users">
-                    <div style="margin-bottom: 16px;">
-                        <el-button type="primary" @click="showUserDialog()">
-                            <i class="fas fa-plus"></i> 新建用户
-                        </el-button>
-                        <el-button @click="loadUsers" :loading="loading.users">
-                            <i class="fas fa-sync"></i> 刷新
+                <div class="admin-card" @click="goToUrl('/admin/chat')" style="cursor: pointer;">
+                    <div class="admin-card-icon green"><i class="fas fa-comments"></i></div>
+                    <div class="admin-card-title">聊天管理</div>
+                    <div class="admin-card-description">管理聊天室和聊天消息</div>
+                    <el-button type="primary" size="small">进入</el-button>
+                </div>
+                
+                <div class="admin-card" @click="goToUrl('/admin/forum')" style="cursor: pointer;">
+                    <div class="admin-card-icon orange"><i class="fas fa-newspaper"></i></div>
+                    <div class="admin-card-title">帖子管理</div>
+                    <div class="admin-card-description">管理贴吧分区和帖子内容</div>
+                    <el-button type="primary" size="small">进入</el-button>
+                </div>
+                
+                <div class="admin-card" @click="goToUrl('/admin/db')" style="cursor: pointer;">
+                    <div class="admin-card-icon red"><i class="fas fa-database"></i></div>
+                    <div class="admin-card-title">数据库管理</div>
+                    <div class="admin-card-description">查看和管理数据库</div>
+                    <el-button type="primary" size="small">进入</el-button>
+                </div>
+                
+                <div class="admin-card" @click="goToUrl('/admin/quotes')" style="cursor: pointer;">
+                    <div class="admin-card-icon purple"><i class="fas fa-quote-left"></i></div>
+                    <div class="admin-card-title">名言管理</div>
+                    <div class="admin-card-description">管理首页显示的名言内容</div>
+                    <el-button type="primary" size="small">进入</el-button>
+                </div>
+            </div>
+            
+            <!-- System Tools -->
+            <el-card shadow="hover" style="margin-bottom: 24px;">
+                <template #header>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-tools"></i>
+                        <span>系统工具</span>
+                    </div>
+                </template>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                    <el-button @click="getSystemInfo" :loading="loading.systemInfo">
+                        <i class="fas fa-info-circle"></i> 系统信息
+                    </el-button>
+                    <el-button @click="viewLogs" :loading="loading.logs">
+                        <i class="fas fa-file-alt"></i> 查看日志
+                    </el-button>
+                    <el-button @click="clearCache" :loading="loading.clearCache">
+                        <i class="fas fa-broom"></i> 清除缓存
+                    </el-button>
+                    <el-button @click="backupDatabase" :loading="loading.backup">
+                        <i class="fas fa-save"></i> 备份数据库
+                    </el-button>
+                    <el-button @click="optimizeDatabase" :loading="loading.optimize">
+                        <i class="fas fa-cog"></i> 优化数据库
+                    </el-button>
+                    <el-button @click="recountFiles" :loading="loading.recount">
+                        <i class="fas fa-sync"></i> 重新统计文件
+                    </el-button>
+                </div>
+            </el-card>
+            
+            <!-- Backup & Download -->
+            <el-card shadow="hover" style="margin-bottom: 24px;">
+                <template #header>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-download"></i>
+                        <span>备份下载</span>
+                    </div>
+                </template>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                    <el-button @click="downloadProject">
+                        <i class="fas fa-folder-open"></i> 下载项目根目录
+                    </el-button>
+                    <el-button @click="downloadDatabase">
+                        <i class="fas fa-database"></i> 下载数据库文件
+                    </el-button>
+                    <el-button @click="downloadImages">
+                        <i class="fas fa-images"></i> 下载图片压缩包
+                    </el-button>
+                </div>
+            </el-card>
+            
+            <!-- Server Control (if enabled) -->
+            <el-card shadow="hover" v-if="serverControlEnabled">
+                <template #header>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-server"></i>
+                        <span style="color: var(--danger-color);">服务器控制</span>
+                    </div>
+                </template>
+                <el-alert type="warning" :closable="false" style="margin-bottom: 16px;">
+                    <template #title>危险操作：请谨慎使用以下功能</template>
+                </el-alert>
+                <div style="display: flex; gap: 12px;">
+                    <el-button type="warning" @click="restartServer" :loading="loading.restart">
+                        <i class="fas fa-redo"></i> 重启服务器
+                    </el-button>
+                    <el-button type="danger" @click="shutdownServer" :loading="loading.shutdown">
+                        <i class="fas fa-power-off"></i> 关停服务器
+                    </el-button>
+                </div>
+            </el-card>
+            
+            <!-- Output Display -->
+            <el-card v-if="outputVisible" shadow="hover" :class="outputError ? 'error-output' : 'success-output'">
+                <template #header>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>{{ outputError ? '错误信息' : '执行结果' }}</span>
+                        <el-button size="small" text @click="outputVisible = false">
+                            <i class="fas fa-times"></i>
                         </el-button>
                     </div>
-                    
-                    <el-table :data="users" v-loading="loading.users" stripe border>
-                        <el-table-column prop="id" label="ID" width="80"></el-table-column>
-                        <el-table-column prop="username" label="用户名" width="150"></el-table-column>
-                        <el-table-column prop="nickname" label="昵称" width="150"></el-table-column>
-                        <el-table-column label="颜色" width="100">
-                            <template #default="scope">
-                                <div :style="{ color: scope.row.color || '#409eff', fontWeight: 'bold' }">
-                                    {{ scope.row.color || '#409eff' }}
-                                </div>
-                            </template>
-                        </el-table-column>
-                        <el-table-column prop="badge" label="徽章" width="120"></el-table-column>
-                        <el-table-column prop="permission" label="权限" width="100">
-                            <template #default="scope">
-                                <el-tag v-if="scope.row.permission === 'su'" type="danger">SU</el-tag>
-                                <el-tag v-else-if="scope.row.permission === '777'" type="warning">777</el-tag>
-                                <el-tag v-else type="info">{{ scope.row.permission || 'N/A' }}</el-tag>
-                            </template>
-                        </el-table-column>
-                        <el-table-column prop="created_at" label="创建时间" width="180"></el-table-column>
-                        <el-table-column label="操作" fixed="right" width="200">
-                            <template #default="scope">
-                                <el-button size="small" @click="showUserDialog(scope.row)">编辑</el-button>
-                                <el-button size="small" type="danger" @click="deleteUser(scope.row)">删除</el-button>
-                            </template>
-                        </el-table-column>
-                    </el-table>
-                    
-                    <!-- User Dialog -->
-                    <el-dialog v-model="userDialogVisible" :title="editingUser.id ? '编辑用户' : '新建用户'" width="500px">
-                        <el-form :model="editingUser" label-width="100px">
-                            <el-form-item label="用户名">
-                                <el-input v-model="editingUser.username" :disabled="!!editingUser.id"></el-input>
-                            </el-form-item>
-                            <el-form-item label="密码" v-if="!editingUser.id">
-                                <el-input v-model="editingUser.password" type="password"></el-input>
-                            </el-form-item>
-                            <el-form-item label="昵称">
-                                <el-input v-model="editingUser.nickname"></el-input>
-                            </el-form-item>
-                            <el-form-item label="颜色">
-                                <el-color-picker v-model="editingUser.color"></el-color-picker>
-                            </el-form-item>
-                            <el-form-item label="徽章">
-                                <el-input v-model="editingUser.badge"></el-input>
-                            </el-form-item>
-                            <el-form-item label="权限">
-                                <el-select v-model="editingUser.permission">
-                                    <el-option label="普通用户" value=""></el-option>
-                                    <el-option label="777" value="777"></el-option>
-                                    <el-option label="SU" value="su"></el-option>
-                                </el-select>
-                            </el-form-item>
-                        </el-form>
-                        <template #footer>
-                            <el-button @click="userDialogVisible = false">取消</el-button>
-                            <el-button type="primary" @click="saveUser" :loading="loading.saveUser">保存</el-button>
-                        </template>
-                    </el-dialog>
-                </el-tab-pane>
-                
-                <!-- Chat Management Tab -->
-                <el-tab-pane label="聊天管理" name="chat">
-                    <div style="margin-bottom: 16px;">
-                        <el-button type="primary" @click="showRoomDialog()">
-                            <i class="fas fa-plus"></i> 新建聊天室
-                        </el-button>
-                        <el-button @click="loadRooms" :loading="loading.rooms">
-                            <i class="fas fa-sync"></i> 刷新
-                        </el-button>
-                    </div>
-                    
-                    <el-table :data="rooms" v-loading="loading.rooms" stripe border>
-                        <el-table-column prop="id" label="ID" width="80"></el-table-column>
-                        <el-table-column prop="name" label="聊天室名称" min-width="200"></el-table-column>
-                        <el-table-column prop="description" label="描述" min-width="250"></el-table-column>
-                        <el-table-column prop="permission" label="权限" width="100">
-                            <template #default="scope">
-                                <el-tag v-if="scope.row.permission === 'su'" type="danger">SU</el-tag>
-                                <el-tag v-else-if="scope.row.permission === '777'" type="warning">777</el-tag>
-                                <el-tag v-else type="info">{{ scope.row.permission || 'N/A' }}</el-tag>
-                            </template>
-                        </el-table-column>
-                        <el-table-column label="操作" fixed="right" width="250">
-                            <template #default="scope">
-                                <el-button size="small" @click="manageRoomUsers(scope.row)">成员</el-button>
-                                <el-button size="small" @click="showRoomDialog(scope.row)">编辑</el-button>
-                                <el-button size="small" type="danger" @click="deleteRoom(scope.row)">删除</el-button>
-                            </template>
-                        </el-table-column>
-                    </el-table>
-                    
-                    <!-- Room Dialog -->
-                    <el-dialog v-model="roomDialogVisible" :title="editingRoom.id ? '编辑聊天室' : '新建聊天室'" width="500px">
-                        <el-form :model="editingRoom" label-width="100px">
-                            <el-form-item label="名称">
-                                <el-input v-model="editingRoom.name"></el-input>
-                            </el-form-item>
-                            <el-form-item label="描述">
-                                <el-input v-model="editingRoom.description" type="textarea" :rows="3"></el-input>
-                            </el-form-item>
-                            <el-form-item label="权限">
-                                <el-select v-model="editingRoom.permission">
-                                    <el-option label="公开" value=""></el-option>
-                                    <el-option label="777" value="777"></el-option>
-                                    <el-option label="SU" value="su"></el-option>
-                                </el-select>
-                            </el-form-item>
-                        </el-form>
-                        <template #footer>
-                            <el-button @click="roomDialogVisible = false">取消</el-button>
-                            <el-button type="primary" @click="saveRoom" :loading="loading.saveRoom">保存</el-button>
-                        </template>
-                    </el-dialog>
-                    
-                    <!-- Room Users Dialog -->
-                    <el-dialog v-model="roomUsersDialogVisible" title="聊天室成员管理" width="700px">
-                        <div style="margin-bottom: 16px;">
-                            <el-button type="primary" size="small" @click="showAddUserToRoomDialog">
-                                <i class="fas fa-plus"></i> 添加成员
-                            </el-button>
-                        </div>
-                        <el-table :data="roomUsers" v-loading="loading.roomUsers" stripe border max-height="400">
-                            <el-table-column prop="id" label="用户ID" width="100"></el-table-column>
-                            <el-table-column prop="username" label="用户名" width="150"></el-table-column>
-                            <el-table-column prop="nickname" label="昵称" min-width="150"></el-table-column>
-                            <el-table-column label="操作" fixed="right" width="120">
-                                <template #default="scope">
-                                    <el-button size="small" type="danger" @click="removeUserFromRoom(scope.row)">移除</el-button>
-                                </template>
-                            </el-table-column>
-                        </el-table>
-                    </el-dialog>
-                    
-                    <!-- Add User to Room Dialog -->
-                    <el-dialog v-model="addUserToRoomDialogVisible" title="添加成员" width="400px">
-                        <el-form label-width="100px">
-                            <el-form-item label="选择用户">
-                                <el-select v-model="selectedUserId" filterable placeholder="请选择用户">
-                                    <el-option 
-                                        v-for="user in users" 
-                                        :key="user.id" 
-                                        :label="user.nickname || user.username" 
-                                        :value="user.id">
-                                    </el-option>
-                                </el-select>
-                            </el-form-item>
-                        </el-form>
-                        <template #footer>
-                            <el-button @click="addUserToRoomDialogVisible = false">取消</el-button>
-                            <el-button type="primary" @click="addUserToRoom" :loading="loading.addUserToRoom">添加</el-button>
-                        </template>
-                    </el-dialog>
-                </el-tab-pane>
-                
-                <!-- Forum Management Tab -->
-                <el-tab-pane label="论坛管理" name="forum">
-                    <div style="margin-bottom: 16px;">
-                        <el-button type="primary" @click="showSectionDialog()">
-                            <i class="fas fa-plus"></i> 新建分区
-                        </el-button>
-                        <el-button @click="loadSections" :loading="loading.sections">
-                            <i class="fas fa-sync"></i> 刷新
-                        </el-button>
-                    </div>
-                    
-                    <el-table :data="sections" v-loading="loading.sections" stripe border>
-                        <el-table-column prop="id" label="ID" width="80"></el-table-column>
-                        <el-table-column prop="name" label="分区名称" min-width="200"></el-table-column>
-                        <el-table-column prop="description" label="描述" min-width="300"></el-table-column>
-                        <el-table-column prop="permission" label="权限" width="100">
-                            <template #default="scope">
-                                <el-tag v-if="scope.row.permission === 'su'" type="danger">SU</el-tag>
-                                <el-tag v-else-if="scope.row.permission === '777'" type="warning">777</el-tag>
-                                <el-tag v-else type="info">{{ scope.row.permission || '公开' }}</el-tag>
-                            </template>
-                        </el-table-column>
-                        <el-table-column label="操作" fixed="right" width="200">
-                            <template #default="scope">
-                                <el-button size="small" @click="showSectionDialog(scope.row)">编辑</el-button>
-                                <el-button size="small" type="danger" @click="deleteSection(scope.row)">删除</el-button>
-                            </template>
-                        </el-table-column>
-                    </el-table>
-                    
-                    <!-- Section Dialog -->
-                    <el-dialog v-model="sectionDialogVisible" :title="editingSection.id ? '编辑分区' : '新建分区'" width="500px">
-                        <el-form :model="editingSection" label-width="100px">
-                            <el-form-item label="名称">
-                                <el-input v-model="editingSection.name"></el-input>
-                            </el-form-item>
-                            <el-form-item label="描述">
-                                <el-input v-model="editingSection.description" type="textarea" :rows="3"></el-input>
-                            </el-form-item>
-                            <el-form-item label="权限">
-                                <el-select v-model="editingSection.permission">
-                                    <el-option label="公开" value=""></el-option>
-                                    <el-option label="777" value="777"></el-option>
-                                    <el-option label="SU" value="su"></el-option>
-                                </el-select>
-                            </el-form-item>
-                        </el-form>
-                        <template #footer>
-                            <el-button @click="sectionDialogVisible = false">取消</el-button>
-                            <el-button type="primary" @click="saveSection" :loading="loading.saveSection">保存</el-button>
-                        </template>
-                    </el-dialog>
-                </el-tab-pane>
-                
-                <!-- Database Management Tab -->
-                <el-tab-pane label="数据库管理" name="database">
-                    <el-card>
-                        <div style="text-align: center; padding: 40px 20px;">
-                            <i class="fas fa-database" style="font-size: 64px; color: var(--primary-color); margin-bottom: 24px;"></i>
-                            <h3 style="margin-bottom: 16px;">数据库管理工具</h3>
-                            <p style="color: var(--text-secondary); margin-bottom: 24px;">
-                                使用专业的数据库管理界面查看和管理数据库
-                            </p>
-                            <el-button type="primary" size="large" @click="goToUrl('/admin/db/')">
-                                <i class="fas fa-external-link-alt"></i> 打开数据库管理
-                            </el-button>
-                        </div>
-                    </el-card>
-                </el-tab-pane>
-                
-                <!-- Quotes Management Tab -->
-                <el-tab-pane label="名言管理" name="quotes">
-                    <div style="margin-bottom: 16px;">
-                        <el-button type="primary" @click="showQuoteDialog()">
-                            <i class="fas fa-plus"></i> 新建名言
-                        </el-button>
-                        <el-button @click="loadQuotes" :loading="loading.quotes">
-                            <i class="fas fa-sync"></i> 刷新
-                        </el-button>
-                    </div>
-                    
-                    <el-table :data="quotes" v-loading="loading.quotes" stripe border>
-                        <el-table-column prop="id" label="ID" width="80"></el-table-column>
-                        <el-table-column prop="text" label="名言内容" min-width="300"></el-table-column>
-                        <el-table-column prop="author" label="作者" width="150"></el-table-column>
-                        <el-table-column label="操作" fixed="right" width="200">
-                            <template #default="scope">
-                                <el-button size="small" @click="showQuoteDialog(scope.row)">编辑</el-button>
-                                <el-button size="small" type="danger" @click="deleteQuote(scope.row)">删除</el-button>
-                            </template>
-                        </el-table-column>
-                    </el-table>
-                    
-                    <!-- Quote Dialog -->
-                    <el-dialog v-model="quoteDialogVisible" :title="editingQuote.id ? '编辑名言' : '新建名言'" width="600px">
-                        <el-form :model="editingQuote" label-width="100px">
-                            <el-form-item label="名言内容">
-                                <el-input v-model="editingQuote.text" type="textarea" :rows="4"></el-input>
-                            </el-form-item>
-                            <el-form-item label="作者">
-                                <el-input v-model="editingQuote.author"></el-input>
-                            </el-form-item>
-                        </el-form>
-                        <template #footer>
-                            <el-button @click="quoteDialogVisible = false">取消</el-button>
-                            <el-button type="primary" @click="saveQuote" :loading="loading.saveQuote">保存</el-button>
-                        </template>
-                    </el-dialog>
-                </el-tab-pane>
-                
-                <!-- File Manager Tab -->
-                <el-tab-pane label="文件管理" name="files" v-if="fileManagerEnabled">
-                    <el-card>
-                        <div style="text-align: center; padding: 40px 20px;">
-                            <i class="fas fa-folder-open" style="font-size: 64px; color: var(--primary-color); margin-bottom: 24px;"></i>
-                            <h3 style="margin-bottom: 16px;">文件管理器</h3>
-                            <p style="color: var(--text-secondary); margin-bottom: 24px;">
-                                管理服务器上的文件和目录
-                            </p>
-                            <el-button type="primary" size="large" @click="goToUrl('/admin/file_manager')">
-                                <i class="fas fa-external-link-alt"></i> 打开文件管理器
-                            </el-button>
-                        </div>
-                    </el-card>
-                </el-tab-pane>
-            </el-tabs>
+                </template>
+                <pre style="white-space: pre-wrap; word-break: break-word; margin: 0; font-size: 14px; max-height: 400px; overflow-y: auto;">{{ outputText }}</pre>
+            </el-card>
         </div>
     `,
     setup() {
-        const store = StellarisStore;
-        const activeTab = Vue.ref('system');
-        
         const loading = Vue.reactive({
             systemInfo: false,
             logs: false,
@@ -2327,49 +2066,13 @@ const AdminPage = {
             optimize: false,
             recount: false,
             restart: false,
-            shutdown: false,
-            users: false,
-            saveUser: false,
-            rooms: false,
-            saveRoom: false,
-            roomUsers: false,
-            addUserToRoom: false,
-            sections: false,
-            saveSection: false,
-            quotes: false,
-            saveQuote: false
+            shutdown: false
         });
         
         const outputVisible = Vue.ref(false);
         const outputText = Vue.ref('');
         const outputError = Vue.ref(false);
-        const serverControlEnabled = Vue.ref(store.state.config?.enableServerControl || false);
-        const fileManagerEnabled = Vue.ref(store.state.config?.enableFileManager || false);
-        
-        // Users
-        const users = Vue.ref([]);
-        const userDialogVisible = Vue.ref(false);
-        const editingUser = Vue.ref({});
-        
-        // Rooms
-        const rooms = Vue.ref([]);
-        const roomDialogVisible = Vue.ref(false);
-        const editingRoom = Vue.ref({});
-        const roomUsersDialogVisible = Vue.ref(false);
-        const roomUsers = Vue.ref([]);
-        const currentRoomId = Vue.ref(null);
-        const addUserToRoomDialogVisible = Vue.ref(false);
-        const selectedUserId = Vue.ref(null);
-        
-        // Sections
-        const sections = Vue.ref([]);
-        const sectionDialogVisible = Vue.ref(false);
-        const editingSection = Vue.ref({});
-        
-        // Quotes
-        const quotes = Vue.ref([]);
-        const quoteDialogVisible = Vue.ref(false);
-        const editingQuote = Vue.ref({});
+        const serverControlEnabled = Vue.ref(StellarisStore.state.config?.enableServerControl || false);
         
         const showOutput = (text, isError = false) => {
             outputText.value = text;
@@ -2381,7 +2084,6 @@ const AdminPage = {
             window.location.href = url;
         };
         
-        // System Tools Functions
         const getSystemInfo = async () => {
             loading.systemInfo = true;
             try {
@@ -2619,435 +2321,12 @@ const AdminPage = {
             }
         };
         
-        // User Management Functions
-        const loadUsers = async () => {
-            loading.users = true;
-            try {
-                const response = await fetch('/api/admin/users');
-                const data = await response.json();
-                if (data.success) {
-                    users.value = data.users || [];
-                } else {
-                    ElMessage.error('加载用户失败: ' + (data.message || ''));
-                }
-            } catch (error) {
-                ElMessage.error('请求失败: ' + error.message);
-            } finally {
-                loading.users = false;
-            }
-        };
-        
-        const showUserDialog = (user = null) => {
-            if (user) {
-                editingUser.value = { ...user };
-            } else {
-                editingUser.value = { username: '', password: '', nickname: '', color: '#409eff', badge: '', permission: '' };
-            }
-            userDialogVisible.value = true;
-        };
-        
-        const saveUser = async () => {
-            loading.saveUser = true;
-            try {
-                const url = editingUser.value.id 
-                    ? `/api/admin/users/${editingUser.value.id}` 
-                    : '/api/admin/users';
-                const method = editingUser.value.id ? 'PUT' : 'POST';
-                
-                const response = await fetch(url, {
-                    method: method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(editingUser.value)
-                });
-                const data = await response.json();
-                
-                if (data.success) {
-                    ElMessage.success(editingUser.value.id ? '用户更新成功' : '用户创建成功');
-                    userDialogVisible.value = false;
-                    loadUsers();
-                } else {
-                    ElMessage.error('保存失败: ' + (data.message || ''));
-                }
-            } catch (error) {
-                ElMessage.error('请求失败: ' + error.message);
-            } finally {
-                loading.saveUser = false;
-            }
-        };
-        
-        const deleteUser = async (user) => {
-            const confirmed = await ElMessageBox.confirm(
-                `确认删除用户 "${user.username}" 吗？此操作不可恢复。`,
-                '删除用户',
-                { type: 'warning' }
-            ).catch(() => false);
-            
-            if (!confirmed) return;
-            
-            try {
-                const response = await fetch(`/api/admin/users/${user.id}`, { method: 'DELETE' });
-                const data = await response.json();
-                
-                if (data.success) {
-                    ElMessage.success('用户删除成功');
-                    loadUsers();
-                } else {
-                    ElMessage.error('删除失败: ' + (data.message || ''));
-                }
-            } catch (error) {
-                ElMessage.error('请求失败: ' + error.message);
-            }
-        };
-        
-        // Chat Room Management Functions
-        const loadRooms = async () => {
-            loading.rooms = true;
-            try {
-                const response = await fetch('/api/admin/chat/rooms');
-                const data = await response.json();
-                if (data.success) {
-                    rooms.value = data.rooms || [];
-                } else {
-                    ElMessage.error('加载聊天室失败: ' + (data.message || ''));
-                }
-            } catch (error) {
-                ElMessage.error('请求失败: ' + error.message);
-            } finally {
-                loading.rooms = false;
-            }
-        };
-        
-        const showRoomDialog = (room = null) => {
-            if (room) {
-                editingRoom.value = { ...room };
-            } else {
-                editingRoom.value = { name: '', description: '', permission: '' };
-            }
-            roomDialogVisible.value = true;
-        };
-        
-        const saveRoom = async () => {
-            loading.saveRoom = true;
-            try {
-                const url = editingRoom.value.id 
-                    ? `/api/admin/chat/rooms/${editingRoom.value.id}` 
-                    : '/api/admin/chat/rooms';
-                const method = editingRoom.value.id ? 'PUT' : 'POST';
-                
-                const response = await fetch(url, {
-                    method: method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(editingRoom.value)
-                });
-                const data = await response.json();
-                
-                if (data.success) {
-                    ElMessage.success(editingRoom.value.id ? '聊天室更新成功' : '聊天室创建成功');
-                    roomDialogVisible.value = false;
-                    loadRooms();
-                } else {
-                    ElMessage.error('保存失败: ' + (data.message || ''));
-                }
-            } catch (error) {
-                ElMessage.error('请求失败: ' + error.message);
-            } finally {
-                loading.saveRoom = false;
-            }
-        };
-        
-        const deleteRoom = async (room) => {
-            const confirmed = await ElMessageBox.confirm(
-                `确认删除聊天室 "${room.name}" 吗？此操作不可恢复。`,
-                '删除聊天室',
-                { type: 'warning' }
-            ).catch(() => false);
-            
-            if (!confirmed) return;
-            
-            try {
-                const response = await fetch(`/api/admin/chat/rooms/${room.id}`, { method: 'DELETE' });
-                const data = await response.json();
-                
-                if (data.success) {
-                    ElMessage.success('聊天室删除成功');
-                    loadRooms();
-                } else {
-                    ElMessage.error('删除失败: ' + (data.message || ''));
-                }
-            } catch (error) {
-                ElMessage.error('请求失败: ' + error.message);
-            }
-        };
-        
-        const manageRoomUsers = async (room) => {
-            currentRoomId.value = room.id;
-            await loadRoomUsers(room.id);
-            roomUsersDialogVisible.value = true;
-        };
-        
-        const loadRoomUsers = async (roomId) => {
-            loading.roomUsers = true;
-            try {
-                const response = await fetch(`/api/admin/chat/room-users/${roomId}`);
-                const data = await response.json();
-                if (data.success) {
-                    roomUsers.value = data.users || [];
-                } else {
-                    ElMessage.error('加载成员失败: ' + (data.message || ''));
-                }
-            } catch (error) {
-                ElMessage.error('请求失败: ' + error.message);
-            } finally {
-                loading.roomUsers = false;
-            }
-        };
-        
-        const showAddUserToRoomDialog = async () => {
-            if (users.value.length === 0) {
-                await loadUsers();
-            }
-            selectedUserId.value = null;
-            addUserToRoomDialogVisible.value = true;
-        };
-        
-        const addUserToRoom = async () => {
-            if (!selectedUserId.value) {
-                ElMessage.warning('请选择用户');
-                return;
-            }
-            
-            loading.addUserToRoom = true;
-            try {
-                const response = await fetch(`/api/admin/chat/room-users/${currentRoomId.value}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: selectedUserId.value })
-                });
-                const data = await response.json();
-                
-                if (data.success) {
-                    ElMessage.success('成员添加成功');
-                    addUserToRoomDialogVisible.value = false;
-                    loadRoomUsers(currentRoomId.value);
-                } else {
-                    ElMessage.error('添加失败: ' + (data.message || ''));
-                }
-            } catch (error) {
-                ElMessage.error('请求失败: ' + error.message);
-            } finally {
-                loading.addUserToRoom = false;
-            }
-        };
-        
-        const removeUserFromRoom = async (user) => {
-            const confirmed = await ElMessageBox.confirm(
-                `确认从聊天室移除 "${user.username}" 吗？`,
-                '移除成员',
-                { type: 'warning' }
-            ).catch(() => false);
-            
-            if (!confirmed) return;
-            
-            try {
-                const response = await fetch(`/api/admin/chat/room-users/${currentRoomId.value}`, {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: user.id })
-                });
-                const data = await response.json();
-                
-                if (data.success) {
-                    ElMessage.success('成员移除成功');
-                    loadRoomUsers(currentRoomId.value);
-                } else {
-                    ElMessage.error('移除失败: ' + (data.message || ''));
-                }
-            } catch (error) {
-                ElMessage.error('请求失败: ' + error.message);
-            }
-        };
-        
-        // Forum Section Management Functions
-        const loadSections = async () => {
-            loading.sections = true;
-            try {
-                const response = await fetch('/api/admin/forum/sections');
-                const data = await response.json();
-                if (data.success) {
-                    sections.value = data.sections || [];
-                } else {
-                    ElMessage.error('加载分区失败: ' + (data.message || ''));
-                }
-            } catch (error) {
-                ElMessage.error('请求失败: ' + error.message);
-            } finally {
-                loading.sections = false;
-            }
-        };
-        
-        const showSectionDialog = (section = null) => {
-            if (section) {
-                editingSection.value = { ...section };
-            } else {
-                editingSection.value = { name: '', description: '', permission: '' };
-            }
-            sectionDialogVisible.value = true;
-        };
-        
-        const saveSection = async () => {
-            loading.saveSection = true;
-            try {
-                const url = editingSection.value.id 
-                    ? `/api/admin/forum/sections/${editingSection.value.id}` 
-                    : '/api/admin/forum/sections';
-                const method = editingSection.value.id ? 'PUT' : 'POST';
-                
-                const response = await fetch(url, {
-                    method: method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(editingSection.value)
-                });
-                const data = await response.json();
-                
-                if (data.success) {
-                    ElMessage.success(editingSection.value.id ? '分区更新成功' : '分区创建成功');
-                    sectionDialogVisible.value = false;
-                    loadSections();
-                } else {
-                    ElMessage.error('保存失败: ' + (data.message || ''));
-                }
-            } catch (error) {
-                ElMessage.error('请求失败: ' + error.message);
-            } finally {
-                loading.saveSection = false;
-            }
-        };
-        
-        const deleteSection = async (section) => {
-            const confirmed = await ElMessageBox.confirm(
-                `确认删除分区 "${section.name}" 吗？此操作不可恢复。`,
-                '删除分区',
-                { type: 'warning' }
-            ).catch(() => false);
-            
-            if (!confirmed) return;
-            
-            try {
-                const response = await fetch(`/api/admin/forum/sections/${section.id}`, { method: 'DELETE' });
-                const data = await response.json();
-                
-                if (data.success) {
-                    ElMessage.success('分区删除成功');
-                    loadSections();
-                } else {
-                    ElMessage.error('删除失败: ' + (data.message || ''));
-                }
-            } catch (error) {
-                ElMessage.error('请求失败: ' + error.message);
-            }
-        };
-        
-        // Quote Management Functions
-        const loadQuotes = async () => {
-            loading.quotes = true;
-            try {
-                const response = await fetch('/api/admin/quotes');
-                const data = await response.json();
-                if (data.success) {
-                    quotes.value = data.quotes || [];
-                } else {
-                    ElMessage.error('加载名言失败: ' + (data.message || ''));
-                }
-            } catch (error) {
-                ElMessage.error('请求失败: ' + error.message);
-            } finally {
-                loading.quotes = false;
-            }
-        };
-        
-        const showQuoteDialog = (quote = null) => {
-            if (quote) {
-                editingQuote.value = { ...quote };
-            } else {
-                editingQuote.value = { text: '', author: '' };
-            }
-            quoteDialogVisible.value = true;
-        };
-        
-        const saveQuote = async () => {
-            loading.saveQuote = true;
-            try {
-                const url = editingQuote.value.id 
-                    ? `/api/admin/quotes/${editingQuote.value.id}` 
-                    : '/api/admin/quotes';
-                const method = editingQuote.value.id ? 'PUT' : 'POST';
-                
-                const response = await fetch(url, {
-                    method: method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(editingQuote.value)
-                });
-                const data = await response.json();
-                
-                if (data.success) {
-                    ElMessage.success(editingQuote.value.id ? '名言更新成功' : '名言创建成功');
-                    quoteDialogVisible.value = false;
-                    loadQuotes();
-                } else {
-                    ElMessage.error('保存失败: ' + (data.message || ''));
-                }
-            } catch (error) {
-                ElMessage.error('请求失败: ' + error.message);
-            } finally {
-                loading.saveQuote = false;
-            }
-        };
-        
-        const deleteQuote = async (quote) => {
-            const confirmed = await ElMessageBox.confirm(
-                `确认删除这条名言吗？此操作不可恢复。`,
-                '删除名言',
-                { type: 'warning' }
-            ).catch(() => false);
-            
-            if (!confirmed) return;
-            
-            try {
-                const response = await fetch(`/api/admin/quotes/${quote.id}`, { method: 'DELETE' });
-                const data = await response.json();
-                
-                if (data.success) {
-                    ElMessage.success('名言删除成功');
-                    loadQuotes();
-                } else {
-                    ElMessage.error('删除失败: ' + (data.message || ''));
-                }
-            } catch (error) {
-                ElMessage.error('请求失败: ' + error.message);
-            }
-        };
-        
-        // Watch for tab changes to load data
-        Vue.watch(activeTab, (newTab) => {
-            if (newTab === 'users' && users.value.length === 0) {
-                loadUsers();
-            } else if (newTab === 'chat' && rooms.value.length === 0) {
-                loadRooms();
-            } else if (newTab === 'forum' && sections.value.length === 0) {
-                loadSections();
-            } else if (newTab === 'quotes' && quotes.value.length === 0) {
-                loadQuotes();
-            }
-        });
-        
         return {
-            activeTab,
             loading,
             outputVisible,
             outputText,
             outputError,
             serverControlEnabled,
-            fileManagerEnabled,
             goToUrl,
             getSystemInfo,
             viewLogs,
@@ -3059,43 +2338,7 @@ const AdminPage = {
             downloadDatabase,
             downloadImages,
             restartServer,
-            shutdownServer,
-            users,
-            userDialogVisible,
-            editingUser,
-            showUserDialog,
-            loadUsers,
-            saveUser,
-            deleteUser,
-            rooms,
-            roomDialogVisible,
-            editingRoom,
-            showRoomDialog,
-            loadRooms,
-            saveRoom,
-            deleteRoom,
-            manageRoomUsers,
-            roomUsersDialogVisible,
-            roomUsers,
-            addUserToRoomDialogVisible,
-            selectedUserId,
-            showAddUserToRoomDialog,
-            addUserToRoom,
-            removeUserFromRoom,
-            sections,
-            sectionDialogVisible,
-            editingSection,
-            showSectionDialog,
-            loadSections,
-            saveSection,
-            deleteSection,
-            quotes,
-            quoteDialogVisible,
-            editingQuote,
-            showQuoteDialog,
-            loadQuotes,
-            saveQuote,
-            deleteQuote
+            shutdownServer
         };
     }
 };
