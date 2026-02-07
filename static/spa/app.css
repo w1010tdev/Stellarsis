@@ -1699,3 +1699,68 @@ html.dark .help-footer {
     margin-top: 8px;
     text-align: center;
 }
+
+/* Settings Page Styles */
+.settings-container .el-tabs__content {
+    padding: 20px 0;
+}
+
+.current-settings {
+    background: var(--surface-color);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.sample-text {
+    background: var(--background-color);
+    border-radius: 6px;
+}
+
+.message-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.requirements {
+    background: var(--surface-color);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+/* Admin Page Output Styles */
+.error-output .el-card__header {
+    background: #fff5f5;
+    border-bottom: 1px solid #f5c6cb;
+}
+
+.success-output .el-card__header {
+    background: #fbfff9;
+    border-bottom: 1px solid #c3e6cb;
+}
+
+.error-output {
+    border: 1px solid #f5c6cb;
+}
+
+.success-output {
+    border: 1px solid #c3e6cb;
+}
+
+/* Dark mode adjustments for outputs */
+html.dark .error-output .el-card__header {
+    background: rgba(245, 108, 108, 0.1);
+}
+
+html.dark .success-output .el-card__header {
+    background: rgba(103, 194, 58, 0.1);
+}
+
+html.dark .error-output {
+    border-color: rgba(245, 108, 108, 0.3);
+}
+
+html.dark .success-output {
+    border-color: rgba(103, 194, 58, 0.3);
+}

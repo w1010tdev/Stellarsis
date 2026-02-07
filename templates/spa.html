@@ -40,7 +40,9 @@
             "isAuthenticated": false
         }{% endif %},
         "config": {
-            "enableFileUpload": {{ 'true' if app_info.config.ENABLE_FILE_UPLOAD else 'false' }}
+            "enableFileUpload": {{ 'true' if app_info.config.ENABLE_FILE_UPLOAD else 'false' }},
+            "enableServerControl": {{ 'true' if app_info.config.ENABLE_SERVER_CONTROL else 'false' }},
+            "minPasswordLength": {{ app_info.config.MIN_PASSWORD_LENGTH }}
         },
         "spaData": {{ spa_data | tojson | safe }}
     }

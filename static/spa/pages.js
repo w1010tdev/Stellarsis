@@ -1284,81 +1284,162 @@ const SettingsPage = {
     name: 'SettingsPage',
     template: `
         <div class="page-container settings-container">
-            <h2 style="margin-bottom: 24px;">设置</h2>
-            
-            <!-- Appearance -->
-            <div class="settings-section">
-                <div class="settings-section-title">
-                    <i class="fas fa-palette"></i>
-                    外观
-                </div>
-                <div class="settings-item">
-                    <div>
-                        <div class="settings-item-label">主题模式</div>
-                        <div class="settings-item-description">选择亮色或暗色主题</div>
+            <el-tabs v-model="activeTab" type="border-card">
+                <!-- 外观设置 -->
+                <el-tab-pane label="外观" name="appearance">
+                    <div class="settings-section">
+                        <div class="settings-section-title">
+                            <i class="fas fa-palette"></i>
+                            外观设置
+                        </div>
+                        <div class="settings-item">
+                            <div>
+                                <div class="settings-item-label">主题模式</div>
+                                <div class="settings-item-description">选择亮色或暗色主题</div>
+                            </div>
+                            <el-switch v-model="isDark" @change="toggleTheme" active-text="暗色" inactive-text="亮色"></el-switch>
+                        </div>
                     </div>
-                    <el-switch v-model="isDark" @change="toggleTheme" active-text="暗色" inactive-text="亮色"></el-switch>
-                </div>
-            </div>
-            
-            <!-- Features -->
-            <div class="settings-section">
-                <div class="settings-section-title">
-                    <i class="fas fa-sliders-h"></i>
-                    功能设置
-                </div>
-                <div class="settings-item">
-                    <div>
-                        <div class="settings-item-label">爱心雨效果</div>
-                        <div class="settings-item-description">发送包含"2026"的消息时显示爱心雨动画</div>
+                </el-tab-pane>
+                
+                <!-- 功能设置 -->
+                <el-tab-pane label="功能" name="features">
+                    <div class="settings-section">
+                        <div class="settings-section-title">
+                            <i class="fas fa-sliders-h"></i>
+                            功能设置
+                        </div>
+                        <div class="settings-item">
+                            <div>
+                                <div class="settings-item-label">爱心雨效果</div>
+                                <div class="settings-item-description">发送包含"2026"的消息时显示爱心雨动画</div>
+                            </div>
+                            <el-switch v-model="heartRainEnabled" @change="toggleHeartRain"></el-switch>
+                        </div>
                     </div>
-                    <el-switch v-model="heartRainEnabled" @change="toggleHeartRain"></el-switch>
-                </div>
-            </div>
-            
-            <!-- Account -->
-            <div class="settings-section" v-if="store.state.user.isAuthenticated">
-                <div class="settings-section-title">
-                    <i class="fas fa-user"></i>
-                    账户
-                </div>
-                <div class="settings-item" style="cursor: pointer;" @click="goToUrl('/profile')">
-                    <div>
-                        <div class="settings-item-label">修改个人资料</div>
+                </el-tab-pane>
+                
+                <!-- 个人资料 -->
+                <el-tab-pane label="个人资料" name="profile" v-if="store.state.user.isAuthenticated">
+                    <div class="settings-section">
+                        <div class="settings-section-title">
+                            <i class="fas fa-user"></i>
+                            个人资料设置
+                        </div>
+                        <div class="current-settings" style="margin-bottom: 20px; padding: 15px; background: var(--surface-color); border-radius: 8px;">
+                            <h3 style="margin-bottom: 10px;">当前设置预览</h3>
+                            <p style="margin-bottom: 10px;">在聊天中，您的消息会显示为:</p>
+                            <div class="sample-text" style="padding: 10px; background: var(--background-color); border-radius: 6px;">
+                                <span v-if="profileForm.badge" class="message-badge" 
+                                      :style="{ backgroundColor: profileForm.color, color: 'white', display: 'inline-block', padding: '2px 6px', borderRadius: '4px', fontSize: '12px', marginRight: '6px' }">
+                                    {{ profileForm.badge }}
+                                </span>
+                                <span :style="{ color: profileForm.color, fontWeight: '600' }">
+                                    {{ profileForm.nickname || store.state.user.username }}
+                                </span>:
+                                <span style="margin-left: 8px;">Ciallo～(∠・ω< )⌒☆</span>
+                            </div>
+                        </div>
+                        <el-form :model="profileForm" label-width="120px">
+                            <el-form-item label="昵称">
+                                <el-input v-model="profileForm.nickname" placeholder="留空使用用户名"></el-input>
+                            </el-form-item>
+                            <el-form-item label="颜色">
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <el-input v-model="profileForm.color" placeholder="#000000" style="flex: 1;"></el-input>
+                                    <el-color-picker v-model="profileForm.color"></el-color-picker>
+                                </div>
+                            </el-form-item>
+                            <el-form-item label="徽章">
+                                <el-input v-model="profileForm.badge" placeholder="如: VIP, MOD"></el-input>
+                            </el-form-item>
+                            <el-form-item>
+                                <el-button type="primary" @click="saveProfile" :loading="saving">保存设置</el-button>
+                            </el-form-item>
+                        </el-form>
                     </div>
-                    <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
-                </div>
-                <div class="settings-item" style="cursor: pointer;" @click="goToUrl('/change_password')">
-                    <div>
-                        <div class="settings-item-label">修改密码</div>
+                </el-tab-pane>
+                
+                <!-- 修改密码 -->
+                <el-tab-pane label="修改密码" name="password" v-if="store.state.user.isAuthenticated">
+                    <div class="settings-section">
+                        <div class="settings-section-title">
+                            <i class="fas fa-key"></i>
+                            修改密码
+                        </div>
+                        <div class="requirements" style="margin-bottom: 20px; padding: 15px; background: var(--surface-color); border-radius: 8px;">
+                            <p style="font-weight: 600; margin-bottom: 8px;">密码要求:</p>
+                            <ul style="margin-left: 20px;">
+                                <li>至少{{ store.state.config?.minPasswordLength || 6 }}个字符</li>
+                                <li>新密码和确认密码必须一致</li>
+                            </ul>
+                        </div>
+                        <el-form :model="passwordForm" label-width="120px">
+                            <el-form-item label="当前密码">
+                                <el-input v-model="passwordForm.oldPassword" type="password" show-password></el-input>
+                            </el-form-item>
+                            <el-form-item label="新密码">
+                                <el-input v-model="passwordForm.newPassword" type="password" show-password></el-input>
+                            </el-form-item>
+                            <el-form-item label="确认新密码">
+                                <el-input v-model="passwordForm.confirmPassword" type="password" show-password></el-input>
+                            </el-form-item>
+                            <el-form-item>
+                                <el-button type="primary" @click="changePassword" :loading="saving">修改密码</el-button>
+                            </el-form-item>
+                        </el-form>
                     </div>
-                    <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
-                </div>
-                <div class="settings-item" style="cursor: pointer;" @click="goToUrl('/settings/images')">
-                    <div>
-                        <div class="settings-item-label">我的文件</div>
+                </el-tab-pane>
+                
+                <!-- 账户管理 -->
+                <el-tab-pane label="账户" name="account" v-if="store.state.user.isAuthenticated">
+                    <div class="settings-section">
+                        <div class="settings-section-title">
+                            <i class="fas fa-user-cog"></i>
+                            账户管理
+                        </div>
+                        <div class="settings-item" style="cursor: pointer;" @click="goToUrl('/settings/images')">
+                            <div>
+                                <div class="settings-item-label">我的文件</div>
+                                <div class="settings-item-description">管理上传的图片和文件</div>
+                            </div>
+                            <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
+                        </div>
+                        <div class="settings-item" style="cursor: pointer;" @click="goToUrl('/settings/follows')">
+                            <div>
+                                <div class="settings-item-label">关注管理</div>
+                                <div class="settings-item-description">管理关注的用户</div>
+                            </div>
+                            <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
+                        </div>
+                        <el-divider></el-divider>
+                        <el-button type="danger" @click="logout" style="width: 100%;">退出登录</el-button>
                     </div>
-                    <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
-                </div>
-                <div class="settings-item" style="cursor: pointer;" @click="goToUrl('/settings/follows')">
-                    <div>
-                        <div class="settings-item-label">关注管理</div>
-                    </div>
-                    <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
-                </div>
-            </div>
-            
-            <!-- Logout -->
-            <div class="settings-section" v-if="store.state.user.isAuthenticated">
-                <el-button type="danger" @click="logout" style="width: 100%;">退出登录</el-button>
-            </div>
+                </el-tab-pane>
+            </el-tabs>
         </div>
     `,
     setup() {
         const store = StellarisStore;
+        const activeTab = Vue.ref('appearance');
         
         const isDark = Vue.ref(store.state.theme === 'dark');
         const heartRainEnabled = Vue.ref(store.isHeartRainEnabled());
+        const saving = Vue.ref(false);
+        
+        // Safely initialize profile form with defaults
+        const user = store.state.user || {};
+        const profileForm = Vue.reactive({
+            nickname: user.nickname || '',
+            color: user.color || '#000000',
+            badge: user.badge || ''
+        });
+        
+        const passwordForm = Vue.reactive({
+            oldPassword: '',
+            newPassword: '',
+            confirmPassword: ''
+        });
         
         const toggleTheme = (value) => {
             store.setTheme(value ? 'dark' : 'light');
@@ -1366,6 +1447,90 @@ const SettingsPage = {
         
         const toggleHeartRain = (value) => {
             store.setHeartRainEnabled(value);
+        };
+        
+        const saveProfile = async () => {
+            saving.value = true;
+            try {
+                const response = await fetch('/profile', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        nickname: profileForm.nickname || '',
+                        color: profileForm.color || '#000000',
+                        badge: profileForm.badge || ''
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    ElMessage.success(data.message);
+                    // Update store
+                    store.state.user.nickname = profileForm.nickname;
+                    store.state.user.color = profileForm.color;
+                    store.state.user.badge = profileForm.badge;
+                } else {
+                    ElMessage.error(data.message || '保存失败，请重试');
+                }
+            } catch (error) {
+                console.error('Save profile error:', error);
+                ElMessage.error('保存失败: ' + error.message);
+            } finally {
+                saving.value = false;
+            }
+        };
+        
+        const changePassword = async () => {
+            if (!passwordForm.oldPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+                ElMessage.warning('请填写所有字段');
+                return;
+            }
+            
+            // Get minimum password length from server config
+            const minPasswordLength = StellarisStore.state.config?.minPasswordLength || 6;
+            if (passwordForm.newPassword.length < minPasswordLength) {
+                ElMessage.warning(`新密码至少需要${minPasswordLength}个字符`);
+                return;
+            }
+            
+            if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+                ElMessage.warning('新密码和确认密码不一致');
+                return;
+            }
+            
+            saving.value = true;
+            try {
+                const response = await fetch('/change_password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        old_password: passwordForm.oldPassword,
+                        new_password: passwordForm.newPassword,
+                        confirm_password: passwordForm.confirmPassword
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    ElMessage.success(data.message);
+                    passwordForm.oldPassword = '';
+                    passwordForm.newPassword = '';
+                    passwordForm.confirmPassword = '';
+                } else {
+                    ElMessage.error(data.message || '修改失败，请重试');
+                }
+            } catch (error) {
+                console.error('Change password error:', error);
+                ElMessage.error('修改失败: ' + error.message);
+            } finally {
+                saving.value = false;
+            }
         };
         
         const goToUrl = (url) => {
@@ -1378,10 +1543,16 @@ const SettingsPage = {
         
         return {
             store,
+            activeTab,
             isDark,
             heartRainEnabled,
+            saving,
+            profileForm,
+            passwordForm,
             toggleTheme,
             toggleHeartRain,
+            saveProfile,
+            changePassword,
             goToUrl,
             logout
         };
@@ -1395,7 +1566,8 @@ const AdminPage = {
         <div class="page-container">
             <h2 style="margin-bottom: 24px;">管理面板</h2>
             
-            <div class="admin-grid">
+            <!-- Management Cards -->
+            <div class="admin-grid" style="margin-bottom: 32px;">
                 <div class="admin-card" @click="goToUrl('/admin/users')" style="cursor: pointer;">
                     <div class="admin-card-icon blue"><i class="fas fa-users"></i></div>
                     <div class="admin-card-title">用户管理</div>
@@ -1423,16 +1595,383 @@ const AdminPage = {
                     <div class="admin-card-description">查看和管理数据库</div>
                     <el-button type="primary" size="small">进入</el-button>
                 </div>
+                
+                <div class="admin-card" @click="goToUrl('/admin/quotes')" style="cursor: pointer;">
+                    <div class="admin-card-icon purple"><i class="fas fa-quote-left"></i></div>
+                    <div class="admin-card-title">名言管理</div>
+                    <div class="admin-card-description">管理首页显示的名言内容</div>
+                    <el-button type="primary" size="small">进入</el-button>
+                </div>
             </div>
+            
+            <!-- System Tools -->
+            <el-card shadow="hover" style="margin-bottom: 24px;">
+                <template #header>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-tools"></i>
+                        <span>系统工具</span>
+                    </div>
+                </template>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                    <el-button @click="getSystemInfo" :loading="loading.systemInfo">
+                        <i class="fas fa-info-circle"></i> 系统信息
+                    </el-button>
+                    <el-button @click="viewLogs" :loading="loading.logs">
+                        <i class="fas fa-file-alt"></i> 查看日志
+                    </el-button>
+                    <el-button @click="clearCache" :loading="loading.clearCache">
+                        <i class="fas fa-broom"></i> 清除缓存
+                    </el-button>
+                    <el-button @click="backupDatabase" :loading="loading.backup">
+                        <i class="fas fa-save"></i> 备份数据库
+                    </el-button>
+                    <el-button @click="optimizeDatabase" :loading="loading.optimize">
+                        <i class="fas fa-cog"></i> 优化数据库
+                    </el-button>
+                    <el-button @click="recountFiles" :loading="loading.recount">
+                        <i class="fas fa-sync"></i> 重新统计文件
+                    </el-button>
+                </div>
+            </el-card>
+            
+            <!-- Backup & Download -->
+            <el-card shadow="hover" style="margin-bottom: 24px;">
+                <template #header>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-download"></i>
+                        <span>备份下载</span>
+                    </div>
+                </template>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                    <el-button @click="downloadProject">
+                        <i class="fas fa-folder-open"></i> 下载项目根目录
+                    </el-button>
+                    <el-button @click="downloadDatabase">
+                        <i class="fas fa-database"></i> 下载数据库文件
+                    </el-button>
+                    <el-button @click="downloadImages">
+                        <i class="fas fa-images"></i> 下载图片压缩包
+                    </el-button>
+                </div>
+            </el-card>
+            
+            <!-- Server Control (if enabled) -->
+            <el-card shadow="hover" v-if="serverControlEnabled">
+                <template #header>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-server"></i>
+                        <span style="color: var(--danger-color);">服务器控制</span>
+                    </div>
+                </template>
+                <el-alert type="warning" :closable="false" style="margin-bottom: 16px;">
+                    <template #title>危险操作：请谨慎使用以下功能</template>
+                </el-alert>
+                <div style="display: flex; gap: 12px;">
+                    <el-button type="warning" @click="restartServer" :loading="loading.restart">
+                        <i class="fas fa-redo"></i> 重启服务器
+                    </el-button>
+                    <el-button type="danger" @click="shutdownServer" :loading="loading.shutdown">
+                        <i class="fas fa-power-off"></i> 关停服务器
+                    </el-button>
+                </div>
+            </el-card>
+            
+            <!-- Output Display -->
+            <el-card v-if="outputVisible" shadow="hover" :class="outputError ? 'error-output' : 'success-output'">
+                <template #header>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>{{ outputError ? '错误信息' : '执行结果' }}</span>
+                        <el-button size="small" text @click="outputVisible = false">
+                            <i class="fas fa-times"></i>
+                        </el-button>
+                    </div>
+                </template>
+                <pre style="white-space: pre-wrap; word-break: break-word; margin: 0; font-size: 14px; max-height: 400px; overflow-y: auto;">{{ outputText }}</pre>
+            </el-card>
         </div>
     `,
     setup() {
+        const loading = Vue.reactive({
+            systemInfo: false,
+            logs: false,
+            clearCache: false,
+            backup: false,
+            optimize: false,
+            recount: false,
+            restart: false,
+            shutdown: false
+        });
+        
+        const outputVisible = Vue.ref(false);
+        const outputText = Vue.ref('');
+        const outputError = Vue.ref(false);
+        const serverControlEnabled = Vue.ref(StellarisStore.state.config?.enableServerControl || false);
+        
+        const showOutput = (text, isError = false) => {
+            outputText.value = text;
+            outputError.value = isError;
+            outputVisible.value = true;
+        };
+        
         const goToUrl = (url) => {
             window.location.href = url;
         };
         
+        const getSystemInfo = async () => {
+            loading.systemInfo = true;
+            try {
+                const response = await fetch('/api/admin/system-info');
+                const data = await response.json();
+                if (data.success) {
+                    const info = `内存: ${data.memory_usage || 'N/A'}\n时间: ${data.server_time || 'N/A'}\nPython: ${data.python_version || 'N/A'}\nFlask: ${data.flask_version || 'N/A'}`;
+                    showOutput(info, false);
+                } else {
+                    showOutput('错误: ' + (data.message || JSON.stringify(data)), true);
+                }
+            } catch (error) {
+                showOutput('请求失败: ' + error.message, true);
+            } finally {
+                loading.systemInfo = false;
+            }
+        };
+        
+        const viewLogs = async () => {
+            loading.logs = true;
+            try {
+                const response = await fetch('/api/admin/system-log');
+                const data = await response.json();
+                if (data.success) {
+                    const logs = (data.logs || []).map(l => `[${l.timestamp}] ${l.message}`).join('\n\n');
+                    showOutput(logs || '无日志', false);
+                } else {
+                    showOutput('获取日志失败: ' + (data.message || JSON.stringify(data)), true);
+                }
+            } catch (error) {
+                showOutput('请求失败: ' + error.message, true);
+            } finally {
+                loading.logs = false;
+            }
+        };
+        
+        const clearCache = async () => {
+            const confirmed = await ElMessageBox.confirm(
+                '确认要清除服务器缓存？此操作不会重启服务。',
+                '清除缓存',
+                { type: 'warning' }
+            ).catch(() => false);
+            
+            if (!confirmed) return;
+            
+            loading.clearCache = true;
+            try {
+                const response = await fetch('/api/admin/clear-cache', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showOutput('清除缓存成功: ' + (data.message || ''), false);
+                    ElMessage.success('缓存已清除');
+                } else {
+                    showOutput('清除缓存失败: ' + (data.message || JSON.stringify(data)), true);
+                }
+            } catch (error) {
+                showOutput('请求失败: ' + error.message, true);
+            } finally {
+                loading.clearCache = false;
+            }
+        };
+        
+        const backupDatabase = async () => {
+            const confirmed = await ElMessageBox.confirm(
+                '是否创建数据库备份？请确认为管理员操作。',
+                '备份数据库',
+                { type: 'warning' }
+            ).catch(() => false);
+            
+            if (!confirmed) return;
+            
+            loading.backup = true;
+            try {
+                const response = await fetch('/api/admin/backup-database', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showOutput('备份成功: ' + (data.backup_path || data.message || '已创建'), false);
+                    ElMessage.success('数据库备份成功');
+                } else {
+                    showOutput('备份失败: ' + (data.message || JSON.stringify(data)), true);
+                }
+            } catch (error) {
+                showOutput('请求失败: ' + error.message, true);
+            } finally {
+                loading.backup = false;
+            }
+        };
+        
+        const optimizeDatabase = async () => {
+            const confirmed = await ElMessageBox.confirm(
+                '确认执行数据库优化（VACUUM）？此操作可能会阻塞数据库短时间。',
+                '数据库优化',
+                { type: 'warning' }
+            ).catch(() => false);
+            
+            if (!confirmed) return;
+            
+            loading.optimize = true;
+            try {
+                const response = await fetch('/api/admin/optimize-database', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showOutput('优化成功: ' + (data.message || ''), false);
+                    ElMessage.success('数据库已优化');
+                } else {
+                    showOutput('优化失败: ' + (data.message || JSON.stringify(data)), true);
+                }
+            } catch (error) {
+                showOutput('请求失败: ' + error.message, true);
+            } finally {
+                loading.optimize = false;
+            }
+        };
+        
+        const recountFiles = async () => {
+            const confirmed = await ElMessageBox.confirm(
+                '将通过扫描磁盘重新统计每个用户上传的文件大小并更新数据库，可能需要一些时间，是否继续？',
+                '重新按文件统计大小',
+                { type: 'warning' }
+            ).catch(() => false);
+            
+            if (!confirmed) return;
+            
+            loading.recount = true;
+            try {
+                const response = await fetch('/api/admin/recount-file-size', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showOutput(`完成，更新用户数: ${data.updated_users || 0}\n总文件数: ${data.total_files || 0}`, false);
+                    ElMessage.success('文件大小重新统计完成');
+                } else {
+                    showOutput('失败: ' + (data.message || JSON.stringify(data)), true);
+                }
+            } catch (error) {
+                showOutput('请求失败: ' + error.message, true);
+            } finally {
+                loading.recount = false;
+            }
+        };
+        
+        const downloadProject = async () => {
+            const confirmed = await ElMessageBox.confirm(
+                '将创建项目根目录压缩包（会排除 uploads/logs 等大文件夹），是否继续？',
+                '下载项目根目录',
+                { type: 'info' }
+            ).catch(() => false);
+            
+            if (!confirmed) return;
+            window.location.href = '/down';
+        };
+        
+        const downloadDatabase = async () => {
+            const confirmed = await ElMessageBox.confirm(
+                '下载数据库文件，仅支持 SQLite，确认吗？',
+                '下载数据库',
+                { type: 'info' }
+            ).catch(() => false);
+            
+            if (!confirmed) return;
+            window.location.href = '/downdb';
+        };
+        
+        const downloadImages = async () => {
+            const confirmed = await ElMessageBox.confirm(
+                '将创建一个静态图片压缩包并下载，可能会占用较多磁盘空间。是否继续？',
+                '下载静态图片压缩包',
+                { type: 'info' }
+            ).catch(() => false);
+            
+            if (!confirmed) return;
+            window.location.href = '/admin/download-images-zip';
+        };
+        
+        const restartServer = async () => {
+            const confirmed = await ElMessageBox.confirm(
+                '确认要重启服务器？所有用户连接将中断。',
+                '重启服务器',
+                { type: 'error' }
+            ).catch(() => false);
+            
+            if (!confirmed) return;
+            
+            loading.restart = true;
+            try {
+                const response = await fetch('/api/admin/restart', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showOutput('服务器正在重启: ' + (data.message || ''), false);
+                    ElMessage.warning('服务器正在重启...');
+                } else {
+                    showOutput('重启失败: ' + (data.message || JSON.stringify(data)), true);
+                }
+            } catch (error) {
+                showOutput('请求失败: ' + error.message, true);
+            } finally {
+                loading.restart = false;
+            }
+        };
+        
+        const shutdownServer = async () => {
+            const reason = await ElMessageBox.prompt(
+                '请输入关停原因（可选）:',
+                '关停服务器',
+                { confirmButtonText: '下一步', cancelButtonText: '取消' }
+            ).then(({ value }) => value || '由管理员触发').catch(() => null);
+            
+            if (reason === null) return;
+            
+            const confirmed = await ElMessageBox.confirm(
+                '确认关停服务器？此操作会关闭进程。',
+                '确认',
+                { type: 'error' }
+            ).catch(() => false);
+            
+            if (!confirmed) return;
+            
+            loading.shutdown = true;
+            try {
+                const response = await fetch('/api/admin/shutdown', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason: reason })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showOutput(`关停已触发: ${data.message || ''}\n原因: ${data.reason || ''}`, false);
+                    ElMessage.warning('服务器正在关停...');
+                } else {
+                    showOutput('关停失败: ' + (data.message || JSON.stringify(data)), true);
+                }
+            } catch (error) {
+                showOutput('请求失败: ' + error.message, true);
+            } finally {
+                loading.shutdown = false;
+            }
+        };
+        
         return {
-            goToUrl
+            loading,
+            outputVisible,
+            outputText,
+            outputError,
+            serverControlEnabled,
+            goToUrl,
+            getSystemInfo,
+            viewLogs,
+            clearCache,
+            backupDatabase,
+            optimizeDatabase,
+            recountFiles,
+            downloadProject,
+            downloadDatabase,
+            downloadImages,
+            restartServer,
+            shutdownServer
         };
     }
 };
