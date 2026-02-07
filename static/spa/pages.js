@@ -1391,26 +1391,146 @@ const SettingsPage = {
                     </div>
                 </el-tab-pane>
                 
+                <!-- 我的文件/图片 -->
+                <el-tab-pane :label="store.state.config.enableFileUpload ? '我的文件' : '我的图片'" name="uploads" v-if="store.state.user.isAuthenticated">
+                    <div class="settings-section">
+                        <div class="settings-section-title">
+                            <i class="fas fa-images"></i>
+                            {{ store.state.config.enableFileUpload ? '我的文件' : '我的图片' }}
+                        </div>
+                        
+                        <!-- Quota Info -->
+                        <el-alert v-if="quotaInfo" :closable="false" style="margin-bottom: 16px;">
+                            <div v-if="quotaInfo.is_admin">
+                                <strong>管理员 - 无限制</strong>
+                            </div>
+                            <div v-else>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <span>{{ store.state.config.enableFileUpload ? '文件配额' : '图片配额' }}：</span>
+                                    <span>{{ (quotaInfo.used / (1024 * 1024)).toFixed(2) }} MB / {{ (quotaInfo.total / (1024 * 1024)).toFixed(2) }} MB ({{ quotaInfo.percent.toFixed(1) }}%)</span>
+                                </div>
+                                <el-progress :percentage="quotaInfo.percent" :status="quotaInfo.percent >= 90 ? 'exception' : (quotaInfo.percent >= 70 ? 'warning' : 'success')"></el-progress>
+                            </div>
+                        </el-alert>
+                        
+                        <!-- Upload Button -->
+                        <div style="margin-bottom: 16px;">
+                            <input 
+                                ref="uploadInput" 
+                                type="file" 
+                                :accept="store.state.config.enableFileUpload ? '*' : 'image/*'" 
+                                @change="handleFileUpload" 
+                                style="display: none;">
+                            <el-button type="primary" @click="$refs.uploadInput.click()" :loading="uploading">
+                                <i class="fas fa-upload"></i>
+                                {{ store.state.config.enableFileUpload ? '上传文件' : '上传图片' }}
+                            </el-button>
+                        </div>
+                        
+                        <!-- Files List -->
+                        <loading-component v-if="loadingUploads"></loading-component>
+                        <div v-else-if="uploadsList.length > 0">
+                            <div v-for="item in uploadsList" :key="item.id" style="margin-bottom: 16px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px;">
+                                <div style="display: flex; gap: 12px; align-items: start;">
+                                    <!-- Preview (for images) -->
+                                    <div v-if="item.is_image" style="flex-shrink: 0;">
+                                        <img :src="item.url" :alt="item.filename" style="max-width: 120px; max-height: 120px; border-radius: 4px; object-fit: cover;">
+                                    </div>
+                                    <div v-else style="flex-shrink: 0; width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; background: var(--surface-color); border-radius: 4px;">
+                                        <i class="fas fa-file" style="font-size: 48px; color: var(--text-muted);"></i>
+                                    </div>
+                                    
+                                    <!-- Info -->
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="font-weight: 600; margin-bottom: 4px; word-break: break-all;">{{ item.filename }}</div>
+                                        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
+                                            上传于 {{ new Date(item.uploaded).toLocaleString() }}
+                                        </div>
+                                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                            <el-button size="small" @click="copyMarkdown(item.markdown)">
+                                                <i class="fas fa-copy"></i> 复制 Markdown
+                                            </el-button>
+                                            <el-button size="small" type="danger" @click="deleteUpload(item.id)">
+                                                <i class="fas fa-trash"></i> 删除
+                                            </el-button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <empty-state-component v-else 
+                            icon="fas fa-images"
+                            title="暂无上传"
+                            :description="'还没有上传任何' + (store.state.config.enableFileUpload ? '文件' : '图片')">
+                        </empty-state-component>
+                    </div>
+                </el-tab-pane>
+                
+                <!-- 关注管理 -->
+                <el-tab-pane label="关注管理" name="follows" v-if="store.state.user.isAuthenticated">
+                    <div class="settings-section">
+                        <div class="settings-section-title">
+                            <i class="fas fa-user-friends"></i>
+                            关注管理
+                        </div>
+                        
+                        <!-- Search User -->
+                        <div style="margin-bottom: 16px;">
+                            <el-input 
+                                v-model="followSearchQuery" 
+                                placeholder="输入用户名并回车搜索"
+                                @keyup.enter="searchUserToFollow"
+                                :loading="searchingUser">
+                                <template #append>
+                                    <el-button @click="searchUserToFollow" :loading="searchingUser">
+                                        <i class="fas fa-search"></i>
+                                    </el-button>
+                                </template>
+                            </el-input>
+                        </div>
+                        
+                        <!-- Search Result -->
+                        <div v-if="searchResult" style="margin-bottom: 16px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-weight: 600;">{{ searchResult.nickname || searchResult.username }}</div>
+                                    <div style="font-size: 12px; color: var(--text-muted);">@{{ searchResult.username }}</div>
+                                </div>
+                                <el-button type="primary" size="small" @click="followUser(searchResult)" :loading="following">
+                                    <i class="fas fa-user-plus"></i> 关注
+                                </el-button>
+                            </div>
+                        </div>
+                        
+                        <h3 style="margin-top: 18px; margin-bottom: 12px;">已关注</h3>
+                        
+                        <!-- Follows List -->
+                        <loading-component v-if="loadingFollows"></loading-component>
+                        <div v-else-if="followsList.length > 0">
+                            <div v-for="follow in followsList" :key="follow.id" style="margin-bottom: 12px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-weight: 600;">{{ follow.nickname || follow.username }}</div>
+                                    <div style="font-size: 12px; color: var(--text-muted);">@{{ follow.username }}</div>
+                                </div>
+                                <el-button type="danger" size="small" @click="unfollowUser(follow.id)">
+                                    <i class="fas fa-user-minus"></i> 取消关注
+                                </el-button>
+                            </div>
+                        </div>
+                        <empty-state-component v-else 
+                            icon="fas fa-user-friends"
+                            title="暂无关注"
+                            description="还没有关注任何用户">
+                        </empty-state-component>
+                    </div>
+                </el-tab-pane>
+                
                 <!-- 账户管理 -->
                 <el-tab-pane label="账户" name="account" v-if="store.state.user.isAuthenticated">
                     <div class="settings-section">
                         <div class="settings-section-title">
                             <i class="fas fa-user-cog"></i>
                             账户管理
-                        </div>
-                        <div class="settings-item" style="cursor: pointer;" @click="goToUrl('/settings/images')">
-                            <div>
-                                <div class="settings-item-label">我的文件</div>
-                                <div class="settings-item-description">管理上传的图片和文件</div>
-                            </div>
-                            <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
-                        </div>
-                        <div class="settings-item" style="cursor: pointer;" @click="goToUrl('/settings/follows')">
-                            <div>
-                                <div class="settings-item-label">关注管理</div>
-                                <div class="settings-item-description">管理关注的用户</div>
-                            </div>
-                            <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
                         </div>
                         <el-divider></el-divider>
                         <el-button type="danger" @click="logout" style="width: 100%;">退出登录</el-button>
@@ -1440,6 +1560,21 @@ const SettingsPage = {
             newPassword: '',
             confirmPassword: ''
         });
+        
+        // Uploads management
+        const uploadsList = Vue.ref([]);
+        const loadingUploads = Vue.ref(false);
+        const uploading = Vue.ref(false);
+        const quotaInfo = Vue.ref(null);
+        const uploadInput = Vue.ref(null);
+        
+        // Follows management
+        const followsList = Vue.ref([]);
+        const loadingFollows = Vue.ref(false);
+        const followSearchQuery = Vue.ref('');
+        const searchResult = Vue.ref(null);
+        const searchingUser = Vue.ref(false);
+        const following = Vue.ref(false);
         
         const toggleTheme = (value) => {
             store.setTheme(value ? 'dark' : 'light');
@@ -1533,6 +1668,211 @@ const SettingsPage = {
             }
         };
         
+        // Load uploads list
+        const loadUploads = async () => {
+            loadingUploads.value = true;
+            try {
+                const response = await fetch('/api/upload/images');
+                const data = await response.json();
+                if (data.success) {
+                    uploadsList.value = data.images;
+                }
+            } catch (error) {
+                console.error('Load uploads error:', error);
+                ElMessage.error('加载上传列表失败');
+            } finally {
+                loadingUploads.value = false;
+            }
+        };
+        
+        // Load quota info
+        const loadQuota = async () => {
+            try {
+                const response = await fetch('/api/upload/quota');
+                const data = await response.json();
+                if (data.success) {
+                    quotaInfo.value = data.quota;
+                }
+            } catch (error) {
+                console.error('Load quota error:', error);
+            }
+        };
+        
+        // Handle file upload
+        const handleFileUpload = async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            uploading.value = true;
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const uploadUrl = store.state.config.enableFileUpload ? '/api/upload/file' : '/api/upload/image';
+                const response = await fetch(uploadUrl, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    ElMessage.success((data.is_image ? '图片' : '文件') + '上传成功');
+                    await loadUploads();
+                    await loadQuota();
+                } else {
+                    ElMessage.error(data.message || '上传失败');
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                ElMessage.error('上传失败: ' + error.message);
+            } finally {
+                uploading.value = false;
+                event.target.value = ''; // Reset input
+            }
+        };
+        
+        // Copy markdown to clipboard
+        const copyMarkdown = async (markdown) => {
+            try {
+                await navigator.clipboard.writeText(markdown);
+                ElMessage.success('Markdown 已复制到剪贴板');
+            } catch (error) {
+                console.error('Copy error:', error);
+                ElMessage.error('复制失败');
+            }
+        };
+        
+        // Delete upload
+        const deleteUpload = async (id) => {
+            try {
+                await ElMessageBox.confirm('确定要删除这个文件吗？', '确认删除', {
+                    confirmButtonText: '删除',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                });
+                
+                const response = await fetch(`/api/upload/image/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    ElMessage.success('删除成功');
+                    await loadUploads();
+                    await loadQuota();
+                } else {
+                    ElMessage.error(data.message || '删除失败');
+                }
+            } catch (error) {
+                if (error !== 'cancel') {
+                    console.error('Delete error:', error);
+                    ElMessage.error('删除失败');
+                }
+            }
+        };
+        
+        // Load follows list
+        const loadFollows = async () => {
+            loadingFollows.value = true;
+            try {
+                const response = await fetch('/api/follows');
+                const data = await response.json();
+                if (data.success) {
+                    followsList.value = data.follows;
+                }
+            } catch (error) {
+                console.error('Load follows error:', error);
+                ElMessage.error('加载关注列表失败');
+            } finally {
+                loadingFollows.value = false;
+            }
+        };
+        
+        // Search user to follow
+        const searchUserToFollow = async () => {
+            if (!followSearchQuery.value.trim()) {
+                ElMessage.warning('请输入用户名');
+                return;
+            }
+            
+            searchingUser.value = true;
+            try {
+                const response = await fetch(`/api/search_users?username=${encodeURIComponent(followSearchQuery.value)}`);
+                const data = await response.json();
+                
+                if (data.success && data.users && data.users.length > 0) {
+                    searchResult.value = data.users[0];
+                } else {
+                    ElMessage.warning('未找到用户');
+                    searchResult.value = null;
+                }
+            } catch (error) {
+                console.error('Search user error:', error);
+                ElMessage.error('搜索失败');
+            } finally {
+                searchingUser.value = false;
+            }
+        };
+        
+        // Follow user
+        const followUser = async (user) => {
+            following.value = true;
+            try {
+                const response = await fetch('/api/follows', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: user.id
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    ElMessage.success('关注成功');
+                    searchResult.value = null;
+                    followSearchQuery.value = '';
+                    await loadFollows();
+                } else {
+                    ElMessage.error(data.message || '关注失败');
+                }
+            } catch (error) {
+                console.error('Follow error:', error);
+                ElMessage.error('关注失败: ' + error.message);
+            } finally {
+                following.value = false;
+            }
+        };
+        
+        // Unfollow user
+        const unfollowUser = async (userId) => {
+            try {
+                await ElMessageBox.confirm('确定要取消关注吗？', '确认取消', {
+                    confirmButtonText: '取消关注',
+                    cancelButtonText: '保留',
+                    type: 'warning'
+                });
+                
+                const response = await fetch(`/api/follows/${userId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    ElMessage.success('已取消关注');
+                    await loadFollows();
+                } else {
+                    ElMessage.error(data.message || '取消失败');
+                }
+            } catch (error) {
+                if (error !== 'cancel') {
+                    console.error('Unfollow error:', error);
+                    ElMessage.error('取消失败');
+                }
+            }
+        };
+        
         const goToUrl = (url) => {
             window.location.href = url;
         };
@@ -1540,6 +1880,16 @@ const SettingsPage = {
         const logout = () => {
             window.location.href = '/logout';
         };
+        
+        // Watch activeTab to load data when needed
+        Vue.watch(activeTab, (newTab) => {
+            if (newTab === 'uploads') {
+                loadUploads();
+                loadQuota();
+            } else if (newTab === 'follows') {
+                loadFollows();
+            }
+        });
         
         return {
             store,
@@ -1549,10 +1899,27 @@ const SettingsPage = {
             saving,
             profileForm,
             passwordForm,
+            uploadsList,
+            loadingUploads,
+            uploading,
+            quotaInfo,
+            uploadInput,
+            followsList,
+            loadingFollows,
+            followSearchQuery,
+            searchResult,
+            searchingUser,
+            following,
             toggleTheme,
             toggleHeartRain,
             saveProfile,
             changePassword,
+            handleFileUpload,
+            copyMarkdown,
+            deleteUpload,
+            searchUserToFollow,
+            followUser,
+            unfollowUser,
             goToUrl,
             logout
         };
