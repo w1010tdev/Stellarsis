@@ -1421,7 +1421,7 @@ const SettingsPage = {
                                 :accept="store.state.config.enableFileUpload ? '*' : 'image/*'" 
                                 @change="handleFileUpload" 
                                 style="display: none;">
-                            <el-button type="primary" @click="$refs.uploadInput.click()" :loading="uploading">
+                            <el-button type="primary" @click="triggerFileUpload" :loading="uploading">
                                 <i class="fas fa-upload"></i>
                                 {{ store.state.config.enableFileUpload ? '上传文件' : '上传图片' }}
                             </el-button>
@@ -1698,6 +1698,13 @@ const SettingsPage = {
             }
         };
         
+        // Trigger file upload
+        const triggerFileUpload = () => {
+            if (uploadInput.value) {
+                uploadInput.value.click();
+            }
+        };
+        
         // Handle file upload
         const handleFileUpload = async (event) => {
             const file = event.target.files[0];
@@ -1914,6 +1921,7 @@ const SettingsPage = {
             toggleHeartRain,
             saveProfile,
             changePassword,
+            triggerFileUpload,
             handleFileUpload,
             copyMarkdown,
             deleteUpload,
@@ -2298,11 +2306,11 @@ const AdminPage = {
                 </el-tab-pane>
                 
                 <!-- File Manager Tab -->
-                <el-tab-pane label="文件管理" name="files" v-if="fileManagerEnabled">
+                <el-tab-pane label="系统文件" name="files" v-if="fileManagerEnabled">
                     <el-card>
                         <div style="text-align: center; padding: 40px 20px;">
                             <i class="fas fa-folder-open" style="font-size: 64px; color: var(--primary-color); margin-bottom: 24px;"></i>
-                            <h3 style="margin-bottom: 16px;">文件管理器</h3>
+                            <h3 style="margin-bottom: 16px;">系统文件管理</h3>
                             <p style="color: var(--text-secondary); margin-bottom: 24px;">
                                 管理服务器上的文件和目录
                             </p>
