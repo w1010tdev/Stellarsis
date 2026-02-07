@@ -2064,7 +2064,7 @@ const AdminPage = {
                     <el-dialog v-model="userDialogVisible" :title="editingUser.id ? '编辑用户' : '新建用户'" width="500px">
                         <el-form :model="editingUser" label-width="100px">
                             <el-form-item label="用户名">
-                                <el-input v-model="editingUser.username" :disabled="!!editingUser.id"></el-input>
+                                <el-input v-model="editingUser.username" :disabled="editingUser.id"></el-input>
                             </el-form-item>
                             <el-form-item label="密码" v-if="!editingUser.id">
                                 <el-input v-model="editingUser.password" type="password"></el-input>
