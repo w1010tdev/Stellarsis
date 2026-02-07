@@ -1452,8 +1452,8 @@ const SettingsPage = {
         const saveProfile = async () => {
             saving.value = true;
             try {
-                const response = await fetch('/api/profile', {
-                    method: 'PUT',
+                const response = await fetch('/profile', {
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
@@ -1503,8 +1503,8 @@ const SettingsPage = {
             
             saving.value = true;
             try {
-                const response = await fetch('/api/change_password', {
-                    method: 'PUT',
+                const response = await fetch('/change_password', {
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },

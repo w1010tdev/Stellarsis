@@ -920,7 +920,43 @@ def logout():
 
 @app.route('/change_password', methods=['GET', 'POST'])
 @login_required
+@limiter.limit("3 per minute", methods=["POST"])
 def change_password():
+    # Handle JSON request from SPA
+    if request.is_json:
+        try:
+            data = request.get_json()
+            
+            old_password = data.get('old_password', '')
+            new_password = data.get('new_password', '')
+            confirm_password = data.get('confirm_password', '')
+            
+            # Validate inputs
+            if not old_password or not new_password or not confirm_password:
+                return jsonify({'success': False, 'message': '请填写所有字段'}), 400
+            
+            min_length = app.config.get('MIN_PASSWORD_LENGTH', 6)
+            if len(new_password) < min_length:
+                return jsonify({'success': False, 'message': f'新密码至少需要{min_length}个字符'}), 400
+            
+            if new_password != confirm_password:
+                return jsonify({'success': False, 'message': '新密码和确认密码不一致'}), 400
+            
+            # Check old password
+            if not current_user.check_password(old_password):
+                return jsonify({'success': False, 'message': '当前密码错误'}), 400
+            
+            # Update password
+            current_user.set_password(new_password)
+            db_session.commit()
+            log_admin_action(f"用户修改密码: {current_user.username}")
+            
+            return jsonify({'success': True, 'message': '密码已成功修改'})
+        except Exception as e:
+            db_session.rollback()
+            return jsonify({'success': False, 'message': str(e)}), 500
+    
+    # Handle traditional form request
     form = ChangePasswordForm()
     if form.validate_on_submit():
         if not current_user.check_password(form.old_password.data):
@@ -937,7 +973,43 @@ def change_password():
 
 @app.route('/profile', methods=['GET', 'POST'])
 @login_required
+@limiter.limit("10 per minute", methods=["POST"])
 def profile():
+    # Handle JSON request from SPA
+    if request.is_json:
+        try:
+            data = request.get_json()
+            
+            # Validate color format if provided
+            if 'color' in data and data['color']:
+                if not re.match(r'^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$', data['color']):
+                    return jsonify({'success': False, 'message': '颜色格式必须是#RGB或#RRGGBB'}), 400
+            
+            # Update profile fields
+            if 'nickname' in data:
+                current_user.nickname = data['nickname'][:64] if data['nickname'] else None
+            if 'color' in data:
+                current_user.color = data['color'] or '#000000'
+            if 'badge' in data:
+                current_user.badge = data['badge'][:32] if data['badge'] else None
+            
+            db_session.commit()
+            log_admin_action(f"用户更新个人资料: {current_user.username}")
+            
+            return jsonify({
+                'success': True,
+                'message': '个人资料已更新',
+                'user': {
+                    'nickname': current_user.nickname,
+                    'color': current_user.color,
+                    'badge': current_user.badge
+                }
+            })
+        except Exception as e:
+            db_session.rollback()
+            return jsonify({'success': False, 'message': str(e)}), 500
+    
+    # Handle traditional form request
     form = ProfileForm()
     if form.validate_on_submit():
         current_user.nickname = form.nickname.data
@@ -953,82 +1025,6 @@ def profile():
         form.badge.data = current_user.badge
     
     return render_template('settings/profile.html', form=form)
-
-# API endpoints for SPA
-@app.route('/api/profile', methods=['PUT'])
-@login_required
-@limiter.limit("10 per minute")
-def api_update_profile():
-    """API endpoint for updating user profile from SPA"""
-    try:
-        data = request.get_json()
-        
-        # Validate color format if provided
-        if 'color' in data and data['color']:
-            if not re.match(r'^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$', data['color']):
-                return jsonify({'success': False, 'message': '颜色格式必须是#RGB或#RRGGBB'}), 400
-        
-        # Update profile fields
-        if 'nickname' in data:
-            current_user.nickname = data['nickname'][:64] if data['nickname'] else None
-        if 'color' in data:
-            current_user.color = data['color'] or '#000000'
-        if 'badge' in data:
-            current_user.badge = data['badge'][:32] if data['badge'] else None
-        
-        db_session.commit()
-        log_admin_action(f"用户更新个人资料: {current_user.username}")
-        
-        return jsonify({
-            'success': True,
-            'message': '个人资料已更新',
-            'user': {
-                'nickname': current_user.nickname,
-                'color': current_user.color,
-                'badge': current_user.badge
-            }
-        })
-    except Exception as e:
-        db_session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/change_password', methods=['PUT'])
-@login_required
-@limiter.limit("3 per minute")
-def api_change_password():
-    """API endpoint for changing password from SPA"""
-    try:
-        data = request.get_json()
-        
-        old_password = data.get('old_password', '')
-        new_password = data.get('new_password', '')
-        confirm_password = data.get('confirm_password', '')
-        
-        # Validate inputs
-        if not old_password or not new_password or not confirm_password:
-            return jsonify({'success': False, 'message': '请填写所有字段'}), 400
-        
-        min_length = app.config.get('MIN_PASSWORD_LENGTH', 6)
-        if len(new_password) < min_length:
-            return jsonify({'success': False, 'message': f'新密码至少需要{min_length}个字符'}), 400
-        
-        if new_password != confirm_password:
-            return jsonify({'success': False, 'message': '新密码和确认密码不一致'}), 400
-        
-        # Check old password
-        if not current_user.check_password(old_password):
-            return jsonify({'success': False, 'message': '当前密码错误'}), 400
-        
-        # Update password
-        current_user.set_password(new_password)
-        db_session.commit()
-        log_admin_action(f"用户修改密码: {current_user.username}")
-        
-        return jsonify({'success': True, 'message': '密码已成功修改'})
-    except Exception as e:
-        db_session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
 
 # 聊天相关路由
 @app.route('/chat')

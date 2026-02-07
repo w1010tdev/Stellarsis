@@ -76,12 +76,12 @@
 - 错误操作显示红色边框
 - 可关闭输出卡片
 
-## 新增API端点
+## API端点复用
 
-为支持SPA操作，新增以下API端点：
+SPA功能复用了原有的后端接口，无需额外API端点：
 
-### `/api/profile` (PUT)
-更新当前用户的个人资料
+### `/profile` (POST with JSON)
+更新当前用户的个人资料（支持JSON和表单两种格式）
 ```json
 {
   "nickname": "用户昵称",
@@ -103,8 +103,10 @@
 }
 ```
 
-### `/api/change_password` (PUT)
-修改当前用户密码
+**速率限制**: 10次/分钟
+
+### `/change_password` (POST with JSON)
+修改当前用户密码（支持JSON和表单两种格式）
 ```json
 {
   "old_password": "旧密码",
@@ -121,7 +123,16 @@
 }
 ```
 
+**速率限制**: 3次/分钟
+
 ## 技术实现
+
+### 后端接口复用
+- 原有的 `/profile` 和 `/change_password` 端点已增强，支持同时处理：
+  - **传统表单请求** (Content-Type: application/x-www-form-urlencoded)
+  - **JSON请求** (Content-Type: application/json) - SPA使用
+- 通过检测 `request.is_json` 自动选择处理方式
+- 避免代码重复，保持单一职责
 
 ### 前端技术栈
 - **Vue 3**: Composition API
@@ -137,7 +148,10 @@
 5. **实时预览**: 个人资料修改实时显示效果
 
 ### 安全性
-- **登录验证**: 所有API端点都需要登录
+- **登录验证**: 所有端点都需要登录
+- **速率限制**: 防止暴力攻击和滥用
+  - `/profile`: 10次/分钟
+  - `/change_password`: 3次/分钟
 - **管理员权限**: 管理面板仅管理员可访问
 - **数据验证**: 服务端验证所有输入数据
 - **错误处理**: 完善的错误捕获和提示
