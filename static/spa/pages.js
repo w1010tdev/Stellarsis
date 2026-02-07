@@ -1418,7 +1418,7 @@ const SettingsPage = {
                             <input 
                                 ref="uploadInput" 
                                 type="file" 
-                                :accept="store.state.config.enableFileUpload ? '*' : 'image/*'" 
+                                :accept="store.state.config.enableFileUpload ? '*/*' : 'image/*'" 
                                 @change="handleFileUpload" 
                                 style="display: none;">
                             <el-button type="primary" @click="triggerFileUpload" :loading="uploading">
@@ -2086,11 +2086,10 @@ const AdminPage = {
                             <el-form-item label="徽章">
                                 <el-input v-model="editingUser.badge"></el-input>
                             </el-form-item>
-                            <el-form-item label="权限">
-                                <el-select v-model="editingUser.permission">
-                                    <el-option label="普通用户" value=""></el-option>
-                                    <el-option label="777" value="777"></el-option>
-                                    <el-option label="SU" value="su"></el-option>
+                            <el-form-item label="角色">
+                                <el-select v-model="editingUser.role">
+                                    <el-option label="普通用户" value="user"></el-option>
+                                    <el-option label="管理员" value="admin"></el-option>
                                 </el-select>
                             </el-form-item>
                         </el-form>
@@ -2115,17 +2114,9 @@ const AdminPage = {
                     <el-table :data="rooms" v-loading="loading.rooms" stripe border>
                         <el-table-column prop="id" label="ID" width="80"></el-table-column>
                         <el-table-column prop="name" label="聊天室名称" min-width="200"></el-table-column>
-                        <el-table-column prop="description" label="描述" min-width="250"></el-table-column>
-                        <el-table-column prop="permission" label="权限" width="100">
+                        <el-table-column prop="description" label="描述" min-width="300"></el-table-column>
+                        <el-table-column label="操作" fixed="right" width="200">
                             <template #default="scope">
-                                <el-tag v-if="scope.row.permission === 'su'" type="danger">SU</el-tag>
-                                <el-tag v-else-if="scope.row.permission === '777'" type="warning">777</el-tag>
-                                <el-tag v-else type="info">{{ scope.row.permission || 'N/A' }}</el-tag>
-                            </template>
-                        </el-table-column>
-                        <el-table-column label="操作" fixed="right" width="250">
-                            <template #default="scope">
-                                <el-button size="small" @click="manageRoomUsers(scope.row)">成员</el-button>
                                 <el-button size="small" @click="showRoomDialog(scope.row)">编辑</el-button>
                                 <el-button size="small" type="danger" @click="deleteRoom(scope.row)">删除</el-button>
                             </template>
@@ -2141,56 +2132,10 @@ const AdminPage = {
                             <el-form-item label="描述">
                                 <el-input v-model="editingRoom.description" type="textarea" :rows="3"></el-input>
                             </el-form-item>
-                            <el-form-item label="权限">
-                                <el-select v-model="editingRoom.permission">
-                                    <el-option label="公开" value=""></el-option>
-                                    <el-option label="777" value="777"></el-option>
-                                    <el-option label="SU" value="su"></el-option>
-                                </el-select>
-                            </el-form-item>
                         </el-form>
                         <template #footer>
                             <el-button @click="roomDialogVisible = false">取消</el-button>
                             <el-button type="primary" @click="saveRoom" :loading="loading.saveRoom">保存</el-button>
-                        </template>
-                    </el-dialog>
-                    
-                    <!-- Room Users Dialog -->
-                    <el-dialog v-model="roomUsersDialogVisible" title="聊天室成员管理" width="700px">
-                        <div style="margin-bottom: 16px;">
-                            <el-button type="primary" size="small" @click="showAddUserToRoomDialog">
-                                <i class="fas fa-plus"></i> 添加成员
-                            </el-button>
-                        </div>
-                        <el-table :data="roomUsers" v-loading="loading.roomUsers" stripe border max-height="400">
-                            <el-table-column prop="id" label="用户ID" width="100"></el-table-column>
-                            <el-table-column prop="username" label="用户名" width="150"></el-table-column>
-                            <el-table-column prop="nickname" label="昵称" min-width="150"></el-table-column>
-                            <el-table-column label="操作" fixed="right" width="120">
-                                <template #default="scope">
-                                    <el-button size="small" type="danger" @click="removeUserFromRoom(scope.row)">移除</el-button>
-                                </template>
-                            </el-table-column>
-                        </el-table>
-                    </el-dialog>
-                    
-                    <!-- Add User to Room Dialog -->
-                    <el-dialog v-model="addUserToRoomDialogVisible" title="添加成员" width="400px">
-                        <el-form label-width="100px">
-                            <el-form-item label="选择用户">
-                                <el-select v-model="selectedUserId" filterable placeholder="请选择用户">
-                                    <el-option 
-                                        v-for="user in users" 
-                                        :key="user.id" 
-                                        :label="user.nickname || user.username" 
-                                        :value="user.id">
-                                    </el-option>
-                                </el-select>
-                            </el-form-item>
-                        </el-form>
-                        <template #footer>
-                            <el-button @click="addUserToRoomDialogVisible = false">取消</el-button>
-                            <el-button type="primary" @click="addUserToRoom" :loading="loading.addUserToRoom">添加</el-button>
                         </template>
                     </el-dialog>
                 </el-tab-pane>
@@ -2209,14 +2154,7 @@ const AdminPage = {
                     <el-table :data="sections" v-loading="loading.sections" stripe border>
                         <el-table-column prop="id" label="ID" width="80"></el-table-column>
                         <el-table-column prop="name" label="分区名称" min-width="200"></el-table-column>
-                        <el-table-column prop="description" label="描述" min-width="300"></el-table-column>
-                        <el-table-column prop="permission" label="权限" width="100">
-                            <template #default="scope">
-                                <el-tag v-if="scope.row.permission === 'su'" type="danger">SU</el-tag>
-                                <el-tag v-else-if="scope.row.permission === '777'" type="warning">777</el-tag>
-                                <el-tag v-else type="info">{{ scope.row.permission || '公开' }}</el-tag>
-                            </template>
-                        </el-table-column>
+                        <el-table-column prop="description" label="描述" min-width="350"></el-table-column>
                         <el-table-column label="操作" fixed="right" width="200">
                             <template #default="scope">
                                 <el-button size="small" @click="showSectionDialog(scope.row)">编辑</el-button>
@@ -2233,13 +2171,6 @@ const AdminPage = {
                             </el-form-item>
                             <el-form-item label="描述">
                                 <el-input v-model="editingSection.description" type="textarea" :rows="3"></el-input>
-                            </el-form-item>
-                            <el-form-item label="权限">
-                                <el-select v-model="editingSection.permission">
-                                    <el-option label="公开" value=""></el-option>
-                                    <el-option label="777" value="777"></el-option>
-                                    <el-option label="SU" value="su"></el-option>
-                                </el-select>
                             </el-form-item>
                         </el-form>
                         <template #footer>
@@ -2340,8 +2271,6 @@ const AdminPage = {
             saveUser: false,
             rooms: false,
             saveRoom: false,
-            roomUsers: false,
-            addUserToRoom: false,
             sections: false,
             saveSection: false,
             quotes: false,
@@ -2363,11 +2292,6 @@ const AdminPage = {
         const rooms = Vue.ref([]);
         const roomDialogVisible = Vue.ref(false);
         const editingRoom = Vue.ref({});
-        const roomUsersDialogVisible = Vue.ref(false);
-        const roomUsers = Vue.ref([]);
-        const currentRoomId = Vue.ref(null);
-        const addUserToRoomDialogVisible = Vue.ref(false);
-        const selectedUserId = Vue.ref(null);
         
         // Sections
         const sections = Vue.ref([]);
@@ -2631,7 +2555,8 @@ const AdminPage = {
         const loadUsers = async () => {
             loading.users = true;
             try {
-                const response = await fetch('/api/admin/users');
+                // Use search_users API to get all users (no search query returns all)
+                const response = await fetch('/api/search_users?username=');
                 const data = await response.json();
                 if (data.success) {
                     users.value = data.users || [];
@@ -2649,7 +2574,7 @@ const AdminPage = {
             if (user) {
                 editingUser.value = { ...user };
             } else {
-                editingUser.value = { username: '', password: '', nickname: '', color: '#409eff', badge: '', permission: '' };
+                editingUser.value = { username: '', password: '', nickname: '', color: '#409eff', badge: '', role: 'user' };
             }
             userDialogVisible.value = true;
         };
@@ -2787,94 +2712,6 @@ const AdminPage = {
             }
         };
         
-        const manageRoomUsers = async (room) => {
-            currentRoomId.value = room.id;
-            await loadRoomUsers(room.id);
-            roomUsersDialogVisible.value = true;
-        };
-        
-        const loadRoomUsers = async (roomId) => {
-            loading.roomUsers = true;
-            try {
-                const response = await fetch(`/api/admin/chat/room-users/${roomId}`);
-                const data = await response.json();
-                if (data.success) {
-                    roomUsers.value = data.users || [];
-                } else {
-                    ElMessage.error('加载成员失败: ' + (data.message || ''));
-                }
-            } catch (error) {
-                ElMessage.error('请求失败: ' + error.message);
-            } finally {
-                loading.roomUsers = false;
-            }
-        };
-        
-        const showAddUserToRoomDialog = async () => {
-            if (users.value.length === 0) {
-                await loadUsers();
-            }
-            selectedUserId.value = null;
-            addUserToRoomDialogVisible.value = true;
-        };
-        
-        const addUserToRoom = async () => {
-            if (!selectedUserId.value) {
-                ElMessage.warning('请选择用户');
-                return;
-            }
-            
-            loading.addUserToRoom = true;
-            try {
-                const response = await fetch(`/api/admin/chat/room-users/${currentRoomId.value}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: selectedUserId.value })
-                });
-                const data = await response.json();
-                
-                if (data.success) {
-                    ElMessage.success('成员添加成功');
-                    addUserToRoomDialogVisible.value = false;
-                    loadRoomUsers(currentRoomId.value);
-                } else {
-                    ElMessage.error('添加失败: ' + (data.message || ''));
-                }
-            } catch (error) {
-                ElMessage.error('请求失败: ' + error.message);
-            } finally {
-                loading.addUserToRoom = false;
-            }
-        };
-        
-        const removeUserFromRoom = async (user) => {
-            const confirmed = await ElMessageBox.confirm(
-                `确认从聊天室移除 "${user.username}" 吗？`,
-                '移除成员',
-                { type: 'warning' }
-            ).catch(() => false);
-            
-            if (!confirmed) return;
-            
-            try {
-                const response = await fetch(`/api/admin/chat/room-users/${currentRoomId.value}`, {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: user.id })
-                });
-                const data = await response.json();
-                
-                if (data.success) {
-                    ElMessage.success('成员移除成功');
-                    loadRoomUsers(currentRoomId.value);
-                } else {
-                    ElMessage.error('移除失败: ' + (data.message || ''));
-                }
-            } catch (error) {
-                ElMessage.error('请求失败: ' + error.message);
-            }
-        };
-        
         // Forum Section Management Functions
         const loadSections = async () => {
             loading.sections = true;
@@ -2962,7 +2799,11 @@ const AdminPage = {
                 const response = await fetch('/api/admin/quotes');
                 const data = await response.json();
                 if (data.success) {
-                    quotes.value = data.quotes || [];
+                    // Add index as id for each quote
+                    quotes.value = (data.quotes || []).map((quote, index) => ({
+                        ...quote,
+                        id: index
+                    }));
                 } else {
                     ElMessage.error('加载名言失败: ' + (data.message || ''));
                 }
@@ -3088,14 +2929,6 @@ const AdminPage = {
             loadRooms,
             saveRoom,
             deleteRoom,
-            manageRoomUsers,
-            roomUsersDialogVisible,
-            roomUsers,
-            addUserToRoomDialogVisible,
-            selectedUserId,
-            showAddUserToRoomDialog,
-            addUserToRoom,
-            removeUserFromRoom,
             sections,
             sectionDialogVisible,
             editingSection,
