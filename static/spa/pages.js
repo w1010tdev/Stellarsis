@@ -2977,6 +2977,105 @@ const AdminPage = {
     }
 };
 
+// SU Verification Page
+const SUVerificationPage = {
+    name: 'SUVerificationPage',
+    template: `
+        <div class="page-container" style="max-width: 500px; margin: 0 auto; padding: 60px 20px;">
+            <div style="text-align: center; margin-bottom: 32px;">
+                <div style="font-size: 64px; margin-bottom: 16px;">🛡️</div>
+                <h2 style="margin-bottom: 12px;">需要 SU 验证</h2>
+                <p style="color: var(--text-secondary);">您正在访问管理面板，请输入密码以继续。验证成功后 5 分钟内无需再次验证。</p>
+            </div>
+            
+            <el-card shadow="hover">
+                <el-form @submit.prevent="verifySU">
+                    <el-form-item label="管理员密码">
+                        <el-input 
+                            v-model="password" 
+                            type="password" 
+                            placeholder="请输入管理员密码"
+                            :disabled="loading"
+                            @keyup.enter="verifySU"
+                            autofocus>
+                        </el-input>
+                    </el-form-item>
+                    
+                    <el-form-item>
+                        <el-button 
+                            type="primary" 
+                            @click="verifySU" 
+                            :loading="loading"
+                            style="width: 100%;">
+                            验证并继续
+                        </el-button>
+                    </el-form-item>
+                </el-form>
+            </el-card>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <el-button text @click="navigateTo('/')">
+                    <i class="fas fa-arrow-left"></i> 返回首页
+                </el-button>
+            </div>
+        </div>
+    `,
+    setup() {
+        const password = Vue.ref('');
+        const loading = Vue.ref(false);
+        const store = StellarisStore;
+        
+        const verifySU = async () => {
+            if (!password.value) {
+                ElMessage.warning('请输入密码');
+                return;
+            }
+            
+            loading.value = true;
+            try {
+                const response = await fetch('/admin/su', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        password: password.value
+                    })
+                });
+                
+                // Check if verification was successful by looking at redirect or response
+                if (response.redirected || response.ok) {
+                    ElMessage.success('SU 验证成功');
+                    
+                    // Get the return URL from query params
+                    const queryParams = StellarisRouter.getQueryParams();
+                    const returnUrl = queryParams.next || '/admin';
+                    
+                    // Navigate to the intended destination
+                    setTimeout(() => {
+                        StellarisRouter.navigate(returnUrl);
+                    }, 500);
+                } else {
+                    ElMessage.error('密码错误');
+                    password.value = '';
+                }
+            } catch (error) {
+                console.error('SU verification error:', error);
+                ElMessage.error('验证失败，请重试');
+            } finally {
+                loading.value = false;
+            }
+        };
+        
+        return {
+            password,
+            loading,
+            verifySU,
+            navigateTo: (path) => StellarisRouter.navigate(path)
+        };
+    }
+};
+
 // 404 Page
 const NotFoundPage = {
     name: 'NotFoundPage',
@@ -3005,5 +3104,6 @@ window.StellarisPages = {
     ForumThreadPage,
     SettingsPage,
     AdminPage,
+    SUVerificationPage,
     NotFoundPage
 };

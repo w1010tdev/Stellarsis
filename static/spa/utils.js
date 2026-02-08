@@ -362,6 +362,32 @@ const StellarisUtils = {
     // Generate client ID for messages
     generateClientId() {
         return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    },
+    
+    // Fetch wrapper that handles SU verification requirement
+    async fetchWithSUCheck(url, options = {}) {
+        try {
+            const response = await fetch(url, options);
+            
+            // Check for SU verification requirement
+            if (response.status === 401) {
+                try {
+                    const data = await response.json();
+                    if (data.require_su) {
+                        // Redirect to SU verification page with return URL
+                        const currentPath = StellarisRouter.getCurrentPath();
+                        StellarisRouter.navigate('/admin/su', { next: currentPath });
+                        return null;
+                    }
+                } catch (e) {
+                    // If not JSON or parsing failed, just return the response
+                }
+            }
+            
+            return response;
+        } catch (error) {
+            throw error;
+        }
     }
 };
 
