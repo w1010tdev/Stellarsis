@@ -3513,6 +3513,23 @@ def db_admin():
     return render_template('admin/db.html', tables=tables)
 
 
+@app.route('/api/admin/db/tables', methods=['GET'])
+@login_required
+@su_required
+def api_admin_db_tables():
+    """获取所有数据库表名"""
+    try:
+        conn = sqlite3.connect(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        return jsonify(success=True, tables=tables)
+    except Exception as e:
+        logger.exception('获取数据库表列表失败')
+        return jsonify(success=False, message=str(e)), 500
+
+
 @app.route('/admin/db/table/<table_name>')
 @login_required
 @su_required

@@ -2319,16 +2319,53 @@ const AdminPage = {
                 
                 <!-- Database Management Tab -->
                 <el-tab-pane label="数据库管理" name="database">
-                    <el-card>
-                        <div style="text-align: center; padding: 40px 20px;">
-                            <i class="fas fa-database" style="font-size: 64px; color: var(--primary-color); margin-bottom: 24px;"></i>
-                            <h3 style="margin-bottom: 16px;">数据库管理工具</h3>
-                            <p style="color: var(--text-secondary); margin-bottom: 24px;">
-                                使用专业的数据库管理界面查看和管理数据库
-                            </p>
-                            <el-button type="primary" size="large" @click="goToUrl('/admin/db/')">
-                                <i class="fas fa-external-link-alt"></i> 打开数据库管理
+                    <div style="margin-bottom: 16px;">
+                        <el-button @click="loadDatabaseTables" :loading="loading.dbTables">
+                            <i class="fas fa-sync"></i> 刷新表列表
+                        </el-button>
+                        <el-button @click="goToUrl('/admin/db/')">
+                            <i class="fas fa-external-link-alt"></i> 打开完整管理界面
+                        </el-button>
+                    </div>
+                    
+                    <el-card v-if="!selectedTable">
+                        <h3 style="margin-bottom: 16px;">数据库表列表</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;">
+                            <el-card v-for="table in dbTables" :key="table" 
+                                     shadow="hover" 
+                                     @click="selectTable(table)"
+                                     style="cursor: pointer;">
+                                <div style="text-align: center;">
+                                    <i class="fas fa-table" style="font-size: 32px; color: var(--primary-color); margin-bottom: 8px;"></i>
+                                    <h4>{{ table }}</h4>
+                                </div>
+                            </el-card>
+                        </div>
+                        <div v-if="dbTables.length === 0 && !loading.dbTables" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            <i class="fas fa-database" style="font-size: 48px; margin-bottom: 16px;"></i>
+                            <p>暂无数据表</p>
+                        </div>
+                    </el-card>
+                    
+                    <el-card v-else>
+                        <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <el-button @click="selectedTable = null" size="small">
+                                    <i class="fas fa-arrow-left"></i> 返回表列表
+                                </el-button>
+                                <span style="margin-left: 16px; font-size: 18px; font-weight: bold;">{{ selectedTable }}</span>
+                            </div>
+                            <el-button @click="loadTableData" :loading="loading.tableData" size="small">
+                                <i class="fas fa-sync"></i> 刷新
                             </el-button>
+                        </div>
+                        
+                        <el-table :data="tableData" v-loading="loading.tableData" stripe border style="width: 100%;" max-height="500">
+                            <el-table-column v-for="col in tableColumns" :key="col" :prop="col" :label="col" min-width="120" show-overflow-tooltip></el-table-column>
+                        </el-table>
+                        
+                        <div v-if="tableData.length === 0 && !loading.tableData" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            表中暂无数据
                         </div>
                     </el-card>
                 </el-tab-pane>
@@ -2422,7 +2459,9 @@ const AdminPage = {
             sections: false,
             saveSection: false,
             quotes: false,
-            saveQuote: false
+            saveQuote: false,
+            dbTables: false,
+            tableData: false
         });
         
         const outputVisible = Vue.ref(false);
@@ -2461,6 +2500,12 @@ const AdminPage = {
         const quotes = Vue.ref([]);
         const quoteDialogVisible = Vue.ref(false);
         const editingQuote = Vue.ref({});
+        
+        // Database
+        const dbTables = Vue.ref([]);
+        const selectedTable = Vue.ref(null);
+        const tableColumns = Vue.ref([]);
+        const tableData = Vue.ref([]);
         
         const showOutput = (text, isError = false) => {
             outputText.value = text;
@@ -3177,6 +3222,49 @@ const AdminPage = {
             }
         };
         
+        // Database Management Functions
+        const loadDatabaseTables = async () => {
+            loading.dbTables = true;
+            try {
+                const response = await fetchWithSU('/api/admin/db/tables');
+                const data = await response.json();
+                if (data.success) {
+                    dbTables.value = data.tables || [];
+                } else {
+                    ElMessage.error('加载数据表失败: ' + (data.message || ''));
+                }
+            } catch (error) {
+                ElMessage.error('请求失败: ' + error.message);
+            } finally {
+                loading.dbTables = false;
+            }
+        };
+        
+        const selectTable = (tableName) => {
+            selectedTable.value = tableName;
+            loadTableData();
+        };
+        
+        const loadTableData = async () => {
+            if (!selectedTable.value) return;
+            
+            loading.tableData = true;
+            try {
+                const response = await fetchWithSU(`/admin/db/table/${selectedTable.value}/data`);
+                const data = await response.json();
+                if (data.success) {
+                    tableColumns.value = data.columns || [];
+                    tableData.value = data.data || [];
+                } else {
+                    ElMessage.error('加载表数据失败: ' + (data.message || ''));
+                }
+            } catch (error) {
+                ElMessage.error('请求失败: ' + error.message);
+            } finally {
+                loading.tableData = false;
+            }
+        };
+        
         // Track which tabs have been loaded
         const loadedTabs = Vue.ref(new Set(['system']));
         
@@ -3193,6 +3281,8 @@ const AdminPage = {
                 loadSections();
             } else if (newTab === 'quotes') {
                 loadQuotes();
+            } else if (newTab === 'database') {
+                loadDatabaseTables();
             }
         });
         
@@ -3263,7 +3353,14 @@ const AdminPage = {
             showQuoteDialog,
             loadQuotes,
             saveQuote,
-            deleteQuote
+            deleteQuote,
+            dbTables,
+            selectedTable,
+            tableColumns,
+            tableData,
+            loadDatabaseTables,
+            selectTable,
+            loadTableData
         };
     }
 };
