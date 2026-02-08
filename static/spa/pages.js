@@ -1674,7 +1674,7 @@ const SettingsPage = {
             try {
                 const response = await fetch('/api/upload/images');
                 if (!response.ok) {
-                    console.error('Load uploads HTTP error:', response.status, response.statusText);
+                    console.error('Failed to load uploads - HTTP error:', response.status, response.statusText);
                     uploadsList.value = [];
                     ElMessage.error('加载上传列表失败，请稍后重试');
                     return;
@@ -1687,7 +1687,7 @@ const SettingsPage = {
                     ElMessage.error(data.message || '加载上传列表失败');
                 }
             } catch (error) {
-                console.error('Load uploads error:', error);
+                console.error('Failed to load uploads - error:', error);
                 uploadsList.value = [];
                 ElMessage.error('加载上传列表失败');
             } finally {
@@ -2609,7 +2609,7 @@ const AdminPage = {
                 
                 if (data.success) {
                     // If editing and role changed, update role separately
-                    if (isEdit && originalRole && originalRole !== editingUser.value.role) {
+                    if (isEdit && originalRole !== undefined && originalRole !== editingUser.value.role) {
                         try {
                             const roleResponse = await fetch(`/api/admin/users/${editingUser.value.id}/role`, {
                                 method: 'PUT',
@@ -2618,7 +2618,7 @@ const AdminPage = {
                             });
                             const roleData = await roleResponse.json();
                             if (!roleData.success) {
-                                ElMessage.warning('用户信息已更新，但角色更新失败: ' + (roleData.message || ''));
+                                ElMessage.warning(roleData.message ? '用户信息已更新，但角色更新失败: ' + roleData.message : '用户信息已更新，但角色更新失败');
                             }
                         } catch (roleError) {
                             ElMessage.warning('用户信息已更新，但角色更新失败');

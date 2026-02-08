@@ -3197,7 +3197,8 @@ def list_all_users():
             'nickname': u.nickname,
             'color': u.color,
             'badge': u.badge,
-            'role': u.role
+            'role': u.role,
+            'created_at': u.created_at.isoformat() if u.created_at else None
         } for u in users]
         return jsonify(success=True, users=data)
     except Exception as e:
