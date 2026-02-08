@@ -135,6 +135,7 @@ app.component('forum-list-page', StellarisPages.ForumListPage);
 app.component('forum-section-page', StellarisPages.ForumSectionPage);
 app.component('forum-thread-page', StellarisPages.ForumThreadPage);
 app.component('settings-page', StellarisPages.SettingsPage);
+app.component('su-verification-page', StellarisPages.SUVerificationPage);
 app.component('admin-page', StellarisPages.AdminPage);
 app.component('not-found-page', StellarisPages.NotFoundPage);
 
