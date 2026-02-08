@@ -3184,6 +3184,26 @@ def create_user():
         logger.error(f"创建用户失败: {str(e)}")
         return jsonify(success=False, message=f"创建用户失败: {str(e)}"), 500
 
+@app.route('/api/admin/users', methods=['GET'])
+@login_required
+@su_required
+def list_all_users():
+    """获取所有用户列表（管理员专用）"""
+    try:
+        users = db_session.query(User).order_by(User.id).all()
+        data = [{
+            'id': u.id,
+            'username': u.username,
+            'nickname': u.nickname,
+            'color': u.color,
+            'badge': u.badge,
+            'role': u.role
+        } for u in users]
+        return jsonify(success=True, users=data)
+    except Exception as e:
+        logger.exception('获取用户列表失败')
+        return jsonify(success=False, message=str(e)), 500
+
 @app.route('/api/search_users')
 @login_required
 def api_search_users():

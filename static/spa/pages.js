@@ -1673,12 +1673,22 @@ const SettingsPage = {
             loadingUploads.value = true;
             try {
                 const response = await fetch('/api/upload/images');
+                if (!response.ok) {
+                    console.error('Load uploads HTTP error:', response.status, response.statusText);
+                    uploadsList.value = [];
+                    ElMessage.error('加载上传列表失败，请稍后重试');
+                    return;
+                }
                 const data = await response.json();
                 if (data.success) {
                     uploadsList.value = data.images;
+                } else {
+                    uploadsList.value = [];
+                    ElMessage.error(data.message || '加载上传列表失败');
                 }
             } catch (error) {
                 console.error('Load uploads error:', error);
+                uploadsList.value = [];
                 ElMessage.error('加载上传列表失败');
             } finally {
                 loadingUploads.value = false;
@@ -2052,11 +2062,11 @@ const AdminPage = {
                             </template>
                         </el-table-column>
                         <el-table-column prop="badge" label="徽章" width="120"></el-table-column>
-                        <el-table-column prop="permission" label="权限" width="100">
+                        <el-table-column prop="role" label="角色" width="100">
                             <template #default="scope">
-                                <el-tag v-if="scope.row.permission === 'su'" type="danger">SU</el-tag>
-                                <el-tag v-else-if="scope.row.permission === '777'" type="warning">777</el-tag>
-                                <el-tag v-else type="info">{{ scope.row.permission || 'N/A' }}</el-tag>
+                                <el-tag v-if="scope.row.role === 'admin'" type="danger">管理员</el-tag>
+                                <el-tag v-else-if="scope.row.role === 'user'" type="info">普通用户</el-tag>
+                                <el-tag v-else type="info">{{ scope.row.role || 'N/A' }}</el-tag>
                             </template>
                         </el-table-column>
                         <el-table-column prop="created_at" label="创建时间" width="180"></el-table-column>
@@ -2555,8 +2565,7 @@ const AdminPage = {
         const loadUsers = async () => {
             loading.users = true;
             try {
-                // Use search_users API to get all users (no search query returns all)
-                const response = await fetch('/api/search_users?username=');
+                const response = await fetch('/api/admin/users');
                 const data = await response.json();
                 if (data.success) {
                     users.value = data.users || [];
@@ -2582,10 +2591,14 @@ const AdminPage = {
         const saveUser = async () => {
             loading.saveUser = true;
             try {
-                const url = editingUser.value.id 
+                const isEdit = !!editingUser.value.id;
+                const url = isEdit 
                     ? `/api/admin/users/${editingUser.value.id}` 
                     : '/api/admin/users';
-                const method = editingUser.value.id ? 'PUT' : 'POST';
+                const method = isEdit ? 'PUT' : 'POST';
+                
+                // For editing, we need to track the original role to detect changes
+                const originalRole = isEdit ? users.value.find(u => u.id === editingUser.value.id)?.role : null;
                 
                 const response = await fetch(url, {
                     method: method,
@@ -2595,7 +2608,24 @@ const AdminPage = {
                 const data = await response.json();
                 
                 if (data.success) {
-                    ElMessage.success(editingUser.value.id ? '用户更新成功' : '用户创建成功');
+                    // If editing and role changed, update role separately
+                    if (isEdit && originalRole && originalRole !== editingUser.value.role) {
+                        try {
+                            const roleResponse = await fetch(`/api/admin/users/${editingUser.value.id}/role`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ role: editingUser.value.role })
+                            });
+                            const roleData = await roleResponse.json();
+                            if (!roleData.success) {
+                                ElMessage.warning('用户信息已更新，但角色更新失败: ' + (roleData.message || ''));
+                            }
+                        } catch (roleError) {
+                            ElMessage.warning('用户信息已更新，但角色更新失败');
+                        }
+                    }
+                    
+                    ElMessage.success(isEdit ? '用户更新成功' : '用户创建成功');
                     userDialogVisible.value = false;
                     loadUsers();
                 } else {
@@ -2654,7 +2684,7 @@ const AdminPage = {
             if (room) {
                 editingRoom.value = { ...room };
             } else {
-                editingRoom.value = { name: '', description: '', permission: '' };
+                editingRoom.value = { name: '', description: '' };
             }
             roomDialogVisible.value = true;
         };
@@ -2734,7 +2764,7 @@ const AdminPage = {
             if (section) {
                 editingSection.value = { ...section };
             } else {
-                editingSection.value = { name: '', description: '', permission: '' };
+                editingSection.value = { name: '', description: '' };
             }
             sectionDialogVisible.value = true;
         };
