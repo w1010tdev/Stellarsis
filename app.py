@@ -4621,5 +4621,5 @@ def api_spa_chat_mark_read(room_id):
 if __name__ == '__main__':
     init_db()
     CORS(app, resources={r"/socket.io/*": {"origins": "*"}})
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 80))
     socketio.run(app, host='0.0.0.0', port=port, debug=app.config['DEBUG'])
