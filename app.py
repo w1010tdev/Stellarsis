@@ -142,9 +142,9 @@ def admin_su():
     # 如果已经验证过且未过期，直接跳转
     su_expires = session.get('su_expires')
     if su_expires and time.time() <= su_expires:
-        return redirect(request.args.get('next') or url_for('admin_index'))
+        return redirect(request.args.get('next') or '/spa#/admin')
 
-    next_url = request.args.get('next') or url_for('admin_index')
+    next_url = request.args.get('next') or '/spa#/admin'
     
     if request.method == 'POST':
         password = request.form.get('password')
@@ -957,20 +957,8 @@ def change_password():
             db_session.rollback()
             return jsonify({'success': False, 'message': str(e)}), 500
     
-    # Handle traditional form request
-    form = ChangePasswordForm()
-    if form.validate_on_submit():
-        if not current_user.check_password(form.old_password.data):
-            flash('当前密码错误', 'danger')
-            return redirect(url_for('change_password'))
-        
-        current_user.set_password(form.new_password.data)
-        db_session.commit()
-        log_admin_action(f"用户修改密码: {current_user.username}")
-        flash('密码已成功修改', 'success')
-        return redirect(url_for('chat_index'))
-    
-    return render_template('settings/change_password.html', form=form)
+    # Redirect to SPA for non-JSON requests
+    return redirect('/spa#/settings?tab=password')
 
 @app.route('/profile', methods=['GET', 'POST'])
 @login_required
@@ -1010,22 +998,8 @@ def profile():
             db_session.rollback()
             return jsonify({'success': False, 'message': str(e)}), 500
     
-    # Handle traditional form request
-    form = ProfileForm()
-    if form.validate_on_submit():
-        current_user.nickname = form.nickname.data
-        current_user.color = form.color.data or '#000000'
-        current_user.badge = form.badge.data
-        db_session.commit()
-        log_admin_action(f"用户更新个人资料: {current_user.username}")
-        flash('个人资料已更新', 'success')
-        return redirect(url_for('profile'))
-    elif request.method == 'GET':
-        form.nickname.data = current_user.nickname
-        form.color.data = current_user.color
-        form.badge.data = current_user.badge
-    
-    return render_template('settings/profile.html', form=form)
+    # Redirect to SPA for non-JSON requests
+    return redirect('/spa#/settings?tab=profile')
 
 # 聊天相关路由
 @app.route('/chat')
@@ -2430,114 +2404,7 @@ def reply_post():
     )
 
 # 管理相关路由
-@app.route('/admin/index')
-@login_required
-@su_required
-def admin_index():
-    
-    # 获取统计信息
-    user_count = db_session.query(User).count()
-    online_count = 1  # 简化实现，实际应查询最近活动的用户
-    chat_messages_count = db_session.query(ChatMessage).count()
-    forum_posts_count = db_session.query(ForumThread).count() + db_session.query(ForumReply).count()
-    
-    # 获取系统信息
-    python_version = sys.version.split()[0]
-    database_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
-    
-    # 获取最近日志
-    recent_logs = get_recent_logs(10)
-    
-    return render_template('admin/index.html',
-                         user_count=user_count,
-                         online_count=online_count,
-                         chat_messages_count=chat_messages_count,
-                         forum_posts_count=forum_posts_count,
-                         python_version=python_version,
-                         flask_version=flask_version,
-                         database_path=database_path,
-                         recent_logs=recent_logs,
-                         enable_file_manager=app.config.get('ENABLE_FILE_MANAGER', False),
-                         enable_server_control=app.config.get('ENABLE_SERVER_CONTROL', False))
-
-
-
-@app.route('/admin/users')
-@login_required
-@su_required
-def user_management():
-    
-    users = db_session.query(User).all()
-    return render_template('admin/users.html', users=users)
-
-@app.route('/admin/chat')
-@login_required
-@su_required
-def chat_management():
-    
-    rooms = db_session.query(ChatRoom).all()
-    return render_template('admin/chat.html', rooms=rooms)
-
-@app.route('/admin/forum')
-@login_required
-@su_required
-def forum_management():
-    
-    sections = db_session.query(ForumSection).all()
-
-    # 为了避免在模板中对 SQLAlchemy 的动态关系调用 len()/count 导致错误，
-    # 在后端预计算每个分区的主题数和回复数，并传递到模板。
-    sections_data = []
-    for section in sections:
-        threads_obj = section.threads
-        # 获取线程列表（兼容 dynamic relationship 或 InstrumentedList）
-        try:
-            if hasattr(threads_obj, 'all') and callable(getattr(threads_obj, 'all')):
-                threads_list = threads_obj.all()
-            else:
-                threads_list = list(threads_obj)
-        except Exception:
-            try:
-                threads_list = list(threads_obj)
-            except Exception:
-                threads_list = []
-
-        thread_count = 0
-        reply_count = 0
-        try:
-            thread_count = len(threads_list)
-        except Exception:
-            # 兜底：尝试调用 count()，若不是参数类型的 count 则会抛出 TypeError
-            try:
-                thread_count = threads_obj.count()
-            except Exception:
-                thread_count = 0
-
-        for thread in threads_list:
-            replies_obj = getattr(thread, 'replies', [])
-            try:
-                if hasattr(replies_obj, 'all') and callable(getattr(replies_obj, 'all')):
-                    replies_list = replies_obj.all()
-                else:
-                    replies_list = list(replies_obj)
-            except Exception:
-                try:
-                    replies_list = list(replies_obj)
-                except Exception:
-                    replies_list = []
-            try:
-                reply_count += len(replies_list)
-            except Exception:
-                reply_count += 0
-
-        sections_data.append({
-            'section': section,
-            'thread_count': thread_count,
-            'reply_count': reply_count,
-            'threads_list': threads_list
-        })
-
-    return render_template('admin/forum.html', sections=sections_data)
+# Old admin template routes removed - use SPA instead (#/admin)
 
 @app.route('/admin/import_users', methods=['POST'])
 @login_required
@@ -2545,11 +2412,11 @@ def forum_management():
 def admin_import_users():
     if 'file' not in request.files:
         flash('未选择文件', 'danger')
-        return redirect(url_for('user_management'))
+        return redirect('/spa#/admin')
     file = request.files['file']
     if file.filename == '':
         flash('未选择文件', 'danger')
-        return redirect(url_for('user_management'))
+        return redirect('/spa#/admin')
     import csv
     import io
     success, failed = [], []
@@ -2596,93 +2463,8 @@ def admin_import_users():
             session.pop('import_failed', None)
     except Exception as e:
         flash(f'导入失败: {str(e)}', 'danger')
-    return redirect(url_for('user_management'))
-@app.route('/admin/file_manager')
-@login_required
-@su_required
-def file_manager_view():
-    # 根据配置决定是否允许访问文件管理
-    if not app.config.get('ENABLE_FILE_MANAGER', False):
-        abort(403)
-    
-    path = request.args.get('path', '')
-    try:
-        items = list_directory(path)
-        return render_template('admin/file_manager.html', 
-                              items=items, 
-                              current_path=path)
-    except Exception as e:
-        flash(f'错误: {str(e)}', 'danger')
-        return redirect(url_for('admin_index'))
-
-@app.route('/admin/file_manager/read')
-@login_required
-@su_required
-def read_file_view():
-    
-    path = request.args.get('path', '')
-    try:
-        root = Path(__file__).parent
-        full_path = (root / path).resolve()
-        
-        # 安全检查
-        if not str(full_path).startswith(str(root)):
-            raise ValueError("非法路径访问")
-        
-        if not full_path.exists() or full_path.is_dir():
-            raise ValueError("文件不存在或为目录")
-        
-        # 限制文件大小
-        if full_path.stat().st_size > 1024 * 1024:  # 1MB
-            return jsonify(success=False, message="文件过大，无法在浏览器中编辑"), 400
-        
-        with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
-            content = f.read()
-        
-        log_admin_action(f"读取文件: {path}")
-        return jsonify(success=True, content=content)
-    except Exception as e:
-        log_admin_action(f"读取文件失败: {path} - {str(e)}")
-        return jsonify(success=False, message=str(e)), 400
-
-@app.route('/admin/file_manager/write', methods=['POST'])
-@login_required
-@su_required
-def write_file_view():
-    
-    path = request.form.get('path', '')
-    content = request.form.get('content', '')
-    
-    try:
-        root = Path(__file__).parent
-        full_path = (root / path).resolve()
-        
-        # 安全检查
-        if not str(full_path).startswith(str(root)):
-            raise ValueError("非法路径访问")
-        
-        # 限制文件类型
-        disallowed_extensions = ['.pyc', '.db', '.sqlite', '.exe', '.bat', '.sh']
-        if any(full_path.name.lower().endswith(ext) for ext in disallowed_extensions):
-            raise ValueError(f"禁止修改此类文件: {full_path.name}")
-        
-        # 备份原文件
-        backup_path = None
-        if full_path.exists():
-            backup_path = full_path.with_suffix(full_path.suffix + '.bak')
-            shutil.copy2(full_path, backup_path)
-        
-        # 确保目录存在
-        full_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        with open(full_path, 'w', encoding='utf-8') as f:
-            f.write(content)
-        
-        log_admin_action(f"修改文件: {path}" + (f", 备份已创建: {backup_path}" if backup_path else ""))
-        return jsonify(success=True, message="文件已保存")
-    except Exception as e:
-        log_admin_action(f"修改文件失败: {path} - {str(e)}")
-        return jsonify(success=False, message=str(e)), 400
+    return redirect('/spa#/admin')
+# File manager routes removed - feature discontinued
 
 # API端点
 @app.route('/api/admin/system-info')
@@ -3499,21 +3281,7 @@ def delete_forum_post(post_id):
 
 
 # SQLite数据库管理相关路由
-@app.route('/admin/db/')
-@login_required
-@su_required
-def db_admin():
-
-    # 获取所有表名
-    conn = sqlite3.connect(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
-    cursor = conn.cursor()
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = [row[0] for row in cursor.fetchall()]
-    conn.close()
-    return render_template('admin/db.html', tables=tables)
-
-
-@app.route('/api/admin/db/tables', methods=['GET'])
+# Old database template routes removed - use SPA instead (#/admin database tab)
 @login_required
 @su_required
 def api_admin_db_tables():
@@ -3530,38 +3298,7 @@ def api_admin_db_tables():
         return jsonify(success=False, message=str(e)), 500
 
 
-@app.route('/admin/db/table/<table_name>')
-@login_required
-@su_required
-def db_table_view(table_name):
-
-    # 验证表名是否合法（防止SQL注入）
-    conn = sqlite3.connect(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
-    cursor = conn.cursor()
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    valid_tables = [row[0] for row in cursor.fetchall()]
-    
-    if table_name not in valid_tables:
-        abort(404)
-    
-    # 获取表结构
-    cursor.execute(f"PRAGMA table_info({table_name});")
-    columns = cursor.fetchall()
-    column_names = [col[1] for col in columns]
-    
-    # 获取前50条数据
-    cursor.execute(f"SELECT * FROM {table_name} ORDER BY id DESC LIMIT 50;")
-    rows = cursor.fetchall()
-    
-    conn.close()
-
-    return render_template('admin/db_table.html', 
-                         table_name=table_name, 
-                         columns=column_names, 
-                         rows=rows)
-
-
-@app.route('/admin/db/table/<table_name>/data')
+@app.route('/api/admin/db/tables', methods=['GET'])
 @login_required
 @su_required
 def db_table_data(table_name):
@@ -4065,12 +3802,7 @@ def handle_heartbeat():
 
 
 # 管理员：名言管理相关路由
-@app.route('/admin/quotes')
-@login_required
-@su_required
-def admin_quotes():
-    """名言管理页面"""
-    return render_template('admin/quotes.html')
+# Old quotes template route removed - use SPA instead (#/admin quotes tab)
 
 
 @app.route('/api/admin/quotes', methods=['GET'])

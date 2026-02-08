@@ -2504,20 +2504,6 @@ const AdminPage = {
                 </el-tab-pane>
                 
                 <!-- File Manager Tab -->
-                <el-tab-pane label="系统文件" name="files" v-if="fileManagerEnabled">
-                    <el-card>
-                        <div style="text-align: center; padding: 40px 20px;">
-                            <i class="fas fa-folder-open" style="font-size: 64px; color: var(--primary-color); margin-bottom: 24px;"></i>
-                            <h3 style="margin-bottom: 16px;">系统文件管理</h3>
-                            <p style="color: var(--text-secondary); margin-bottom: 24px;">
-                                管理服务器上的文件和目录
-                            </p>
-                            <el-button type="primary" size="large" @click="goToUrl('/admin/file_manager')">
-                                <i class="fas fa-external-link-alt"></i> 打开文件管理器
-                            </el-button>
-                        </div>
-                    </el-card>
-                </el-tab-pane>
             </el-tabs>
         </div>
     `,
@@ -2562,7 +2548,6 @@ const AdminPage = {
         const outputText = Vue.ref('');
         const outputError = Vue.ref(false);
         const serverControlEnabled = Vue.ref(store.state.config?.enableServerControl || false);
-        const fileManagerEnabled = Vue.ref(store.state.config?.enableFileManager || false);
         
         // Users
         const users = Vue.ref([]);
@@ -3522,7 +3507,6 @@ const AdminPage = {
             outputText,
             outputError,
             serverControlEnabled,
-            fileManagerEnabled,
             goToUrl,
             getSystemInfo,
             viewLogs,
