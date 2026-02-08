@@ -2268,6 +2268,16 @@ const AdminPage = {
         const store = StellarisStore;
         const activeTab = Vue.ref('system');
         
+        // Helper function for API calls with SU verification check
+        const fetchWithSU = async (url, options = {}) => {
+            const response = await StellarisUtils.fetchWithSUCheck(url, options);
+            if (response === null) {
+                // User was redirected to SU verification page
+                throw new Error('SU verification required');
+            }
+            return response;
+        };
+        
         const loading = Vue.reactive({
             systemInfo: false,
             logs: false,
@@ -2327,7 +2337,7 @@ const AdminPage = {
         const getSystemInfo = async () => {
             loading.systemInfo = true;
             try {
-                const response = await fetch('/api/admin/system-info');
+                const response = await fetchWithSU('/api/admin/system-info');
                 const data = await response.json();
                 if (data.success) {
                     const info = `内存: ${data.memory_usage || 'N/A'}\n时间: ${data.server_time || 'N/A'}\nPython: ${data.python_version || 'N/A'}\nFlask: ${data.flask_version || 'N/A'}`;
@@ -2345,7 +2355,7 @@ const AdminPage = {
         const viewLogs = async () => {
             loading.logs = true;
             try {
-                const response = await fetch('/api/admin/system-log');
+                const response = await fetchWithSU('/api/admin/system-log');
                 const data = await response.json();
                 if (data.success) {
                     const logs = (data.logs || []).map(l => `[${l.timestamp}] ${l.message}`).join('\n\n');
@@ -2371,7 +2381,7 @@ const AdminPage = {
             
             loading.clearCache = true;
             try {
-                const response = await fetch('/api/admin/clear-cache', { method: 'POST' });
+                const response = await fetchWithSU('/api/admin/clear-cache', { method: 'POST' });
                 const data = await response.json();
                 if (data.success) {
                     showOutput('清除缓存成功: ' + (data.message || ''), false);
@@ -2397,7 +2407,7 @@ const AdminPage = {
             
             loading.backup = true;
             try {
-                const response = await fetch('/api/admin/backup-database', { method: 'POST' });
+                const response = await fetchWithSU('/api/admin/backup-database', { method: 'POST' });
                 const data = await response.json();
                 if (data.success) {
                     showOutput('备份成功: ' + (data.backup_path || data.message || '已创建'), false);
@@ -2423,7 +2433,7 @@ const AdminPage = {
             
             loading.optimize = true;
             try {
-                const response = await fetch('/api/admin/optimize-database', { method: 'POST' });
+                const response = await fetchWithSU('/api/admin/optimize-database', { method: 'POST' });
                 const data = await response.json();
                 if (data.success) {
                     showOutput('优化成功: ' + (data.message || ''), false);
@@ -2449,7 +2459,7 @@ const AdminPage = {
             
             loading.recount = true;
             try {
-                const response = await fetch('/api/admin/recount-file-size', { method: 'POST' });
+                const response = await fetchWithSU('/api/admin/recount-file-size', { method: 'POST' });
                 const data = await response.json();
                 if (data.success) {
                     showOutput(`完成，更新用户数: ${data.updated_users || 0}\n总文件数: ${data.total_files || 0}`, false);
@@ -2508,7 +2518,7 @@ const AdminPage = {
             
             loading.restart = true;
             try {
-                const response = await fetch('/api/admin/restart', { method: 'POST' });
+                const response = await fetchWithSU('/api/admin/restart', { method: 'POST' });
                 const data = await response.json();
                 if (data.success) {
                     showOutput('服务器正在重启: ' + (data.message || ''), false);
@@ -2542,7 +2552,7 @@ const AdminPage = {
             
             loading.shutdown = true;
             try {
-                const response = await fetch('/api/admin/shutdown', {
+                const response = await fetchWithSU('/api/admin/shutdown', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ reason: reason })
@@ -2565,7 +2575,7 @@ const AdminPage = {
         const loadUsers = async () => {
             loading.users = true;
             try {
-                const response = await fetch('/api/admin/users');
+                const response = await fetchWithSU('/api/admin/users');
                 const data = await response.json();
                 if (data.success) {
                     users.value = data.users || [];
@@ -2611,7 +2621,7 @@ const AdminPage = {
                     // If editing and role changed, update role separately
                     if (isEdit && originalRole !== undefined && originalRole !== editingUser.value.role) {
                         try {
-                            const roleResponse = await fetch(`/api/admin/users/${editingUser.value.id}/role`, {
+                            const roleResponse = await fetchWithSU(`/api/admin/users/${editingUser.value.id}/role`, {
                                 method: 'PUT',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ role: editingUser.value.role })
@@ -2648,7 +2658,7 @@ const AdminPage = {
             if (!confirmed) return;
             
             try {
-                const response = await fetch(`/api/admin/users/${user.id}`, { method: 'DELETE' });
+                const response = await fetchWithSU(`/api/admin/users/${user.id}`, { method: 'DELETE' });
                 const data = await response.json();
                 
                 if (data.success) {
@@ -2666,7 +2676,7 @@ const AdminPage = {
         const loadRooms = async () => {
             loading.rooms = true;
             try {
-                const response = await fetch('/api/admin/chat/rooms');
+                const response = await fetchWithSU('/api/admin/chat/rooms');
                 const data = await response.json();
                 if (data.success) {
                     rooms.value = data.rooms || [];
@@ -2728,7 +2738,7 @@ const AdminPage = {
             if (!confirmed) return;
             
             try {
-                const response = await fetch(`/api/admin/chat/rooms/${room.id}`, { method: 'DELETE' });
+                const response = await fetchWithSU(`/api/admin/chat/rooms/${room.id}`, { method: 'DELETE' });
                 const data = await response.json();
                 
                 if (data.success) {
@@ -2746,7 +2756,7 @@ const AdminPage = {
         const loadSections = async () => {
             loading.sections = true;
             try {
-                const response = await fetch('/api/admin/forum/sections');
+                const response = await fetchWithSU('/api/admin/forum/sections');
                 const data = await response.json();
                 if (data.success) {
                     sections.value = data.sections || [];
@@ -2808,7 +2818,7 @@ const AdminPage = {
             if (!confirmed) return;
             
             try {
-                const response = await fetch(`/api/admin/forum/sections/${section.id}`, { method: 'DELETE' });
+                const response = await fetchWithSU(`/api/admin/forum/sections/${section.id}`, { method: 'DELETE' });
                 const data = await response.json();
                 
                 if (data.success) {
@@ -2826,7 +2836,7 @@ const AdminPage = {
         const loadQuotes = async () => {
             loading.quotes = true;
             try {
-                const response = await fetch('/api/admin/quotes');
+                const response = await fetchWithSU('/api/admin/quotes');
                 const data = await response.json();
                 if (data.success) {
                     // Add index as id for each quote
@@ -2892,7 +2902,7 @@ const AdminPage = {
             if (!confirmed) return;
             
             try {
-                const response = await fetch(`/api/admin/quotes/${quote.id}`, { method: 'DELETE' });
+                const response = await fetchWithSU(`/api/admin/quotes/${quote.id}`, { method: 'DELETE' });
                 const data = await response.json();
                 
                 if (data.success) {
