@@ -2163,12 +2163,18 @@ const AdminPage = {
                         </div>
                         
                         <!-- List View -->
-                        <div v-if="permissionView === 'list'" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                        <div v-if="permissionView === 'list'" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
                             <div>
                                 <h4>SU</h4>
                                 <div style="border: 1px solid #eee; padding: 8px; border-radius: 6px; min-height: 200px; max-height: 300px; overflow-y: auto;">
-                                    <div v-for="user in roomUsersBySU" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0;">
-                                        {{ user.nickname || user.username }}
+                                    <div v-for="user in roomUsersBySU" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
+                                        <span>{{ user.nickname || user.username }}</span>
+                                        <el-select v-model="user.perm" size="small" @change="updateUserPermission(user, 'chat', currentRoom.id)" style="width: 80px;">
+                                            <el-option label="SU" value="su"></el-option>
+                                            <el-option label="777" value="777"></el-option>
+                                            <el-option label="444" value="444"></el-option>
+                                            <el-option label="Null" value="Null"></el-option>
+                                        </el-select>
                                     </div>
                                     <div v-if="roomUsersBySU.length === 0" style="color: #999; padding: 8px;">无</div>
                                 </div>
@@ -2176,17 +2182,44 @@ const AdminPage = {
                             <div>
                                 <h4>777</h4>
                                 <div style="border: 1px solid #eee; padding: 8px; border-radius: 6px; min-height: 200px; max-height: 300px; overflow-y: auto;">
-                                    <div v-for="user in roomUsersBy777" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0;">
-                                        {{ user.nickname || user.username }}
+                                    <div v-for="user in roomUsersBy777" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
+                                        <span>{{ user.nickname || user.username }}</span>
+                                        <el-select v-model="user.perm" size="small" @change="updateUserPermission(user, 'chat', currentRoom.id)" style="width: 80px;">
+                                            <el-option label="SU" value="su"></el-option>
+                                            <el-option label="777" value="777"></el-option>
+                                            <el-option label="444" value="444"></el-option>
+                                            <el-option label="Null" value="Null"></el-option>
+                                        </el-select>
                                     </div>
                                     <div v-if="roomUsersBy777.length === 0" style="color: #999; padding: 8px;">无</div>
                                 </div>
                             </div>
                             <div>
+                                <h4>444</h4>
+                                <div style="border: 1px solid #eee; padding: 8px; border-radius: 6px; min-height: 200px; max-height: 300px; overflow-y: auto;">
+                                    <div v-for="user in roomUsersBy444" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
+                                        <span>{{ user.nickname || user.username }}</span>
+                                        <el-select v-model="user.perm" size="small" @change="updateUserPermission(user, 'chat', currentRoom.id)" style="width: 80px;">
+                                            <el-option label="SU" value="su"></el-option>
+                                            <el-option label="777" value="777"></el-option>
+                                            <el-option label="444" value="444"></el-option>
+                                            <el-option label="Null" value="Null"></el-option>
+                                        </el-select>
+                                    </div>
+                                    <div v-if="roomUsersBy444.length === 0" style="color: #999; padding: 8px;">无</div>
+                                </div>
+                            </div>
+                            <div>
                                 <h4>未设置</h4>
                                 <div style="border: 1px dashed #ddd; padding: 8px; border-radius: 6px; min-height: 200px; max-height: 300px; overflow-y: auto; color: #666;">
-                                    <div v-for="user in roomUsersByNull" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0;">
-                                        {{ user.nickname || user.username }}
+                                    <div v-for="user in roomUsersByNull" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
+                                        <span>{{ user.nickname || user.username }}</span>
+                                        <el-select v-model="user.perm" size="small" @change="updateUserPermission(user, 'chat', currentRoom.id)" style="width: 80px;">
+                                            <el-option label="SU" value="su"></el-option>
+                                            <el-option label="777" value="777"></el-option>
+                                            <el-option label="444" value="444"></el-option>
+                                            <el-option label="Null" value="Null"></el-option>
+                                        </el-select>
                                     </div>
                                     <div v-if="roomUsersByNull.length === 0" style="color: #999; padding: 8px;">无</div>
                                 </div>
@@ -2196,16 +2229,20 @@ const AdminPage = {
                         <!-- Quick Select View -->
                         <div v-if="permissionView === 'quick'">
                             <p style="margin-bottom: 12px; color: var(--text-secondary);">点击用户切换777权限状态（SU用户不显示）</p>
-                            <div style="border: 1px solid #eee; padding: 12px; border-radius: 6px; max-height: 400px; overflow-y: auto;">
+                            <div style="border: 1px solid var(--border-color, #eee); padding: 12px; border-radius: 6px; max-height: 400px; overflow-y: auto;">
                                 <div v-for="user in roomUsersNonSU" :key="user.id" 
                                      @click="toggleRoomUser777(user)"
                                      style="padding: 8px 12px; margin-bottom: 6px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;"
-                                     :style="{ background: user.perm === '777' ? '#e6f7ff' : '#f5f5f5', border: user.perm === '777' ? '1px solid #91d5ff' : '1px solid #d9d9d9' }">
+                                     :style="{ 
+                                         background: user.perm === '777' ? 'var(--el-color-primary-light-9, #e6f7ff)' : 'var(--el-fill-color-light, #f5f5f5)', 
+                                         border: user.perm === '777' ? '1px solid var(--el-color-primary-light-5, #91d5ff)' : '1px solid var(--border-color, #d9d9d9)',
+                                         color: 'var(--text-primary, inherit)'
+                                     }">
                                     <span>{{ user.nickname || user.username }}</span>
                                     <el-tag v-if="user.perm === '777'" type="success" size="small">777</el-tag>
                                     <el-tag v-else type="info" size="small">Null</el-tag>
                                 </div>
-                                <div v-if="roomUsersNonSU.length === 0" style="color: #999; padding: 12px; text-align: center;">无可用用户</div>
+                                <div v-if="roomUsersNonSU.length === 0" style="color: var(--text-secondary, #999); padding: 12px; text-align: center;">无可用用户</div>
                             </div>
                         </div>
                         
@@ -2265,12 +2302,18 @@ const AdminPage = {
                         </div>
                         
                         <!-- List View -->
-                        <div v-if="permissionView === 'list'" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                        <div v-if="permissionView === 'list'" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
                             <div>
                                 <h4>SU</h4>
                                 <div style="border: 1px solid #eee; padding: 8px; border-radius: 6px; min-height: 200px; max-height: 300px; overflow-y: auto;">
-                                    <div v-for="user in sectionUsersBySU" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0;">
-                                        {{ user.nickname || user.username }}
+                                    <div v-for="user in sectionUsersBySU" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
+                                        <span>{{ user.nickname || user.username }}</span>
+                                        <el-select v-model="user.perm" size="small" @change="updateUserPermission(user, 'forum', currentSection.id)" style="width: 80px;">
+                                            <el-option label="SU" value="su"></el-option>
+                                            <el-option label="777" value="777"></el-option>
+                                            <el-option label="444" value="444"></el-option>
+                                            <el-option label="Null" value="Null"></el-option>
+                                        </el-select>
                                     </div>
                                     <div v-if="sectionUsersBySU.length === 0" style="color: #999; padding: 8px;">无</div>
                                 </div>
@@ -2278,17 +2321,44 @@ const AdminPage = {
                             <div>
                                 <h4>777</h4>
                                 <div style="border: 1px solid #eee; padding: 8px; border-radius: 6px; min-height: 200px; max-height: 300px; overflow-y: auto;">
-                                    <div v-for="user in sectionUsersBy777" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0;">
-                                        {{ user.nickname || user.username }}
+                                    <div v-for="user in sectionUsersBy777" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
+                                        <span>{{ user.nickname || user.username }}</span>
+                                        <el-select v-model="user.perm" size="small" @change="updateUserPermission(user, 'forum', currentSection.id)" style="width: 80px;">
+                                            <el-option label="SU" value="su"></el-option>
+                                            <el-option label="777" value="777"></el-option>
+                                            <el-option label="444" value="444"></el-option>
+                                            <el-option label="Null" value="Null"></el-option>
+                                        </el-select>
                                     </div>
                                     <div v-if="sectionUsersBy777.length === 0" style="color: #999; padding: 8px;">无</div>
                                 </div>
                             </div>
                             <div>
+                                <h4>444</h4>
+                                <div style="border: 1px solid #eee; padding: 8px; border-radius: 6px; min-height: 200px; max-height: 300px; overflow-y: auto;">
+                                    <div v-for="user in sectionUsersBy444" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
+                                        <span>{{ user.nickname || user.username }}</span>
+                                        <el-select v-model="user.perm" size="small" @change="updateUserPermission(user, 'forum', currentSection.id)" style="width: 80px;">
+                                            <el-option label="SU" value="su"></el-option>
+                                            <el-option label="777" value="777"></el-option>
+                                            <el-option label="444" value="444"></el-option>
+                                            <el-option label="Null" value="Null"></el-option>
+                                        </el-select>
+                                    </div>
+                                    <div v-if="sectionUsersBy444.length === 0" style="color: #999; padding: 8px;">无</div>
+                                </div>
+                            </div>
+                            <div>
                                 <h4>未设置</h4>
                                 <div style="border: 1px dashed #ddd; padding: 8px; border-radius: 6px; min-height: 200px; max-height: 300px; overflow-y: auto; color: #666;">
-                                    <div v-for="user in sectionUsersByNull" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0;">
-                                        {{ user.nickname || user.username }}
+                                    <div v-for="user in sectionUsersByNull" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
+                                        <span>{{ user.nickname || user.username }}</span>
+                                        <el-select v-model="user.perm" size="small" @change="updateUserPermission(user, 'forum', currentSection.id)" style="width: 80px;">
+                                            <el-option label="SU" value="su"></el-option>
+                                            <el-option label="777" value="777"></el-option>
+                                            <el-option label="444" value="444"></el-option>
+                                            <el-option label="Null" value="Null"></el-option>
+                                        </el-select>
                                     </div>
                                     <div v-if="sectionUsersByNull.length === 0" style="color: #999; padding: 8px;">无</div>
                                 </div>
@@ -2298,16 +2368,20 @@ const AdminPage = {
                         <!-- Quick Select View -->
                         <div v-if="permissionView === 'quick'">
                             <p style="margin-bottom: 12px; color: var(--text-secondary);">点击用户切换777权限状态（SU用户不显示）</p>
-                            <div style="border: 1px solid #eee; padding: 12px; border-radius: 6px; max-height: 400px; overflow-y: auto;">
+                            <div style="border: 1px solid var(--border-color, #eee); padding: 12px; border-radius: 6px; max-height: 400px; overflow-y: auto;">
                                 <div v-for="user in sectionUsersNonSU" :key="user.id" 
                                      @click="toggleSectionUser777(user)"
                                      style="padding: 8px 12px; margin-bottom: 6px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;"
-                                     :style="{ background: user.perm === '777' ? '#e6f7ff' : '#f5f5f5', border: user.perm === '777' ? '1px solid #91d5ff' : '1px solid #d9d9d9' }">
+                                     :style="{ 
+                                         background: user.perm === '777' ? 'var(--el-color-primary-light-9, #e6f7ff)' : 'var(--el-fill-color-light, #f5f5f5)', 
+                                         border: user.perm === '777' ? '1px solid var(--el-color-primary-light-5, #91d5ff)' : '1px solid var(--border-color, #d9d9d9)',
+                                         color: 'var(--text-primary, inherit)'
+                                     }">
                                     <span>{{ user.nickname || user.username }}</span>
                                     <el-tag v-if="user.perm === '777'" type="success" size="small">777</el-tag>
                                     <el-tag v-else type="info" size="small">Null</el-tag>
                                 </div>
-                                <div v-if="sectionUsersNonSU.length === 0" style="color: #999; padding: 12px; text-align: center;">无可用用户</div>
+                                <div v-if="sectionUsersNonSU.length === 0" style="color: var(--text-secondary, #999); padding: 12px; text-align: center;">无可用用户</div>
                             </div>
                         </div>
                         
@@ -2984,18 +3058,49 @@ const AdminPage = {
         
         const roomUsersBySU = Vue.computed(() => roomUsers.value.filter(u => u.perm === 'su'));
         const roomUsersBy777 = Vue.computed(() => roomUsers.value.filter(u => u.perm === '777'));
+        const roomUsersBy444 = Vue.computed(() => roomUsers.value.filter(u => u.perm === '444'));
         const roomUsersByNull = Vue.computed(() => roomUsers.value.filter(u => u.perm === 'Null' || !u.perm));
         const roomUsersNonSU = Vue.computed(() => roomUsers.value.filter(u => u.perm !== 'su'));
         
-        const toggleRoomUser777 = async (user) => {
-            const newPerm = user.perm === '777' ? 'Null' : '777';
+        const updateUserPermission = async (user, scope, targetId) => {
             try {
-                // Update user permission via API
                 const response = await fetchWithSU(`/api/admin/users/${user.id}/permissions`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        chat_rooms: { [currentRoom.value.id]: newPerm }
+                        scope: scope,
+                        target_id: targetId,
+                        perm: user.perm
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    ElMessage.success('权限更新成功');
+                } else {
+                    ElMessage.error('更新失败: ' + (data.message || ''));
+                    // Reload permissions on error
+                    if (scope === 'chat') {
+                        showRoomPermissions(currentRoom.value);
+                    } else {
+                        showSectionPermissions(currentSection.value);
+                    }
+                }
+            } catch (error) {
+                ElMessage.error('请求失败: ' + error.message);
+            }
+        };
+        
+        const toggleRoomUser777 = async (user) => {
+            const newPerm = user.perm === '777' ? 'Null' : '777';
+            try {
+                // Update user permission via API - use correct scope/target_id format
+                const response = await fetchWithSU(`/api/admin/users/${user.id}/permissions`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        scope: 'chat',
+                        target_id: currentRoom.value.id,
+                        perm: newPerm
                     })
                 });
                 const data = await response.json();
@@ -3111,18 +3216,21 @@ const AdminPage = {
         
         const sectionUsersBySU = Vue.computed(() => sectionUsers.value.filter(u => u.perm === 'su'));
         const sectionUsersBy777 = Vue.computed(() => sectionUsers.value.filter(u => u.perm === '777'));
+        const sectionUsersBy444 = Vue.computed(() => sectionUsers.value.filter(u => u.perm === '444'));
         const sectionUsersByNull = Vue.computed(() => sectionUsers.value.filter(u => u.perm === 'Null' || !u.perm));
         const sectionUsersNonSU = Vue.computed(() => sectionUsers.value.filter(u => u.perm !== 'su'));
         
         const toggleSectionUser777 = async (user) => {
             const newPerm = user.perm === '777' ? 'Null' : '777';
             try {
-                // Update user permission via API
+                // Update user permission via API - use correct scope/target_id format
                 const response = await fetchWithSU(`/api/admin/users/${user.id}/permissions`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        forum_sections: { [currentSection.value.id]: newPerm }
+                        scope: 'forum',
+                        target_id: currentSection.value.id,
+                        perm: newPerm
                     })
                 });
                 const data = await response.json();
@@ -3251,6 +3359,26 @@ const AdminPage = {
             loading.tableData = true;
             try {
                 const response = await fetchWithSU(`/admin/db/table/${selectedTable.value}/data`);
+                
+                // Check if response is OK before parsing
+                if (!response.ok) {
+                    ElMessage.error(`加载表数据失败: HTTP ${response.status}`);
+                    tableColumns.value = [];
+                    tableData.value = [];
+                    loading.tableData = false;
+                    return;
+                }
+                
+                // Check content type to ensure it's JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    ElMessage.error('加载表数据失败: 服务器返回了非JSON响应');
+                    tableColumns.value = [];
+                    tableData.value = [];
+                    loading.tableData = false;
+                    return;
+                }
+                
                 const data = await response.json();
                 if (data.success) {
                     tableColumns.value = data.columns || [];
@@ -3328,8 +3456,10 @@ const AdminPage = {
             showRoomPermissions,
             roomUsersBySU,
             roomUsersBy777,
+            roomUsersBy444,
             roomUsersByNull,
             roomUsersNonSU,
+            updateUserPermission,
             toggleRoomUser777,
             sections,
             sectionDialogVisible,
@@ -3344,6 +3474,7 @@ const AdminPage = {
             showSectionPermissions,
             sectionUsersBySU,
             sectionUsersBy777,
+            sectionUsersBy444,
             sectionUsersByNull,
             sectionUsersNonSU,
             toggleSectionUser777,
