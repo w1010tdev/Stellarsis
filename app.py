@@ -2133,14 +2133,15 @@ def api_admin_recount_file_size():
 @app.route('/settings/follows')
 @login_required
 def settings_follows():
-    follows = db_session.query(UserFollow).filter_by(follower_id=current_user.id).all()
-    return render_template('settings/follows.html', follows=follows)
+    # Redirect to SPA settings page with follows tab
+    return redirect('/spa#/settings?tab=follows')
 
 
 @app.route('/settings/images')
 @login_required
 def settings_images():
-    return render_template('settings/images.html')
+    # Redirect to SPA settings page with uploads tab
+    return redirect('/spa#/settings?tab=uploads')
 
 # 贴吧相关路由
 @app.route('/forum')
