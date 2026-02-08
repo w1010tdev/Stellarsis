@@ -173,7 +173,8 @@ class User(UserMixin, Base):
     badge = Column(String(32), default='')
     last_seen = Column(DateTime, default=datetime.utcnow)
     role = Column(String(20), default='user') 
-    upload_used = Column(Integer, default=0) 
+    upload_used = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow) 
     
     def is_admin(self):
         """检查用户是否为管理员"""

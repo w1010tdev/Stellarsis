@@ -1977,8 +1977,11 @@ const AdminPage = {
                             <el-button @click="optimizeDatabase" :loading="loading.optimize">
                                 <i class="fas fa-cog"></i> 优化数据库
                             </el-button>
+                            <el-button @click="recalculateUploads" :loading="loading.recalculate">
+                                <i class="fas fa-calculator"></i> 重新统计图片大小
+                            </el-button>
                             <el-button @click="recountFiles" :loading="loading.recount">
-                                <i class="fas fa-sync"></i> 重新统计文件
+                                <i class="fas fa-sync"></i> 重新按文件统计
                             </el-button>
                         </div>
                     </el-card>
@@ -2125,8 +2128,9 @@ const AdminPage = {
                         <el-table-column prop="id" label="ID" width="80"></el-table-column>
                         <el-table-column prop="name" label="聊天室名称" min-width="200"></el-table-column>
                         <el-table-column prop="description" label="描述" min-width="300"></el-table-column>
-                        <el-table-column label="操作" fixed="right" width="200">
+                        <el-table-column label="操作" fixed="right" width="280">
                             <template #default="scope">
+                                <el-button size="small" @click="showRoomPermissions(scope.row)">权限</el-button>
                                 <el-button size="small" @click="showRoomDialog(scope.row)">编辑</el-button>
                                 <el-button size="small" type="danger" @click="deleteRoom(scope.row)">删除</el-button>
                             </template>
@@ -2148,6 +2152,67 @@ const AdminPage = {
                             <el-button type="primary" @click="saveRoom" :loading="loading.saveRoom">保存</el-button>
                         </template>
                     </el-dialog>
+                    
+                    <!-- Room Permissions Dialog -->
+                    <el-dialog v-model="roomPermissionsVisible" :title="'权限管理 - ' + (currentRoom?.name || '')" width="700px">
+                        <div style="margin-bottom: 16px;">
+                            <el-radio-group v-model="permissionView">
+                                <el-radio-button label="list">按权限显示</el-radio-button>
+                                <el-radio-button label="quick">777快速选择</el-radio-button>
+                            </el-radio-group>
+                        </div>
+                        
+                        <!-- List View -->
+                        <div v-if="permissionView === 'list'" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                            <div>
+                                <h4>SU</h4>
+                                <div style="border: 1px solid #eee; padding: 8px; border-radius: 6px; min-height: 200px; max-height: 300px; overflow-y: auto;">
+                                    <div v-for="user in roomUsersBySU" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0;">
+                                        {{ user.nickname || user.username }}
+                                    </div>
+                                    <div v-if="roomUsersBySU.length === 0" style="color: #999; padding: 8px;">无</div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4>777</h4>
+                                <div style="border: 1px solid #eee; padding: 8px; border-radius: 6px; min-height: 200px; max-height: 300px; overflow-y: auto;">
+                                    <div v-for="user in roomUsersBy777" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0;">
+                                        {{ user.nickname || user.username }}
+                                    </div>
+                                    <div v-if="roomUsersBy777.length === 0" style="color: #999; padding: 8px;">无</div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4>未设置</h4>
+                                <div style="border: 1px dashed #ddd; padding: 8px; border-radius: 6px; min-height: 200px; max-height: 300px; overflow-y: auto; color: #666;">
+                                    <div v-for="user in roomUsersByNull" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0;">
+                                        {{ user.nickname || user.username }}
+                                    </div>
+                                    <div v-if="roomUsersByNull.length === 0" style="color: #999; padding: 8px;">无</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Select View -->
+                        <div v-if="permissionView === 'quick'">
+                            <p style="margin-bottom: 12px; color: var(--text-secondary);">点击用户切换777权限状态（SU用户不显示）</p>
+                            <div style="border: 1px solid #eee; padding: 12px; border-radius: 6px; max-height: 400px; overflow-y: auto;">
+                                <div v-for="user in roomUsersNonSU" :key="user.id" 
+                                     @click="toggleRoomUser777(user)"
+                                     style="padding: 8px 12px; margin-bottom: 6px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;"
+                                     :style="{ background: user.perm === '777' ? '#e6f7ff' : '#f5f5f5', border: user.perm === '777' ? '1px solid #91d5ff' : '1px solid #d9d9d9' }">
+                                    <span>{{ user.nickname || user.username }}</span>
+                                    <el-tag v-if="user.perm === '777'" type="success" size="small">777</el-tag>
+                                    <el-tag v-else type="info" size="small">Null</el-tag>
+                                </div>
+                                <div v-if="roomUsersNonSU.length === 0" style="color: #999; padding: 12px; text-align: center;">无可用用户</div>
+                            </div>
+                        </div>
+                        
+                        <template #footer>
+                            <el-button @click="roomPermissionsVisible = false">关闭</el-button>
+                        </template>
+                    </el-dialog>
                 </el-tab-pane>
                 
                 <!-- Forum Management Tab -->
@@ -2165,8 +2230,9 @@ const AdminPage = {
                         <el-table-column prop="id" label="ID" width="80"></el-table-column>
                         <el-table-column prop="name" label="分区名称" min-width="200"></el-table-column>
                         <el-table-column prop="description" label="描述" min-width="350"></el-table-column>
-                        <el-table-column label="操作" fixed="right" width="200">
+                        <el-table-column label="操作" fixed="right" width="280">
                             <template #default="scope">
+                                <el-button size="small" @click="showSectionPermissions(scope.row)">权限</el-button>
                                 <el-button size="small" @click="showSectionDialog(scope.row)">编辑</el-button>
                                 <el-button size="small" type="danger" @click="deleteSection(scope.row)">删除</el-button>
                             </template>
@@ -2186,6 +2252,67 @@ const AdminPage = {
                         <template #footer>
                             <el-button @click="sectionDialogVisible = false">取消</el-button>
                             <el-button type="primary" @click="saveSection" :loading="loading.saveSection">保存</el-button>
+                        </template>
+                    </el-dialog>
+                    
+                    <!-- Section Permissions Dialog -->
+                    <el-dialog v-model="sectionPermissionsVisible" :title="'权限管理 - ' + (currentSection?.name || '')" width="700px">
+                        <div style="margin-bottom: 16px;">
+                            <el-radio-group v-model="permissionView">
+                                <el-radio-button label="list">按权限显示</el-radio-button>
+                                <el-radio-button label="quick">777快速选择</el-radio-button>
+                            </el-radio-group>
+                        </div>
+                        
+                        <!-- List View -->
+                        <div v-if="permissionView === 'list'" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                            <div>
+                                <h4>SU</h4>
+                                <div style="border: 1px solid #eee; padding: 8px; border-radius: 6px; min-height: 200px; max-height: 300px; overflow-y: auto;">
+                                    <div v-for="user in sectionUsersBySU" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0;">
+                                        {{ user.nickname || user.username }}
+                                    </div>
+                                    <div v-if="sectionUsersBySU.length === 0" style="color: #999; padding: 8px;">无</div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4>777</h4>
+                                <div style="border: 1px solid #eee; padding: 8px; border-radius: 6px; min-height: 200px; max-height: 300px; overflow-y: auto;">
+                                    <div v-for="user in sectionUsersBy777" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0;">
+                                        {{ user.nickname || user.username }}
+                                    </div>
+                                    <div v-if="sectionUsersBy777.length === 0" style="color: #999; padding: 8px;">无</div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4>未设置</h4>
+                                <div style="border: 1px dashed #ddd; padding: 8px; border-radius: 6px; min-height: 200px; max-height: 300px; overflow-y: auto; color: #666;">
+                                    <div v-for="user in sectionUsersByNull" :key="user.id" style="padding: 4px; border-bottom: 1px solid #f0f0f0;">
+                                        {{ user.nickname || user.username }}
+                                    </div>
+                                    <div v-if="sectionUsersByNull.length === 0" style="color: #999; padding: 8px;">无</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Select View -->
+                        <div v-if="permissionView === 'quick'">
+                            <p style="margin-bottom: 12px; color: var(--text-secondary);">点击用户切换777权限状态（SU用户不显示）</p>
+                            <div style="border: 1px solid #eee; padding: 12px; border-radius: 6px; max-height: 400px; overflow-y: auto;">
+                                <div v-for="user in sectionUsersNonSU" :key="user.id" 
+                                     @click="toggleSectionUser777(user)"
+                                     style="padding: 8px 12px; margin-bottom: 6px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;"
+                                     :style="{ background: user.perm === '777' ? '#e6f7ff' : '#f5f5f5', border: user.perm === '777' ? '1px solid #91d5ff' : '1px solid #d9d9d9' }">
+                                    <span>{{ user.nickname || user.username }}</span>
+                                    <el-tag v-if="user.perm === '777'" type="success" size="small">777</el-tag>
+                                    <el-tag v-else type="info" size="small">Null</el-tag>
+                                </div>
+                                <div v-if="sectionUsersNonSU.length === 0" style="color: #999; padding: 12px; text-align: center;">无可用用户</div>
+                            </div>
+                        </div>
+                        
+                        <template #footer>
+                            <el-button @click="sectionPermissionsVisible = false">关闭</el-button>
                         </template>
                     </el-dialog>
                 </el-tab-pane>
@@ -2284,6 +2411,7 @@ const AdminPage = {
             clearCache: false,
             backup: false,
             optimize: false,
+            recalculate: false,
             recount: false,
             restart: false,
             shutdown: false,
@@ -2313,10 +2441,21 @@ const AdminPage = {
         const roomDialogVisible = Vue.ref(false);
         const editingRoom = Vue.ref({});
         
+        // Room Permissions
+        const roomPermissionsVisible = Vue.ref(false);
+        const currentRoom = Vue.ref(null);
+        const roomUsers = Vue.ref([]);
+        const permissionView = Vue.ref('list');
+        
         // Sections
         const sections = Vue.ref([]);
         const sectionDialogVisible = Vue.ref(false);
         const editingSection = Vue.ref({});
+        
+        // Section Permissions
+        const sectionPermissionsVisible = Vue.ref(false);
+        const currentSection = Vue.ref(null);
+        const sectionUsers = Vue.ref([]);
         
         // Quotes
         const quotes = Vue.ref([]);
@@ -2471,6 +2610,34 @@ const AdminPage = {
                 showOutput('请求失败: ' + error.message, true);
             } finally {
                 loading.recount = false;
+            }
+        };
+        
+        const recalculateUploads = async () => {
+            const confirmed = await ElMessageBox.confirm(
+                '是否重新统计所有用户的上传图片大小？此操作仅从数据库统计并返回结果。',
+                '重新统计图片大小',
+                { type: 'warning' }
+            ).catch(() => false);
+            
+            if (!confirmed) return;
+            
+            loading.recalculate = true;
+            try {
+                const response = await fetchWithSU('/api/admin/recalculate-upload-sizes', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    const totals = data.totals || {};
+                    const lines = Object.keys(totals).map(uid => `用户ID ${uid}: ${totals[uid]} 字节`);
+                    showOutput('统计结果:\n' + lines.join('\n'), false);
+                    ElMessage.success('图片大小重新统计完成');
+                } else {
+                    showOutput('执行失败: ' + (data.message || JSON.stringify(data)), true);
+                }
+            } catch (error) {
+                showOutput('请求失败: ' + error.message, true);
+            } finally {
+                loading.recalculate = false;
             }
         };
         
@@ -2752,6 +2919,53 @@ const AdminPage = {
             }
         };
         
+        // Room Permission Management
+        const showRoomPermissions = async (room) => {
+            currentRoom.value = room;
+            permissionView.value = 'list';
+            try {
+                const response = await fetchWithSU(`/api/admin/chat/room-users/${room.id}`);
+                const data = await response.json();
+                if (data.success) {
+                    roomUsers.value = data.users || [];
+                    roomPermissionsVisible.value = true;
+                } else {
+                    ElMessage.error('加载权限失败: ' + (data.message || ''));
+                }
+            } catch (error) {
+                ElMessage.error('请求失败: ' + error.message);
+            }
+        };
+        
+        const roomUsersBySU = Vue.computed(() => roomUsers.value.filter(u => u.perm === 'su'));
+        const roomUsersBy777 = Vue.computed(() => roomUsers.value.filter(u => u.perm === '777'));
+        const roomUsersByNull = Vue.computed(() => roomUsers.value.filter(u => u.perm === 'Null' || !u.perm));
+        const roomUsersNonSU = Vue.computed(() => roomUsers.value.filter(u => u.perm !== 'su'));
+        
+        const toggleRoomUser777 = async (user) => {
+            const newPerm = user.perm === '777' ? 'Null' : '777';
+            try {
+                // Update user permission via API
+                const response = await fetchWithSU(`/api/admin/users/${user.id}/permissions`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_rooms: { [currentRoom.value.id]: newPerm }
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    // Update local state
+                    user.perm = newPerm;
+                    ElMessage.success('权限更新成功');
+                } else {
+                    ElMessage.error('更新失败: ' + (data.message || ''));
+                }
+            } catch (error) {
+                ElMessage.error('请求失败: ' + error.message);
+            }
+        };
+        
         // Forum Section Management Functions
         const loadSections = async () => {
             loading.sections = true;
@@ -2826,6 +3040,53 @@ const AdminPage = {
                     loadSections();
                 } else {
                     ElMessage.error('删除失败: ' + (data.message || ''));
+                }
+            } catch (error) {
+                ElMessage.error('请求失败: ' + error.message);
+            }
+        };
+        
+        // Section Permission Management
+        const showSectionPermissions = async (section) => {
+            currentSection.value = section;
+            permissionView.value = 'list';
+            try {
+                const response = await fetchWithSU(`/api/admin/forum/section-users/${section.id}`);
+                const data = await response.json();
+                if (data.success) {
+                    sectionUsers.value = data.users || [];
+                    sectionPermissionsVisible.value = true;
+                } else {
+                    ElMessage.error('加载权限失败: ' + (data.message || ''));
+                }
+            } catch (error) {
+                ElMessage.error('请求失败: ' + error.message);
+            }
+        };
+        
+        const sectionUsersBySU = Vue.computed(() => sectionUsers.value.filter(u => u.perm === 'su'));
+        const sectionUsersBy777 = Vue.computed(() => sectionUsers.value.filter(u => u.perm === '777'));
+        const sectionUsersByNull = Vue.computed(() => sectionUsers.value.filter(u => u.perm === 'Null' || !u.perm));
+        const sectionUsersNonSU = Vue.computed(() => sectionUsers.value.filter(u => u.perm !== 'su'));
+        
+        const toggleSectionUser777 = async (user) => {
+            const newPerm = user.perm === '777' ? 'Null' : '777';
+            try {
+                // Update user permission via API
+                const response = await fetchWithSU(`/api/admin/users/${user.id}/permissions`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        forum_sections: { [currentSection.value.id]: newPerm }
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    // Update local state
+                    user.perm = newPerm;
+                    ElMessage.success('权限更新成功');
+                } else {
+                    ElMessage.error('更新失败: ' + (data.message || ''));
                 }
             } catch (error) {
                 ElMessage.error('请求失败: ' + error.message);
@@ -2949,6 +3210,7 @@ const AdminPage = {
             clearCache,
             backupDatabase,
             optimizeDatabase,
+            recalculateUploads,
             recountFiles,
             downloadProject,
             downloadDatabase,
@@ -2969,6 +3231,16 @@ const AdminPage = {
             loadRooms,
             saveRoom,
             deleteRoom,
+            roomPermissionsVisible,
+            currentRoom,
+            roomUsers,
+            permissionView,
+            showRoomPermissions,
+            roomUsersBySU,
+            roomUsersBy777,
+            roomUsersByNull,
+            roomUsersNonSU,
+            toggleRoomUser777,
             sections,
             sectionDialogVisible,
             editingSection,
@@ -2976,6 +3248,15 @@ const AdminPage = {
             loadSections,
             saveSection,
             deleteSection,
+            sectionPermissionsVisible,
+            currentSection,
+            sectionUsers,
+            showSectionPermissions,
+            sectionUsersBySU,
+            sectionUsersBy777,
+            sectionUsersByNull,
+            sectionUsersNonSU,
+            toggleSectionUser777,
             quotes,
             quoteDialogVisible,
             editingQuote,
