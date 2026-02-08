@@ -2436,12 +2436,31 @@ const AdminPage = {
                         
                         <el-table :data="tableData" v-loading="loading.tableData" stripe border style="width: 100%;" max-height="500">
                             <el-table-column v-for="col in tableColumns" :key="col" :prop="col" :label="col" min-width="120" show-overflow-tooltip></el-table-column>
+                            <el-table-column label="操作" fixed="right" width="180">
+                                <template #default="scope">
+                                    <el-button size="small" @click="showEditRecordDialog(scope.row)">编辑</el-button>
+                                    <el-button size="small" type="danger" @click="deleteRecord(scope.row)">删除</el-button>
+                                </template>
+                            </el-table-column>
                         </el-table>
                         
                         <div v-if="tableData.length === 0 && !loading.tableData" style="text-align: center; padding: 40px; color: var(--text-secondary);">
                             表中暂无数据
                         </div>
                     </el-card>
+                    
+                    <!-- Edit Record Dialog -->
+                    <el-dialog v-model="editRecordDialogVisible" :title="'编辑记录 - ' + selectedTable" width="600px">
+                        <el-form :model="editingRecord" label-width="120px" v-if="editingRecord">
+                            <el-form-item v-for="col in editableColumns" :key="col" :label="col">
+                                <el-input v-model="editingRecord[col]"></el-input>
+                            </el-form-item>
+                        </el-form>
+                        <template #footer>
+                            <el-button @click="editRecordDialogVisible = false">取消</el-button>
+                            <el-button type="primary" @click="saveRecord" :loading="loading.saveRecord">保存</el-button>
+                        </template>
+                    </el-dialog>
                 </el-tab-pane>
                 
                 <!-- Quotes Management Tab -->
@@ -2535,7 +2554,8 @@ const AdminPage = {
             quotes: false,
             saveQuote: false,
             dbTables: false,
-            tableData: false
+            tableData: false,
+            saveRecord: false
         });
         
         const outputVisible = Vue.ref(false);
@@ -2580,6 +2600,13 @@ const AdminPage = {
         const selectedTable = Vue.ref(null);
         const tableColumns = Vue.ref([]);
         const tableData = Vue.ref([]);
+        const editRecordDialogVisible = Vue.ref(false);
+        const editingRecord = Vue.ref(null);
+        const primaryKey = Vue.ref('id');
+        
+        const editableColumns = Vue.computed(() => {
+            return tableColumns.value.filter(col => col !== primaryKey.value);
+        });
         
         const showOutput = (text, isError = false) => {
             outputText.value = text;
@@ -3383,6 +3410,15 @@ const AdminPage = {
                 if (data.success) {
                     tableColumns.value = data.columns || [];
                     tableData.value = data.data || [];
+                    
+                    // Determine primary key from data if available
+                    if (data.primary_key) {
+                        primaryKey.value = data.primary_key;
+                    } else if (tableColumns.value.includes('id')) {
+                        primaryKey.value = 'id';
+                    } else if (tableColumns.value.length > 0) {
+                        primaryKey.value = tableColumns.value[0];
+                    }
                 } else {
                     ElMessage.error('加载表数据失败: ' + (data.message || ''));
                 }
@@ -3390,6 +3426,71 @@ const AdminPage = {
                 ElMessage.error('请求失败: ' + error.message);
             } finally {
                 loading.tableData = false;
+            }
+        };
+        
+        const showEditRecordDialog = (record) => {
+            editingRecord.value = { ...record };
+            editRecordDialogVisible.value = true;
+        };
+        
+        const saveRecord = async () => {
+            if (!editingRecord.value || !selectedTable.value) return;
+            
+            loading.saveRecord = true;
+            try {
+                const response = await fetchWithSU(`/admin/db/table/${selectedTable.value}/edit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(editingRecord.value)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    ElMessage.success('记录更新成功');
+                    editRecordDialogVisible.value = false;
+                    await loadTableData(); // Reload table data
+                } else {
+                    ElMessage.error('更新失败: ' + (data.message || ''));
+                }
+            } catch (error) {
+                ElMessage.error('请求失败: ' + error.message);
+            } finally {
+                loading.saveRecord = false;
+            }
+        };
+        
+        const deleteRecord = async (record) => {
+            if (!selectedTable.value) return;
+            
+            try {
+                await ElMessageBox.confirm(
+                    '确定要删除这条记录吗？此操作不可撤销。',
+                    '警告',
+                    {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning',
+                    }
+                );
+            } catch {
+                return; // User cancelled
+            }
+            
+            try {
+                const response = await fetchWithSU(`/admin/db/table/${selectedTable.value}/delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: record[primaryKey.value] || record.id })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    ElMessage.success('记录删除成功');
+                    await loadTableData(); // Reload table data
+                } else {
+                    ElMessage.error('删除失败: ' + (data.message || ''));
+                }
+            } catch (error) {
+                ElMessage.error('请求失败: ' + error.message);
             }
         };
         
@@ -3489,9 +3590,16 @@ const AdminPage = {
             selectedTable,
             tableColumns,
             tableData,
+            editRecordDialogVisible,
+            editingRecord,
+            primaryKey,
+            editableColumns,
             loadDatabaseTables,
             selectTable,
-            loadTableData
+            loadTableData,
+            showEditRecordDialog,
+            saveRecord,
+            deleteRecord
         };
     }
 };
