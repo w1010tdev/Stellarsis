@@ -42,7 +42,8 @@ const AppLayout = {
             '/chat': '即时聊天',
             '/forum': '贴吧',
             '/settings': '设置',
-            '/admin': '管理面板'
+            '/admin': '管理面板',
+            '/admin/su': 'SU 验证'
         };
         
         const updatePage = (route) => {
@@ -70,6 +71,9 @@ const AppLayout = {
             } else if (path === '/settings') {
                 currentPage.value = 'settings-page';
                 pageTitle.value = '设置';
+            } else if (path === '/admin/su') {
+                currentPage.value = 'su-verification-page';
+                pageTitle.value = 'SU 验证';
             } else if (path === '/admin') {
                 currentPage.value = 'admin-page';
                 pageTitle.value = '管理面板';
@@ -131,6 +135,7 @@ app.component('forum-list-page', StellarisPages.ForumListPage);
 app.component('forum-section-page', StellarisPages.ForumSectionPage);
 app.component('forum-thread-page', StellarisPages.ForumThreadPage);
 app.component('settings-page', StellarisPages.SettingsPage);
+app.component('su-verification-page', StellarisPages.SUVerificationPage);
 app.component('admin-page', StellarisPages.AdminPage);
 app.component('not-found-page', StellarisPages.NotFoundPage);
 
@@ -146,6 +151,7 @@ StellarisRouter
     .register('/forum/:id', 'forum-section-page')
     .register('/forum/thread/:id', 'forum-thread-page')
     .register('/settings', 'settings-page')
+    .register('/admin/su', 'su-verification-page')
     .register('/admin', 'admin-page');
 
 // Auth guard

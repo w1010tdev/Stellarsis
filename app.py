@@ -173,7 +173,8 @@ class User(UserMixin, Base):
     badge = Column(String(32), default='')
     last_seen = Column(DateTime, default=datetime.utcnow)
     role = Column(String(20), default='user') 
-    upload_used = Column(Integer, default=0) 
+    upload_used = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow) 
     
     def is_admin(self):
         """检查用户是否为管理员"""
@@ -3184,6 +3185,27 @@ def create_user():
         logger.error(f"创建用户失败: {str(e)}")
         return jsonify(success=False, message=f"创建用户失败: {str(e)}"), 500
 
+@app.route('/api/admin/users', methods=['GET'])
+@login_required
+@su_required
+def list_all_users():
+    """获取所有用户列表（管理员专用）"""
+    try:
+        users = db_session.query(User).order_by(User.id).all()
+        data = [{
+            'id': u.id,
+            'username': u.username,
+            'nickname': u.nickname,
+            'color': u.color,
+            'badge': u.badge,
+            'role': u.role,
+            'created_at': u.created_at.isoformat() if u.created_at else None
+        } for u in users]
+        return jsonify(success=True, users=data)
+    except Exception as e:
+        logger.exception('获取用户列表失败')
+        return jsonify(success=False, message=str(e)), 500
+
 @app.route('/api/search_users')
 @login_required
 def api_search_users():
@@ -3489,6 +3511,23 @@ def db_admin():
     tables = [row[0] for row in cursor.fetchall()]
     conn.close()
     return render_template('admin/db.html', tables=tables)
+
+
+@app.route('/api/admin/db/tables', methods=['GET'])
+@login_required
+@su_required
+def api_admin_db_tables():
+    """获取所有数据库表名"""
+    try:
+        conn = sqlite3.connect(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        return jsonify(success=True, tables=tables)
+    except Exception as e:
+        logger.exception('获取数据库表列表失败')
+        return jsonify(success=False, message=str(e)), 500
 
 
 @app.route('/admin/db/table/<table_name>')
@@ -4185,8 +4224,40 @@ def server_error(error):
     return render_template('errors/500.html'), 500
 
 # 初始化数据
+def migrate_database():
+    """数据库迁移：添加缺失的列"""
+    try:
+        # 获取数据库连接
+        db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # 检查 users 表是否存在 created_at 列
+        cursor.execute("PRAGMA table_info(users)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if 'created_at' not in columns:
+            logger.info("迁移数据库：添加 users.created_at 列")
+            # SQLite 不支持 ALTER TABLE 时使用非常量默认值
+            # 因此先添加列（允许 NULL），然后更新现有行
+            cursor.execute("ALTER TABLE users ADD COLUMN created_at DATETIME")
+            # 为现有用户设置 created_at 为当前时间
+            cursor.execute("UPDATE users SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL")
+            conn.commit()
+            logger.info("数据库迁移完成：users.created_at 列已添加")
+        
+        conn.close()
+    except Exception as e:
+        logger.error(f"数据库迁移失败: {e}")
+        # 不抛出异常，让应用继续运行
+        pass
+
+
 def init_db():
     """初始化数据库"""
+    # 先执行数据库迁移
+    migrate_database()
+    
     # 创建默认用户（ID=1）
     admin = db_session.query(User).filter_by(id=1).first()
     if not admin:
