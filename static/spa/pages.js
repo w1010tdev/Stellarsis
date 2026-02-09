@@ -2504,20 +2504,6 @@ const AdminPage = {
                 </el-tab-pane>
                 
                 <!-- File Manager Tab -->
-                <el-tab-pane label="系统文件" name="files" v-if="fileManagerEnabled">
-                    <el-card>
-                        <div style="text-align: center; padding: 40px 20px;">
-                            <i class="fas fa-folder-open" style="font-size: 64px; color: var(--primary-color); margin-bottom: 24px;"></i>
-                            <h3 style="margin-bottom: 16px;">系统文件管理</h3>
-                            <p style="color: var(--text-secondary); margin-bottom: 24px;">
-                                管理服务器上的文件和目录
-                            </p>
-                            <el-button type="primary" size="large" @click="goToUrl('/admin/file_manager')">
-                                <i class="fas fa-external-link-alt"></i> 打开文件管理器
-                            </el-button>
-                        </div>
-                    </el-card>
-                </el-tab-pane>
             </el-tabs>
         </div>
     `,
@@ -2562,7 +2548,6 @@ const AdminPage = {
         const outputText = Vue.ref('');
         const outputError = Vue.ref(false);
         const serverControlEnabled = Vue.ref(store.state.config?.enableServerControl || false);
-        const fileManagerEnabled = Vue.ref(store.state.config?.enableFileManager || false);
         
         // Users
         const users = Vue.ref([]);
@@ -3522,7 +3507,6 @@ const AdminPage = {
             outputText,
             outputError,
             serverControlEnabled,
-            fileManagerEnabled,
             goToUrl,
             getSystemInfo,
             viewLogs,
@@ -3657,7 +3641,7 @@ const SUVerificationPage = {
                 ElMessage.warning('请输入密码');
                 return;
             }
-            
+
             loading.value = true;
             try {
                 const response = await fetch('/admin/su', {
@@ -3669,21 +3653,22 @@ const SUVerificationPage = {
                         password: password.value
                     })
                 });
-                
-                // Check if verification was successful by looking at redirect or response
-                if (response.redirected || response.ok) {
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
                     ElMessage.success('SU 验证成功');
-                    
+
                     // Get the return URL from query params
                     const queryParams = StellarisRouter.getQueryParams();
                     const returnUrl = queryParams.next || '/admin';
-                    
+
                     // Navigate to the intended destination
                     setTimeout(() => {
                         StellarisRouter.navigate(returnUrl);
                     }, 500);
                 } else {
-                    ElMessage.error('密码错误');
+                    ElMessage.error(data.message || '密码错误');
                     password.value = '';
                 }
             } catch (error) {
@@ -3699,6 +3684,127 @@ const SUVerificationPage = {
             loading,
             verifySU,
             navigateTo: (path) => StellarisRouter.navigate(path)
+        };
+    }
+};
+
+// Login Page
+const LoginPage = {
+    name: 'LoginPage',
+    template: `
+        <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg-secondary);">
+            <div style="width: 100%; max-width: 400px; padding: 0 20px;">
+                <div class="card" style="padding: 40px;">
+                    <div style="text-align: center; margin-bottom: 32px;">
+                        <h1 style="font-size: 32px; margin-bottom: 8px;">登录</h1>
+                        <p style="color: var(--text-secondary);">欢迎回到 群星议会</p>
+                    </div>
+
+                    <el-form @submit.prevent="handleLogin" :model="form" :rules="rules" ref="loginFormRef">
+                        <el-form-item prop="username">
+                            <el-input
+                                v-model="form.username"
+                                placeholder="用户名"
+                                size="large"
+                                :prefix-icon="User"
+                                clearable>
+                            </el-input>
+                        </el-form-item>
+
+                        <el-form-item prop="password">
+                            <el-input
+                                v-model="form.password"
+                                type="password"
+                                placeholder="密码"
+                                size="large"
+                                :prefix-icon="Lock"
+                                show-password
+                                @keyup.enter="handleLogin">
+                            </el-input>
+                        </el-form-item>
+
+                        <el-form-item>
+                            <el-button
+                                type="primary"
+                                @click="handleLogin"
+                                :loading="loading"
+                                size="large"
+                                style="width: 100%;">
+                                {{ loading ? '登录中...' : '登录' }}
+                            </el-button>
+                        </el-form-item>
+                    </el-form>
+
+                    <div style="text-align: center; margin-top: 16px; color: var(--text-secondary);">
+                        <p>还没有账号? <a href="#" style="color: var(--primary);">请联系WTX</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `,
+    setup() {
+        const form = Vue.ref({
+            username: '',
+            password: ''
+        });
+        const loading = Vue.ref(false);
+        const loginFormRef = Vue.ref(null);
+
+        const rules = {
+            username: [
+                { required: true, message: '请输入用户名', trigger: 'blur' }
+            ],
+            password: [
+                { required: true, message: '请输入密码', trigger: 'blur' }
+            ]
+        };
+
+        const handleLogin = async () => {
+            if (!loginFormRef.value) return;
+
+            await loginFormRef.value.validate(async (valid) => {
+                if (!valid) return;
+
+                loading.value = true;
+
+                try {
+                    const response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            username: form.value.username,
+                            password: form.value.password
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        ElMessage.success('登录成功');
+                        // Redirect to SPA home page or reload to update session
+                        window.location.href = '/spa';
+                    } else {
+                        ElMessage.error(data.error || '登录失败，请检查用户名和密码');
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    ElMessage.error('登录失败，请稍后重试');
+                } finally {
+                    loading.value = false;
+                }
+            });
+        };
+
+        return {
+            form,
+            rules,
+            loading,
+            loginFormRef,
+            handleLogin,
+            User: ElementPlusIconsVue.User,
+            Lock: ElementPlusIconsVue.Lock
         };
     }
 };
@@ -3732,5 +3838,6 @@ window.StellarisPages = {
     SettingsPage,
     AdminPage,
     SUVerificationPage,
+    LoginPage,
     NotFoundPage
 };

@@ -46,6 +46,24 @@ from logging.handlers import RotatingFileHandler
 from config import Config
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+
+# 辅助函数：获取当前UTC时间（兼容新旧版本）
+def utcnow():
+    """获取当前UTC时间，返回naive datetime以保持向后兼容"""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+# 辅助函数：将UTC时间转换为UTC+8的ISO格式字符串
+def to_utc8_isoformat(dt):
+    """将UTC时间戳转换为UTC+8的ISO格式字符串（带时区信息）"""
+    if dt is None:
+        return None
+    if isinstance(dt, str):
+        return dt
+    # 假设dt是UTC时间，转换为UTC+8并返回带时区信息的ISO格式
+    utc_plus_8 = dt + timedelta(hours=8)
+    # 返回格式: 2025-02-09T20:34:56+08:00
+    return utc_plus_8.isoformat() + '+08:00'
+
 # ----------
 # 初始化
 # ----------
@@ -138,24 +156,28 @@ def su_required(f):
 @login_required
 def admin_su():
     # 只有管理员能访问此页面
-    
+
     # 如果已经验证过且未过期，直接跳转
     su_expires = session.get('su_expires')
     if su_expires and time.time() <= su_expires:
-        return redirect(request.args.get('next') or url_for('admin_index'))
+        if request.method == 'POST':
+            # API请求，返回成功
+            return jsonify({'success': True, 'message': 'SU验证有效'}), 200
+        return redirect(request.args.get('next') or '/spa#/admin')
 
-    next_url = request.args.get('next') or url_for('admin_index')
-    
+    next_url = request.args.get('next') or '/spa#/admin'
+
     if request.method == 'POST':
+        # 处理SPA的验证请求
         password = request.form.get('password')
         if current_user.check_password(password):
             session['su_expires'] = time.time() + 300  # 5分钟
-            flash('SU 验证成功', 'success')
-            return redirect(next_url)
+            return jsonify({'success': True, 'message': 'SU验证成功'}), 200
         else:
-            flash('密码错误', 'danger')
-    
-    return render_template('admin/su.html', next=next_url)
+            return jsonify({'success': False, 'message': '密码错误'}), 401
+
+    # GET请求：重定向到SPA中的SU验证页面
+    return redirect('/spa#/admin/su?next=' + next_url)
 
 # ----------
 # 模型定义
@@ -171,10 +193,10 @@ class User(UserMixin, Base):
     nickname = Column(String(64), default='')
     color = Column(String(7), default='#000000')
     badge = Column(String(32), default='')
-    last_seen = Column(DateTime, default=datetime.utcnow)
+    last_seen = Column(DateTime, default=utcnow)
     role = Column(String(20), default='user') 
     upload_used = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow) 
+    created_at = Column(DateTime, default=utcnow) 
     
     def is_admin(self):
         """检查用户是否为管理员"""
@@ -200,7 +222,7 @@ class ChatMessage(Base):
     
     id = Column(Integer, primary_key=True)
     content = Column(Text)
-    timestamp = Column(DateTime, index=True, default=datetime.utcnow)
+    timestamp = Column(DateTime, index=True, default=utcnow)
     user_id = Column(Integer, ForeignKey('users.id'))
     room_id = Column(Integer, ForeignKey('chat_rooms.id'))
     
@@ -220,7 +242,7 @@ class ForumThread(Base):
     id = Column(Integer, primary_key=True)
     title = Column(String(128))
     content = Column(Text) 
-    timestamp = Column(DateTime, index=True, default=datetime.utcnow)
+    timestamp = Column(DateTime, index=True, default=utcnow)
     user_id = Column(Integer, ForeignKey('users.id'))
     section_id = Column(Integer, ForeignKey('forum_sections.id'))
     
@@ -233,7 +255,7 @@ class ForumReply(Base):
     
     id = Column(Integer, primary_key=True)
     content = Column(Text)
-    timestamp = Column(DateTime, index=True, default=datetime.utcnow)
+    timestamp = Column(DateTime, index=True, default=utcnow)
     user_id = Column(Integer, ForeignKey('users.id'))
     thread_id = Column(Integer, ForeignKey('forum_threads.id'))
     
@@ -268,7 +290,7 @@ class UserFollow(Base):
     id = Column(Integer, primary_key=True)
     follower_id = Column(Integer, ForeignKey('users.id'), nullable=False)  # 关注者
     followed_id = Column(Integer, ForeignKey('users.id'), nullable=False)  # 被关注者
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     follower = relationship('User', foreign_keys=[follower_id], backref='following')
     followed = relationship('User', foreign_keys=[followed_id], backref='followers')
@@ -279,7 +301,7 @@ class ChatLastView(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     room_id = Column(Integer, ForeignKey('chat_rooms.id'), nullable=False)
-    last_view = Column(DateTime, default=datetime.utcnow)
+    last_view = Column(DateTime, default=utcnow)
 
     user = relationship('User')
     room = relationship('ChatRoom')
@@ -290,7 +312,7 @@ class ForumLastView(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     section_id = Column(Integer, ForeignKey('forum_sections.id'), nullable=False)
-    last_view = Column(DateTime, default=datetime.utcnow)
+    last_view = Column(DateTime, default=utcnow)
 
     user = relationship('User')
     section = relationship('ForumSection')
@@ -303,7 +325,7 @@ class UserImage(Base):
     filename = Column(String(255), nullable=False) 
     filepath = Column(String(512), nullable=False)
     file_size = Column(Integer, nullable=False)
-    upload_time = Column(DateTime, default=datetime.utcnow)
+    upload_time = Column(DateTime, default=utcnow)
     file_type = Column(String(50), nullable=False)
 
     user = relationship('User', backref='images')
@@ -507,7 +529,7 @@ grant_su_to_admins()
 
 @login_manager.user_loader
 def load_user(user_id):
-    return db_session.query(User).get(int(user_id))
+    return db_session.get(User, int(user_id))
 @app.context_processor
 def inject_app_info():
     """将应用信息注入到所有模板中"""
@@ -651,7 +673,7 @@ def get_room_users_data(room_id):
     """获取房间中用户的详细信息"""
     users_data = []
     # 获取在指定聊天室最后活动时间在超时时间内的用户
-    cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
+    cutoff_time = utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
     online_users = db_session.query(ChatLastView).filter(
         ChatLastView.room_id == room_id,
         ChatLastView.last_view >= cutoff_time
@@ -672,7 +694,7 @@ def get_room_users_data(room_id):
 
 def get_global_online_count():
     """获取全局在线用户数量（基于心跳判定）"""
-    cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
+    cutoff_time = utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
     count = db_session.query(User).filter(User.last_seen >= cutoff_time).count()
     return count
 
@@ -756,7 +778,7 @@ def get_image_type(stream):
 
 def get_online_users(room_id):
     """获取指定房间的在线用户"""
-    cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
+    cutoff_time = utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
     online_users = db_session.query(ChatLastView).filter(
         ChatLastView.room_id == room_id,
         ChatLastView.last_view >= cutoff_time
@@ -838,56 +860,8 @@ def log_admin_action(action):
 @app.route('/')
 def index():
     if current_user.is_authenticated:
-        chat_counts = {}
-        forum_counts = {}
-        rooms = db_session.query(ChatRoom).all()
-        accessible_rooms = []
-        for room in rooms:
-            if get_chat_permission_value(current_user, room.id) == 'Null':
-                continue
-            last = db_session.query(ChatLastView).filter_by(user_id=current_user.id, room_id=room.id).first()
-            if last:
-                cnt = db_session.query(ChatMessage).filter(ChatMessage.room_id == room.id, ChatMessage.timestamp > last.last_view).count()
-            else:
-                cnt = db_session.query(ChatMessage).filter_by(room_id=room.id).count()
-            chat_counts[room.id] = cnt
-            accessible_rooms.append(room)
-        sections = db_session.query(ForumSection).all()
-        accessible_sections = []
-        for section in sections:
-            if get_forum_permission_value(current_user, section.id) == 'Null':
-                continue
-            last = db_session.query(ForumLastView).filter_by(user_id=current_user.id, section_id=section.id).first()
-            if last:
-                last_time = last.last_view
-                cnt_threads = db_session.query(ForumThread).filter(ForumThread.section_id == section.id, ForumThread.timestamp > last_time).count()
-                cnt_replies = db_session.query(ForumReply).join(ForumThread, ForumReply.thread_id == ForumThread.id) \
-                    .filter(ForumThread.section_id == section.id, ForumReply.timestamp > last_time).count()
-            else:
-                cnt_threads = db_session.query(ForumThread).filter_by(section_id=section.id).count()
-                cnt_replies = db_session.query(ForumReply).join(ForumThread, ForumReply.thread_id == ForumThread.id) \
-                    .filter(ForumThread.section_id == section.id).count()
-            forum_counts[section.id] = cnt_threads + cnt_replies
-            accessible_sections.append(section)
-        import random
-        try:
-            with open('quotes.json', 'r', encoding='utf-8') as f:
-                quotes_data = json.load(f)
-                quotes = quotes_data.get('quotes', [])
-                # Format the quote as "text - author"
-                formatted_quotes = [f"{quote['text']} - {quote['author']}" for quote in quotes if 'text' in quote and 'author' in quote]
-                selected_quote = random.choice(formatted_quotes) if formatted_quotes else "书山有路勤为径，学海无涯苦作舟。 - 韩愈"
-        except FileNotFoundError:
-            selected_quote = "书山有路勤为径，学海无涯苦作舟。 - 韩愈"
-        except json.JSONDecodeError:
-            selected_quote = "书山有路勤为径，学海无涯苦作舟。 - 韩愈"
-        
-        return render_template('index.html', 
-                             chat_counts=chat_counts, 
-                             forum_counts=forum_counts,
-                             selected_quote=selected_quote,
-                             accessible_rooms=accessible_rooms,
-                             accessible_sections=accessible_sections)
+        # 重定向到SPA主页
+        return redirect('/spa')
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -895,21 +869,26 @@ def index():
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
-    
+
+    if request.method == 'GET':
+        # GET请求重定向到SPA登录页
+        return redirect('/spa#/login')
+
+    # POST请求处理表单登录（向后兼容）
     form = LoginForm()
     if form.validate_on_submit():
         user = db_session.query(User).filter_by(username=form.username.data).first()
         if user is None or not user.check_password(form.password.data):
             flash('无效的用户名或密码', 'danger')
             return redirect(url_for('login'))
-        
+
         login_user(user)
-        user.last_seen = datetime.utcnow()
+        user.last_seen = utcnow()
         db_session.commit()
         log_admin_action(f"用户登录: {user.username}")
         return redirect(url_for('index'))
-    
-    return render_template('login.html', form=form)
+
+    return redirect('/spa#/login')
 
 @app.route('/logout')
 def logout():
@@ -918,6 +897,42 @@ def logout():
     log_admin_action(f"用户登出: {username}")
     flash('您已成功登出', 'success')
     return redirect(url_for('login'))
+
+@app.route('/api/auth/login', methods=['POST'])
+@limiter.limit("5 per minute")
+def api_login():
+    """API登录端点 - 用于SPA登录"""
+    if current_user.is_authenticated:
+        return jsonify({'success': True, 'message': '已经登录'}), 200
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': '无效的请求数据'}), 400
+
+    username = data.get('username', '').strip()
+    password = data.get('password', '')
+
+    if not username or not password:
+        return jsonify({'success': False, 'error': '用户名和密码不能为空'}), 400
+
+    user = db_session.query(User).filter_by(username=username).first()
+    if user is None or not user.check_password(password):
+        return jsonify({'success': False, 'error': '无效的用户名或密码'}), 401
+
+    login_user(user)
+    user.last_seen = utcnow()
+    db_session.commit()
+    log_admin_action(f"用户登录: {user.username}")
+
+    return jsonify({
+        'success': True,
+        'message': '登录成功',
+        'user': {
+            'id': user.id,
+            'username': user.username,
+            'is_admin': user.is_admin()  # 调用方法，不是访问属性
+        }
+    }), 200
 
 @app.route('/change_password', methods=['GET', 'POST'])
 @login_required
@@ -957,20 +972,8 @@ def change_password():
             db_session.rollback()
             return jsonify({'success': False, 'message': str(e)}), 500
     
-    # Handle traditional form request
-    form = ChangePasswordForm()
-    if form.validate_on_submit():
-        if not current_user.check_password(form.old_password.data):
-            flash('当前密码错误', 'danger')
-            return redirect(url_for('change_password'))
-        
-        current_user.set_password(form.new_password.data)
-        db_session.commit()
-        log_admin_action(f"用户修改密码: {current_user.username}")
-        flash('密码已成功修改', 'success')
-        return redirect(url_for('chat_index'))
-    
-    return render_template('settings/change_password.html', form=form)
+    # Redirect to SPA for non-JSON requests
+    return redirect('/spa#/settings?tab=password')
 
 @app.route('/profile', methods=['GET', 'POST'])
 @login_required
@@ -1010,43 +1013,20 @@ def profile():
             db_session.rollback()
             return jsonify({'success': False, 'message': str(e)}), 500
     
-    # Handle traditional form request
-    form = ProfileForm()
-    if form.validate_on_submit():
-        current_user.nickname = form.nickname.data
-        current_user.color = form.color.data or '#000000'
-        current_user.badge = form.badge.data
-        db_session.commit()
-        log_admin_action(f"用户更新个人资料: {current_user.username}")
-        flash('个人资料已更新', 'success')
-        return redirect(url_for('profile'))
-    elif request.method == 'GET':
-        form.nickname.data = current_user.nickname
-        form.color.data = current_user.color
-        form.badge.data = current_user.badge
-    
-    return render_template('settings/profile.html', form=form)
+    # Redirect to SPA for non-JSON requests
+    return redirect('/spa#/settings?tab=profile')
 
 # 聊天相关路由
 @app.route('/chat')
 @login_required
 def chat_index():
-    rooms = db_session.query(ChatRoom).all()
-    visible_rooms = []
-    room_permissions = {}
-
-    for room in rooms:
-        perm = get_chat_permission_value(current_user, room.id)
-        if perm != 'Null':
-            visible_rooms.append(room)
-            room_permissions[room.id] = perm
-
-    return render_template('chat/index.html', rooms=visible_rooms, room_permissions=room_permissions)
+    # 重定向到SPA聊天列表
+    return redirect('/spa#/chat')
 
 @app.route('/chat/<int:room_id>')
 @login_required
 def chat_room(room_id):
-    room = db_session.query(ChatRoom).get(room_id)
+    room = db_session.get(ChatRoom, room_id)
     if room is None:
         abort(404)
 
@@ -1054,19 +1034,8 @@ def chat_room(room_id):
     if permission == 'Null':
         abort(403)
 
-    # 记录用户最后查看该聊天室的时间（用于未读统计）
-    try:
-        last = db_session.query(ChatLastView).filter_by(user_id=current_user.id, room_id=room_id).first()
-        now = datetime.utcnow()
-        if last:
-            last.last_view = now
-        else:
-            db_session.add(ChatLastView(user_id=current_user.id, room_id=room_id, last_view=now))
-        db_session.commit()
-    except Exception:
-        db_session.rollback()
-
-    return render_template('chat/room.html', room=room, room_permission=permission)
+    # 重定向到SPA聊天室
+    return redirect(f'/spa#/chat/{room_id}')
 
 @app.route('/api/chat/<int:room_id>/history')
 @login_required
@@ -1087,7 +1056,7 @@ def chat_history(room_id):
         messages_data = [{
             'id': msg.id,
             'content': html.unescape(msg.content) if isinstance(msg.content, str) else msg.content,
-            'timestamp': msg.timestamp.isoformat(),
+            'timestamp': to_utc8_isoformat(msg.timestamp),
             'user_id': msg.user_id,
             'username': msg.user.username,
             'nickname': msg.user.nickname or msg.user.username,
@@ -1126,7 +1095,7 @@ def chat_history(room_id):
         messages_data = [{
             'id': msg.id,
             'content': html.unescape(msg.content) if isinstance(msg.content, str) else msg.content,
-            'timestamp': msg.timestamp.isoformat(),
+            'timestamp': to_utc8_isoformat(msg.timestamp),
             'user_id': msg.user_id,
             'username': msg.user.username,
             'nickname': msg.user.nickname or msg.user.username,
@@ -1240,7 +1209,7 @@ def api_delete_chat_message(room_id, message_id):
                     'id': message_id,
                     'room_id': room_id,
                     'deleted_by': getattr(current_user, 'id', None),
-                    'timestamp': datetime.utcnow().isoformat()
+                    'timestamp': utcnow().isoformat()
                 }
                 # 某些 socketio/server 版本不接受 broadcast 参数；默认 emit() 不带 to/room 会推送给所有连接
                 socketio.emit('message_deleted', payload)
@@ -1264,7 +1233,7 @@ def api_get_chat_message(message_id):
     return jsonify(success=True, message={
         'id': msg.id,
         'content': html.unescape(msg.content) if isinstance(msg.content, str) else msg.content,
-        'timestamp': msg.timestamp.isoformat(),
+        'timestamp': to_utc8_isoformat(msg.timestamp),
         'user_id': msg.user_id,
         'username': user.username if user else None,
         'nickname': user.nickname if user else None,
@@ -1349,7 +1318,7 @@ def api_delete_forum_reply(reply_id):
 @login_required
 def get_online_count():
     """获取全局在线用户数"""
-    cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
+    cutoff_time = utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
     
     # 查询最近活动的用户数
     online_count = db_session.query(User).filter(User.last_seen >= cutoff_time).count()
@@ -1449,7 +1418,7 @@ def api_follows():
                 'id': f.followed.id,
                 'username': f.followed.username,
                 'nickname': f.followed.nickname,
-                'followed_at': f.created_at.isoformat()
+                'followed_at': to_utc8_isoformat(f.created_at)
             })
         return jsonify(success=True, follows=data)
 
@@ -1462,7 +1431,7 @@ def api_follows():
 
     try:
         if user_id:
-            target = db_session.query(User).get(int(user_id))
+            target = db_session.get(User, int(user_id))
         else:
             target = db_session.query(User).filter_by(username=username).first()
 
@@ -1504,7 +1473,8 @@ def api_unfollow(followed_id):
 @app.route('/settings')
 @login_required
 def settings_index():
-    return render_template('settings.html')
+    # 重定向到SPA设置页面
+    return redirect('/spa#/settings')
 
 
 # 图床相关路由
@@ -1812,7 +1782,7 @@ def api_list_user_images():
                 'filename': im.filename,
                 'url': url,
                 'markdown': markdown,
-                'uploaded': im.upload_time.isoformat(),
+                'uploaded': to_utc8_isoformat(im.upload_time),
                 'is_image': is_image
             })
         return jsonify(success=True, images=results)
@@ -1846,7 +1816,7 @@ def api_get_upload_quota():
 @login_required
 def api_delete_image(image_id):
     try:
-        ui = db_session.query(UserImage).get(image_id)
+        ui = db_session.get(UserImage, image_id)
         if not ui:
             return jsonify(success=False, message='图片不存在'), 404
         # 权限：图片所有者或管理员可删除
@@ -1862,7 +1832,7 @@ def api_delete_image(image_id):
             pass
 
         # 获取用户信息以便减少配额
-        user = db_session.query(User).get(ui.user_id)
+        user = db_session.get(User, ui.user_id)
         if user and not user.is_admin():
             # 减少用户的已使用配额
             user.upload_used = max(0, user.upload_used - ui.file_size)
@@ -2040,7 +2010,7 @@ def api_admin_forum_section_users(section_id):
     if not current_user.is_admin():
         return jsonify(success=False, message='权限不足'), 403
     try:
-        section = db_session.query(ForumSection).get(section_id)
+        section = db_session.get(ForumSection, section_id)
         if not section:
             return jsonify(success=False, message='分区不存在'), 404
         users = db_session.query(User).order_by(User.id.asc()).all()
@@ -2159,113 +2129,48 @@ def api_admin_recount_file_size():
 @app.route('/settings/follows')
 @login_required
 def settings_follows():
-    follows = db_session.query(UserFollow).filter_by(follower_id=current_user.id).all()
-    return render_template('settings/follows.html', follows=follows)
+    # Redirect to SPA settings page with follows tab
+    return redirect('/spa#/settings?tab=follows')
 
 
 @app.route('/settings/images')
 @login_required
 def settings_images():
-    return render_template('settings/images.html')
+    # Redirect to SPA settings page with uploads tab
+    return redirect('/spa#/settings?tab=uploads')
 
 # 贴吧相关路由
 @app.route('/forum')
 @login_required
 def forum_index():
-    sections = db_session.query(ForumSection).all()
-    visible_sections = []
-    section_permissions = {}
-
-    for section in sections:
-        perm = get_forum_permission_value(current_user, section.id)
-        if perm != 'Null':
-            visible_sections.append(section)
-            section_permissions[section.id] = perm
-
-    return render_template('forum/index.html', sections=visible_sections, section_permissions=section_permissions)
+    # 重定向到SPA贴吧列表
+    return redirect('/spa#/forum')
 
 @app.route('/forum/section/<int:section_id>')
 @login_required
 def forum_section(section_id):
-    section = db_session.query(ForumSection).get(section_id)
+    section = db_session.get(ForumSection, section_id)
     if section is None:
         abort(404)
     permission = get_forum_permission_value(current_user, section_id)
     if permission == 'Null':
         abort(403)
-    threads = db_session.query(ForumThread).filter_by(section_id=section_id)\
-        .order_by(ForumThread.timestamp.desc()).all()
-    # 记录用户最后查看该分区的时间（用于未读统计）
-    try:
-        last = db_session.query(ForumLastView).filter_by(user_id=current_user.id, section_id=section_id).first()
-        now = datetime.utcnow()
-        if last:
-            last.last_view = now
-        else:
-            db_session.add(ForumLastView(user_id=current_user.id, section_id=section_id, last_view=now))
-        db_session.commit()
-    except Exception:
-        db_session.rollback()
 
-    # 解码历史数据中的实体，避免在列表中显示 &lt; 等实体
-    try:
-        for th in threads:
-            if th.content and isinstance(th.content, str):
-                th.content = html.unescape(th.content)
-    except Exception:
-        pass
-
-    return render_template(
-        'forum/section.html',
-        section=section,
-        threads=threads,
-        section_permission=permission,
-        can_post=permission in FORUM_POST_PERMISSIONS
-    )
+    # 重定向到SPA贴吧分区
+    return redirect(f'/spa#/forum/{section_id}')
 
 @app.route('/forum/thread/<int:thread_id>')
 @login_required
 def forum_thread(thread_id):
-    thread = db_session.query(ForumThread).get(thread_id)
+    thread = db_session.get(ForumThread, thread_id)
     if thread is None:
         abort(404)
     section_permission = get_forum_permission_value(current_user, thread.section_id)
     if section_permission == 'Null':
         abort(403)
-    # 分页加载：每页 50 条，默认展示最后一页（最近的 50 条）
-    try:
-        total_count = thread.replies.count()
-    except Exception:
-        # 兼容非-dynamic 关系
-        total_count = db_session.query(ForumReply).filter_by(thread_id=thread.id).count()
-    PAGE_SIZE = 50
-    total_pages = (total_count + PAGE_SIZE - 1) // PAGE_SIZE if total_count > 0 else 1
-    # 页面使用 0-based page index，默认加载最后一页
-    current_page = 0
-    offset = current_page * PAGE_SIZE
-    replies = thread.replies.order_by(ForumReply.timestamp.asc()).offset(offset).limit(PAGE_SIZE).all()
-    # 解码已存在的实体，保证客户端渲染时能正确还原 code block 内容
-    try:
-        if thread.content and isinstance(thread.content, str):
-            thread.content = html.unescape(thread.content)
-    except Exception:
-        pass
-    for r in replies:
-        try:
-            if r.content and isinstance(r.content, str):
-                r.content = html.unescape(r.content)
-        except Exception:
-            pass
-    return render_template(
-        'forum/thread.html',
-        thread=thread,
-        replies=replies,
-        section_permission=section_permission,
-        can_reply=section_permission in FORUM_POST_PERMISSIONS,
-        forum_thread_total_pages=total_pages,
-        forum_thread_current_page=current_page,
-        forum_thread_page_size=PAGE_SIZE
-    )
+
+    # 重定向到SPA帖子详情
+    return redirect(f'/spa#/forum/thread/{thread_id}')
 
 
 @app.route('/api/forum/thread/<int:thread_id>', methods=['DELETE'])
@@ -2277,7 +2182,7 @@ def api_delete_thread(thread_id):
       - 在分区为 777 时，帖子作者可删除自己的主题。
     """
     try:
-        thread = db_session.query(ForumThread).get(thread_id)
+        thread = db_session.get(ForumThread, thread_id)
         if not thread:
             return jsonify(success=False, message='帖子不存在'), 404
 
@@ -2307,7 +2212,7 @@ def api_delete_thread(thread_id):
 @login_required
 def api_get_thread_replies(thread_id):
     """按页获取指定主题的回复，query 参数 page 可选（0-based），默认 0（最早一页）。"""
-    thread = db_session.query(ForumThread).get(thread_id)
+    thread = db_session.get(ForumThread, thread_id)
     if thread is None:
         return jsonify(success=False, message='主题不存在'), 404
     page = 0
@@ -2338,51 +2243,53 @@ def api_get_thread_replies(thread_id):
             'nickname': r.user.nickname if r.user else None,
             'color': r.user.color if r.user else None,
             'content': r.content,
-            'timestamp': r.timestamp.isoformat() if hasattr(r.timestamp, 'isoformat') else str(r.timestamp)
+            'timestamp': to_utc8_isoformat(r.timestamp) if hasattr(r.timestamp, 'isoformat') else str(r.timestamp)
         })
     return jsonify(success=True, replies=result, page=page, total_pages=total_pages)
 
 @app.route('/forum/new/<int:section_id>', methods=['GET', 'POST'])
 @login_required
 def new_post(section_id):
-    section = db_session.query(ForumSection).get(section_id)
+    section = db_session.get(ForumSection, section_id)
     if section is None:
         abort(404)
-    
+
     permission = get_forum_permission_value(current_user, section_id)
     if permission == 'Null':
         abort(403)
-    
-    if request.method == 'POST':
-        if permission not in FORUM_POST_PERMISSIONS:
-            return jsonify(success=False, message="当前权限无法发帖"), 403
-        title = request.form.get('title', '').strip()
-        content = request.form.get('content', '').strip()
-        
-        # 基础验证
-        if not title or len(title) > 128:
-            return jsonify(success=False, message="标题不能为空且不超过128字符"), 400
-        
-        # 内容长度限制
-        if not content or len(content) > 100000:
-            return jsonify(success=False, message="内容不能为空且不超过100000字符"), 400
-        
-        # XSS基础防护
-        content = sanitize_content(content)
-        
-        thread = ForumThread(
-            title=title,
-            content=content,  # 存储原始Markdown
-            user_id=current_user.id,
-            section_id=section_id
-        )
-        db_session.add(thread)
-        db_session.commit()
-        
-        log_admin_action(f"用户创建新帖: {current_user.username} - {title}")
-        return redirect(url_for('forum_thread', thread_id=thread.id))
-    
-    return render_template('forum/new_post.html', section=section, can_post=permission in FORUM_POST_PERMISSIONS)
+
+    if request.method == 'GET':
+        # GET请求重定向到SPA分区页面
+        return redirect(f'/spa#/forum/{section_id}')
+
+    # POST请求处理发帖
+    if permission not in FORUM_POST_PERMISSIONS:
+        return jsonify(success=False, message="当前权限无法发帖"), 403
+    title = request.form.get('title', '').strip()
+    content = request.form.get('content', '').strip()
+
+    # 基础验证
+    if not title or len(title) > 128:
+        return jsonify(success=False, message="标题不能为空且不超过128字符"), 400
+
+    # 内容长度限制
+    if not content or len(content) > 100000:
+        return jsonify(success=False, message="内容不能为空且不超过100000字符"), 400
+
+    # XSS基础防护
+    content = sanitize_content(content)
+
+    thread = ForumThread(
+        title=title,
+        content=content,  # 存储原始Markdown
+        user_id=current_user.id,
+        section_id=section_id
+    )
+    db_session.add(thread)
+    db_session.commit()
+
+    log_admin_action(f"用户创建新帖: {current_user.username} - {title}")
+    return redirect(url_for('forum_thread', thread_id=thread.id))
 
 @app.route('/api/forum/reply', methods=['POST'])
 @login_required
@@ -2400,7 +2307,7 @@ def reply_post():
     # XSS基础防护
     content = sanitize_content(content)
     
-    thread = db_session.query(ForumThread).get(thread_id)
+    thread = db_session.get(ForumThread, thread_id)
     if not thread:
         return jsonify(success=False, message="帖子不存在"), 404
     
@@ -2425,119 +2332,12 @@ def reply_post():
         nickname=current_user.nickname or current_user.username,
         color=current_user.color,
         badge=current_user.badge,
-        timestamp=reply.timestamp.isoformat(),
+        timestamp=to_utc8_isoformat(reply.timestamp),
         content=html.unescape(reply.content) if isinstance(reply.content, str) else reply.content  # 原始Markdown（解码旧数据）
     )
 
 # 管理相关路由
-@app.route('/admin/index')
-@login_required
-@su_required
-def admin_index():
-    
-    # 获取统计信息
-    user_count = db_session.query(User).count()
-    online_count = 1  # 简化实现，实际应查询最近活动的用户
-    chat_messages_count = db_session.query(ChatMessage).count()
-    forum_posts_count = db_session.query(ForumThread).count() + db_session.query(ForumReply).count()
-    
-    # 获取系统信息
-    python_version = sys.version.split()[0]
-    database_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
-    
-    # 获取最近日志
-    recent_logs = get_recent_logs(10)
-    
-    return render_template('admin/index.html',
-                         user_count=user_count,
-                         online_count=online_count,
-                         chat_messages_count=chat_messages_count,
-                         forum_posts_count=forum_posts_count,
-                         python_version=python_version,
-                         flask_version=flask_version,
-                         database_path=database_path,
-                         recent_logs=recent_logs,
-                         enable_file_manager=app.config.get('ENABLE_FILE_MANAGER', False),
-                         enable_server_control=app.config.get('ENABLE_SERVER_CONTROL', False))
-
-
-
-@app.route('/admin/users')
-@login_required
-@su_required
-def user_management():
-    
-    users = db_session.query(User).all()
-    return render_template('admin/users.html', users=users)
-
-@app.route('/admin/chat')
-@login_required
-@su_required
-def chat_management():
-    
-    rooms = db_session.query(ChatRoom).all()
-    return render_template('admin/chat.html', rooms=rooms)
-
-@app.route('/admin/forum')
-@login_required
-@su_required
-def forum_management():
-    
-    sections = db_session.query(ForumSection).all()
-
-    # 为了避免在模板中对 SQLAlchemy 的动态关系调用 len()/count 导致错误，
-    # 在后端预计算每个分区的主题数和回复数，并传递到模板。
-    sections_data = []
-    for section in sections:
-        threads_obj = section.threads
-        # 获取线程列表（兼容 dynamic relationship 或 InstrumentedList）
-        try:
-            if hasattr(threads_obj, 'all') and callable(getattr(threads_obj, 'all')):
-                threads_list = threads_obj.all()
-            else:
-                threads_list = list(threads_obj)
-        except Exception:
-            try:
-                threads_list = list(threads_obj)
-            except Exception:
-                threads_list = []
-
-        thread_count = 0
-        reply_count = 0
-        try:
-            thread_count = len(threads_list)
-        except Exception:
-            # 兜底：尝试调用 count()，若不是参数类型的 count 则会抛出 TypeError
-            try:
-                thread_count = threads_obj.count()
-            except Exception:
-                thread_count = 0
-
-        for thread in threads_list:
-            replies_obj = getattr(thread, 'replies', [])
-            try:
-                if hasattr(replies_obj, 'all') and callable(getattr(replies_obj, 'all')):
-                    replies_list = replies_obj.all()
-                else:
-                    replies_list = list(replies_obj)
-            except Exception:
-                try:
-                    replies_list = list(replies_obj)
-                except Exception:
-                    replies_list = []
-            try:
-                reply_count += len(replies_list)
-            except Exception:
-                reply_count += 0
-
-        sections_data.append({
-            'section': section,
-            'thread_count': thread_count,
-            'reply_count': reply_count,
-            'threads_list': threads_list
-        })
-
-    return render_template('admin/forum.html', sections=sections_data)
+# Old admin template routes removed - use SPA instead (#/admin)
 
 @app.route('/admin/import_users', methods=['POST'])
 @login_required
@@ -2545,11 +2345,11 @@ def forum_management():
 def admin_import_users():
     if 'file' not in request.files:
         flash('未选择文件', 'danger')
-        return redirect(url_for('user_management'))
+        return redirect('/spa#/admin')
     file = request.files['file']
     if file.filename == '':
         flash('未选择文件', 'danger')
-        return redirect(url_for('user_management'))
+        return redirect('/spa#/admin')
     import csv
     import io
     success, failed = [], []
@@ -2573,7 +2373,7 @@ def admin_import_users():
             try:
                 # 保证批量导入的用户默认处于离线状态：将 last_seen 设置为比 ONLINE_TIMEOUT 更早的时间
                 cutoff_seconds = app.config.get('ONLINE_TIMEOUT', 300)
-                default_last_seen = datetime.utcnow() - timedelta(seconds=(cutoff_seconds + 1))
+                default_last_seen = utcnow() - timedelta(seconds=(cutoff_seconds + 1))
 
                 new_user = User(
                     username=username,
@@ -2596,93 +2396,8 @@ def admin_import_users():
             session.pop('import_failed', None)
     except Exception as e:
         flash(f'导入失败: {str(e)}', 'danger')
-    return redirect(url_for('user_management'))
-@app.route('/admin/file_manager')
-@login_required
-@su_required
-def file_manager_view():
-    # 根据配置决定是否允许访问文件管理
-    if not app.config.get('ENABLE_FILE_MANAGER', False):
-        abort(403)
-    
-    path = request.args.get('path', '')
-    try:
-        items = list_directory(path)
-        return render_template('admin/file_manager.html', 
-                              items=items, 
-                              current_path=path)
-    except Exception as e:
-        flash(f'错误: {str(e)}', 'danger')
-        return redirect(url_for('admin_index'))
-
-@app.route('/admin/file_manager/read')
-@login_required
-@su_required
-def read_file_view():
-    
-    path = request.args.get('path', '')
-    try:
-        root = Path(__file__).parent
-        full_path = (root / path).resolve()
-        
-        # 安全检查
-        if not str(full_path).startswith(str(root)):
-            raise ValueError("非法路径访问")
-        
-        if not full_path.exists() or full_path.is_dir():
-            raise ValueError("文件不存在或为目录")
-        
-        # 限制文件大小
-        if full_path.stat().st_size > 1024 * 1024:  # 1MB
-            return jsonify(success=False, message="文件过大，无法在浏览器中编辑"), 400
-        
-        with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
-            content = f.read()
-        
-        log_admin_action(f"读取文件: {path}")
-        return jsonify(success=True, content=content)
-    except Exception as e:
-        log_admin_action(f"读取文件失败: {path} - {str(e)}")
-        return jsonify(success=False, message=str(e)), 400
-
-@app.route('/admin/file_manager/write', methods=['POST'])
-@login_required
-@su_required
-def write_file_view():
-    
-    path = request.form.get('path', '')
-    content = request.form.get('content', '')
-    
-    try:
-        root = Path(__file__).parent
-        full_path = (root / path).resolve()
-        
-        # 安全检查
-        if not str(full_path).startswith(str(root)):
-            raise ValueError("非法路径访问")
-        
-        # 限制文件类型
-        disallowed_extensions = ['.pyc', '.db', '.sqlite', '.exe', '.bat', '.sh']
-        if any(full_path.name.lower().endswith(ext) for ext in disallowed_extensions):
-            raise ValueError(f"禁止修改此类文件: {full_path.name}")
-        
-        # 备份原文件
-        backup_path = None
-        if full_path.exists():
-            backup_path = full_path.with_suffix(full_path.suffix + '.bak')
-            shutil.copy2(full_path, backup_path)
-        
-        # 确保目录存在
-        full_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        with open(full_path, 'w', encoding='utf-8') as f:
-            f.write(content)
-        
-        log_admin_action(f"修改文件: {path}" + (f", 备份已创建: {backup_path}" if backup_path else ""))
-        return jsonify(success=True, message="文件已保存")
-    except Exception as e:
-        log_admin_action(f"修改文件失败: {path} - {str(e)}")
-        return jsonify(success=False, message=str(e)), 400
+    return redirect('/spa#/admin')
+# File manager routes removed - feature discontinued
 
 # API端点
 @app.route('/api/admin/system-info')
@@ -2914,7 +2629,7 @@ def shutdown_server():
 def update_user(user_id):
     
     try:
-        user = db_session.query(User).get(user_id)
+        user = db_session.get(User, user_id)
         if not user:
             return jsonify(success=False, message="用户不存在"), 404
         
@@ -2957,7 +2672,7 @@ def remove_user_and_related(user_id, session=None):
     if session is None:
         session = db_session
 
-    user = session.query(User).get(user_id)
+    user = session.get(User, user_id)
     if not user:
         return False, "用户不存在"
 
@@ -3003,7 +2718,7 @@ def remove_user_and_related(user_id, session=None):
 def update_user_role(user_id):
     
     try:
-        user = db_session.query(User).get(user_id)
+        user = db_session.get(User, user_id)
         if not user:
             return jsonify(success=False, message="用户不存在"), 404
         
@@ -3043,7 +2758,7 @@ def update_user_role(user_id):
 @su_required
 def get_user_permissions_detail(user_id):
 
-    user = db_session.query(User).get(user_id)
+    user = db_session.get(User, user_id)
     if not user:
         return jsonify(success=False, message="用户不存在"), 404
 
@@ -3079,7 +2794,7 @@ def get_user_permissions_detail(user_id):
 @su_required
 def update_user_permissions(user_id):
 
-    user = db_session.query(User).get(user_id)
+    user = db_session.get(User, user_id)
     if not user:
         return jsonify(success=False, message="用户不存在"), 404
 
@@ -3103,7 +2818,7 @@ def update_user_permissions(user_id):
         return jsonify(success=False, message="无效的权限值"), 400
 
     if scope == 'chat':
-        target = db_session.query(ChatRoom).get(target_id)
+        target = db_session.get(ChatRoom, target_id)
         if not target:
             return jsonify(success=False, message="聊天室不存在"), 404
         existing = db_session.query(ChatPermission).filter_by(user_id=user.id, room_id=target_id).first()
@@ -3116,7 +2831,7 @@ def update_user_permissions(user_id):
             else:
                 db_session.add(ChatPermission(user_id=user.id, room_id=target_id, perm=perm_value))
     else:
-        target = db_session.query(ForumSection).get(target_id)
+        target = db_session.get(ForumSection, target_id)
         if not target:
             return jsonify(success=False, message="贴吧分区不存在"), 404
         existing = db_session.query(ForumPermission).filter_by(user_id=user.id, section_id=target_id).first()
@@ -3253,7 +2968,7 @@ def get_chat_rooms():
 def update_chat_room(room_id):
 
     try:
-        room = db_session.query(ChatRoom).get(room_id)
+        room = db_session.get(ChatRoom, room_id)
         if not room:
             return jsonify(success=False, message="聊天室不存在"), 404
 
@@ -3282,7 +2997,7 @@ def update_chat_room(room_id):
 def delete_chat_room(room_id):
 
     try:
-        room = db_session.query(ChatRoom).get(room_id)
+        room = db_session.get(ChatRoom, room_id)
         if not room:
             return jsonify(success=False, message="聊天室不存在"), 404
 
@@ -3428,7 +3143,7 @@ def update_forum_section(section_id):
         return jsonify({'success': False, 'message': "权限不足"}), 403
     
     try:
-        section = db_session.query(ForumSection).get(section_id)
+        section = db_session.get(ForumSection, section_id)
         if not section:
             return jsonify({'success': False, 'message': "贴吧分区不存在"}), 404
         
@@ -3450,7 +3165,7 @@ def update_forum_section(section_id):
 def delete_forum_section(section_id):
     
     try:
-        section = db_session.query(ForumSection).get(section_id)
+        section = db_session.get(ForumSection, section_id)
         if not section:
             return jsonify(success=False, message="贴吧分区不存在"), 404
         
@@ -3478,14 +3193,14 @@ def delete_forum_post(post_id):
     
     try:
         # 检查是主题帖还是回复
-        thread = db_session.query(ForumThread).get(post_id)
+        thread = db_session.get(ForumThread, post_id)
         if thread:
             # 删除主题帖及其所有回复
             db_session.query(ForumReply).filter_by(thread_id=thread.id).delete()
             db_session.delete(thread)
             message = f"删除了贴吧主题帖: {thread.title}"
         else:
-            reply = db_session.query(ForumReply).get(post_id)
+            reply = db_session.get(ForumReply, post_id)
             if not reply:
                 return jsonify(success=False, message="帖子或回复不存在"), 404
             db_session.delete(reply)
@@ -3499,21 +3214,7 @@ def delete_forum_post(post_id):
 
 
 # SQLite数据库管理相关路由
-@app.route('/admin/db/')
-@login_required
-@su_required
-def db_admin():
-
-    # 获取所有表名
-    conn = sqlite3.connect(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
-    cursor = conn.cursor()
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = [row[0] for row in cursor.fetchall()]
-    conn.close()
-    return render_template('admin/db.html', tables=tables)
-
-
-@app.route('/api/admin/db/tables', methods=['GET'])
+# Old database template routes removed - use SPA instead (#/admin database tab)
 @login_required
 @su_required
 def api_admin_db_tables():
@@ -3530,38 +3231,29 @@ def api_admin_db_tables():
         return jsonify(success=False, message=str(e)), 500
 
 
-@app.route('/admin/db/table/<table_name>')
+@app.route('/api/admin/db/tables', methods=['GET'])
 @login_required
 @su_required
-def db_table_view(table_name):
+def get_db_tables():
+    """获取所有数据库表列表"""
+    try:
+        conn = sqlite3.connect(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name;")
+        tables = [row[0] for row in cursor.fetchall()]
+        conn.close()
 
-    # 验证表名是否合法（防止SQL注入）
-    conn = sqlite3.connect(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
-    cursor = conn.cursor()
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    valid_tables = [row[0] for row in cursor.fetchall()]
-    
-    if table_name not in valid_tables:
-        abort(404)
-    
-    # 获取表结构
-    cursor.execute(f"PRAGMA table_info({table_name});")
-    columns = cursor.fetchall()
-    column_names = [col[1] for col in columns]
-    
-    # 获取前50条数据
-    cursor.execute(f"SELECT * FROM {table_name} ORDER BY id DESC LIMIT 50;")
-    rows = cursor.fetchall()
-    
-    conn.close()
+        return jsonify({
+            'success': True,
+            'tables': tables
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'获取表列表失败: {str(e)}'
+        }), 500
 
-    return render_template('admin/db_table.html', 
-                         table_name=table_name, 
-                         columns=column_names, 
-                         rows=rows)
-
-
-@app.route('/admin/db/table/<table_name>/data')
+@app.route('/api/admin/db/tables/<table_name>', methods=['GET'])
 @login_required
 @su_required
 def db_table_data(table_name):
@@ -3603,6 +3295,14 @@ def db_table_data(table_name):
         'data': data,
         'columns': column_names
     })
+
+
+@app.route('/admin/db/table/<table_name>/data', methods=['GET'])
+@login_required
+@su_required
+def db_table_data_legacy(table_name):
+    """Legacy route for database table data - redirects to new API route"""
+    return db_table_data(table_name)
 
 
 @app.route('/admin/db/table/<table_name>/edit', methods=['POST'])
@@ -3751,7 +3451,7 @@ def handle_connect():
         return False  # 拒绝未认证用户
     
     if current_user.is_authenticated:
-        current_user.last_seen = datetime.utcnow()
+        current_user.last_seen = utcnow()
         db_session.commit()
         # 加入用户专属房间，用于接收关注通知
         join_room(f"user_{current_user.id}")
@@ -3781,14 +3481,14 @@ def on_join(data):
     room_name = f"room_{room_id}"
     join_room(room_name)
     # 更新用户最后活动时间
-    current_user.last_seen = datetime.utcnow()
+    current_user.last_seen = utcnow()
     
     # 在ChatLastView表中记录用户进入房间的时间
     last = db_session.query(ChatLastView).filter_by(
         user_id=current_user.id,
         room_id=room_id
     ).first()
-    now = datetime.utcnow()
+    now = utcnow()
     if last:
         last.last_view = now
     else:
@@ -3937,6 +3637,66 @@ def handle_message(data):
         # 发送acknowledgement响应，包含服务器消息ID
         emit('message_id_response', {'client_id': client_id, 'server_id': message.id}, to=request.sid)
 
+@socketio.on('delete_message')
+def handle_delete_message(data):
+    """处理删除消息请求"""
+    if not current_user.is_authenticated:
+        return
+
+    message_id = data.get('message_id')
+    room_id = data.get('room_id')
+
+    # 验证参数
+    try:
+        message_id = int(message_id)
+        room_id = int(room_id)
+    except (TypeError, ValueError):
+        emit('error', {'message': '参数错误'})
+        return
+
+    # 查找消息
+    msg = db_session.query(ChatMessage).filter_by(id=message_id, room_id=room_id).first()
+    if not msg:
+        emit('error', {'message': '消息未找到'})
+        return
+
+    # 权限检查
+    if current_user.is_admin():
+        allowed = True
+    else:
+        perm = get_chat_permission_value(current_user, room_id)
+        if perm == 'su':
+            allowed = True
+        elif perm == '777' and msg.user_id == current_user.id:
+            allowed = True
+        else:
+            allowed = False
+
+    if not allowed:
+        emit('error', {'message': '权限不足'})
+        return
+
+    # 删除消息
+    try:
+        db_session.delete(msg)
+        db_session.commit()
+        logger.info(f"用户 {current_user.id} 通过socket删除了聊天室消息 {message_id} 在房间 {room_id}")
+
+        # 广播删除事件
+        room_name = f"room_{room_id}"
+        payload = {
+            'id': message_id,
+            'message_id': message_id,
+            'room_id': room_id,
+            'deleted_by': current_user.id,
+            'timestamp': utcnow().isoformat()
+        }
+        emit('message_deleted', payload, room=room_name, include_self=True)
+    except Exception as e:
+        db_session.rollback()
+        logger.exception('删除聊天室消息失败')
+        emit('error', {'message': '删除失败'})
+
 @socketio.on('get_online_users')
 def handle_get_online_users(data):
     """获取在线用户列表"""
@@ -3970,14 +3730,14 @@ def handle_heartbeat_chat(data):
             room_id = int(room_id)
             
             # 更新用户全局最后活动时间
-            current_user.last_seen = datetime.utcnow()
+            current_user.last_seen = utcnow()
             
             # 更新房间特定最后查看时间
             last = db_session.query(ChatLastView).filter_by(
                 user_id=current_user.id, 
                 room_id=room_id
             ).first()
-            now = datetime.utcnow()
+            now = utcnow()
             if last:
                 last.last_view = now
             else:
@@ -4022,7 +3782,7 @@ def toggle_follow():
     target_id = data.get('user_id')
     if not target_id or target_id == current_user.id:
         return jsonify(success=False, message="无效用户"), 400
-    target_user = db_session.query(User).get(target_id)
+    target_user = db_session.get(User, target_id)
     if not target_user:
         return jsonify(success=False, message="用户不存在"), 404
 
@@ -4049,11 +3809,11 @@ def handle_heartbeat():
     """处理客户端心跳，更新用户最后活动时间，广播全局在线人数"""
     if current_user.is_authenticated:
         # 检查用户之前是否被视为离线（用于判断是否刚上线）
-        # 使用 datetime.utcnow() 以与数据库中的 offset-naive datetime 保持一致
-        cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
+        # 使用 utcnow() 以与数据库中的 offset-naive datetime 保持一致
+        cutoff_time = utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 30))
         was_offline = current_user.last_seen is None or current_user.last_seen < cutoff_time
         
-        current_user.last_seen = datetime.utcnow()
+        current_user.last_seen = utcnow()
         db_session.commit()
         
         # 如果用户刚从离线变为在线，通知其关注者
@@ -4065,12 +3825,7 @@ def handle_heartbeat():
 
 
 # 管理员：名言管理相关路由
-@app.route('/admin/quotes')
-@login_required
-@su_required
-def admin_quotes():
-    """名言管理页面"""
-    return render_template('admin/quotes.html')
+# Old quotes template route removed - use SPA instead (#/admin quotes tab)
 
 
 @app.route('/api/admin/quotes', methods=['GET'])
@@ -4203,7 +3958,7 @@ def inject_user():
 @app.context_processor
 def inject_online_count():
     """注入在线用户数到模板"""
-    cutoff_time = datetime.utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
+    cutoff_time = utcnow() - timedelta(seconds=app.config.get('ONLINE_TIMEOUT', 300))
     
     # 查询最近活动的用户数
     online_count = db_session.query(User).filter(User.last_seen >= cutoff_time).count()
@@ -4315,7 +4070,7 @@ def create_test_data():
             existing_count = db_session.query(ChatMessage).filter_by(room_id=test_room.id).count()
             if existing_count < 100:
                 # 生成从旧到新的时间戳
-                base_time = datetime.utcnow() - timedelta(minutes=100)
+                base_time = utcnow() - timedelta(minutes=100)
                 for i in range(1, 101):
                     # 跳过已存在的消息
                     if i <= existing_count:
@@ -4350,13 +4105,13 @@ def create_test_data():
                 content='这个帖子用于测试分页功能',
                 user_id=admin_user.id,
                 section_id=test_section.id,
-                timestamp=datetime.utcnow() - timedelta(minutes=110)
+                timestamp=utcnow() - timedelta(minutes=110)
             )
             db_session.add(test_thread)
             db_session.commit()
             
             # 5. 为测试帖子添加505条回复
-            base_reply_time = datetime.utcnow() - timedelta(minutes=100)
+            base_reply_time = utcnow() - timedelta(minutes=100)
             for i in range(1, 505):
                 reply_time = base_reply_time + timedelta(minutes=i)
                 reply = ForumReply(
@@ -4378,11 +4133,27 @@ def create_test_data():
 # ==============================
 
 @app.route('/spa')
-@login_required
 def spa_index():
     """Serve the SPA interface with all data pre-loaded via Jinja2"""
     import random
-    
+
+    # 如果用户未认证，返回空数据（用于登录页面）
+    if not current_user.is_authenticated:
+        return render_template('spa.html',
+            spa_data={
+                'rooms': [],
+                'chatPermissions': {},
+                'sections': [],
+                'forumPermissions': {},
+                'unreadCounts': {
+                    'chat': {},
+                    'forum': {}
+                },
+                'following': [],
+                'randomQuote': ''
+            }
+        )
+
     # Chat rooms
     rooms = db_session.query(ChatRoom).all()
     visible_rooms = []
@@ -4396,7 +4167,7 @@ def spa_index():
                 'description': room.description or ''
             })
             chat_permissions[room.id] = perm
-    
+
     # Forum sections
     sections = db_session.query(ForumSection).all()
     visible_sections = []
@@ -4410,7 +4181,7 @@ def spa_index():
                 'description': section.description or ''
             })
             forum_permissions[section.id] = perm
-    
+
     # Unread counts (same logic as api_unread_counts)
     chat_unread = {}
     forum_unread = {}
@@ -4437,7 +4208,7 @@ def spa_index():
             cnt_replies = db_session.query(ForumReply).join(ForumThread, ForumReply.thread_id == ForumThread.id)\
                 .filter(ForumThread.section_id == section.id).count()
         forum_unread[section.id] = cnt_threads + cnt_replies
-    
+
     # Following list
     following = db_session.query(UserFollow.followed_id).filter_by(follower_id=current_user.id).all()
     following_ids = [row[0] for row in following]
@@ -4449,7 +4220,7 @@ def spa_index():
         'color': u.color or '',
         'badge': u.badge or ''
     } for u in following_users]
-    
+
     # Random quote
     random_quote = ''
     try:
@@ -4461,7 +4232,7 @@ def spa_index():
                 random_quote = random.choice(formatted_quotes)
     except Exception:
         pass
-    
+
     return render_template('spa.html',
         spa_data={
             'rooms': visible_rooms,
@@ -4484,7 +4255,7 @@ def spa_index():
 @login_required
 def api_spa_forum_section(section_id):
     """Get forum section threads for SPA navigation"""
-    section = db_session.query(ForumSection).get(section_id)
+    section = db_session.get(ForumSection, section_id)
     if section is None:
         return jsonify({'success': False, 'message': 'Section not found'}), 404
     
@@ -4495,7 +4266,7 @@ def api_spa_forum_section(section_id):
     # Update last view (mark as read)
     try:
         last = db_session.query(ForumLastView).filter_by(user_id=current_user.id, section_id=section_id).first()
-        now = datetime.utcnow()
+        now = utcnow()
         if last:
             last.last_view = now
         else:
@@ -4513,7 +4284,7 @@ def api_spa_forum_section(section_id):
             'id': thread.id,
             'title': thread.title,
             'content': html.unescape(thread.content) if thread.content else '',
-            'timestamp': thread.timestamp.isoformat() if thread.timestamp else None,
+            'timestamp': to_utc8_isoformat(thread.timestamp) if thread.timestamp else None,
             'reply_count': db_session.query(ForumReply).filter_by(thread_id=thread.id).count(),
             'user': {
                 'id': thread.user.id,
@@ -4539,7 +4310,7 @@ def api_spa_forum_section(section_id):
 @login_required
 def api_spa_forum_thread(thread_id):
     """Get forum thread with replies for SPA navigation"""
-    thread = db_session.query(ForumThread).get(thread_id)
+    thread = db_session.get(ForumThread, thread_id)
     if thread is None:
         return jsonify({'success': False, 'message': 'Thread not found'}), 404
     
@@ -4555,7 +4326,7 @@ def api_spa_forum_thread(thread_id):
         replies_data.append({
             'id': reply.id,
             'content': html.unescape(reply.content) if reply.content else '',
-            'timestamp': reply.timestamp.isoformat() if reply.timestamp else None,
+            'timestamp': to_utc8_isoformat(reply.timestamp) if reply.timestamp else None,
             'user': {
                 'id': reply.user.id,
                 'username': reply.user.username,
@@ -4572,7 +4343,7 @@ def api_spa_forum_thread(thread_id):
             'title': thread.title,
             'content': html.unescape(thread.content) if thread.content else '',
             'section_id': thread.section_id,
-            'timestamp': thread.timestamp.isoformat() if thread.timestamp else None,
+            'timestamp': to_utc8_isoformat(thread.timestamp) if thread.timestamp else None,
             'user': {
                 'id': thread.user.id,
                 'username': thread.user.username,
@@ -4596,7 +4367,7 @@ def api_spa_forum_thread_create():
     if not section_id or not title or not content:
         return jsonify({'success': False, 'message': '请填写所有必填项'}), 400
     
-    section = db_session.query(ForumSection).get(section_id)
+    section = db_session.get(ForumSection, section_id)
     if section is None:
         return jsonify({'success': False, 'message': 'Section not found'}), 404
     
@@ -4610,7 +4381,7 @@ def api_spa_forum_thread_create():
             content=content,
             user_id=current_user.id,
             section_id=section_id,
-            timestamp=datetime.utcnow()
+            timestamp=utcnow()
         )
         db_session.add(thread)
         db_session.commit()
@@ -4628,7 +4399,7 @@ def api_spa_forum_thread_create():
 @login_required
 def api_spa_chat_mark_read(room_id):
     """Mark a chat room as read (update last view time)"""
-    room = db_session.query(ChatRoom).get(room_id)
+    room = db_session.get(ChatRoom, room_id)
     if room is None:
         return jsonify({'success': False, 'message': 'Room not found'}), 404
     
@@ -4638,7 +4409,7 @@ def api_spa_chat_mark_read(room_id):
     
     try:
         last = db_session.query(ChatLastView).filter_by(user_id=current_user.id, room_id=room_id).first()
-        now = datetime.utcnow()
+        now = utcnow()
         if last:
             last.last_view = now
         else:
