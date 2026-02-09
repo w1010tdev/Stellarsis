@@ -8,35 +8,44 @@ const AppLayout = {
     name: 'AppLayout',
     template: `
         <div class="app-container">
-            <!-- Sidebar Overlay (Mobile) -->
-            <div class="sidebar-overlay" :class="{ active: store.state.mobileSidebarOpen }" @click="store.closeMobileSidebar()"></div>
-            
-            <!-- Sidebar -->
-            <sidebar-component></sidebar-component>
-            
-            <!-- Main Content -->
-            <div class="main-content">
-                <!-- Top Header -->
-                <top-header-component :page-title="pageTitle"></top-header-component>
-                
-                <!-- Content Area -->
-                <div class="content-area">
-                    <component :is="currentPage"></component>
-                </div>
+            <!-- Login Page (No Sidebar/Header) -->
+            <div v-if="currentPage === 'login-page'" style="width: 100%;">
+                <component :is="currentPage"></component>
+                <toast-container-component></toast-container-component>
             </div>
-            
-            <!-- Toast Container -->
-            <toast-container-component></toast-container-component>
-            
-            <!-- Command Palette -->
-            <command-palette-component></command-palette-component>
+
+            <!-- Main App Layout (With Sidebar/Header) -->
+            <template v-else>
+                <!-- Sidebar Overlay (Mobile) -->
+                <div class="sidebar-overlay" :class="{ active: store.state.mobileSidebarOpen }" @click="store.closeMobileSidebar()"></div>
+
+                <!-- Sidebar -->
+                <sidebar-component></sidebar-component>
+
+                <!-- Main Content -->
+                <div class="main-content">
+                    <!-- Top Header -->
+                    <top-header-component :page-title="pageTitle"></top-header-component>
+
+                    <!-- Content Area -->
+                    <div class="content-area">
+                        <component :is="currentPage"></component>
+                    </div>
+                </div>
+
+                <!-- Toast Container -->
+                <toast-container-component></toast-container-component>
+
+                <!-- Command Palette -->
+                <command-palette-component></command-palette-component>
+            </template>
         </div>
     `,
     setup() {
         const store = StellarisStore;
         const currentPage = Vue.ref('home-page');
         const pageTitle = Vue.ref('首页');
-        
+
         const pageTitles = {
             '/': '首页',
             '/chat': '即时聊天',
@@ -48,11 +57,14 @@ const AppLayout = {
         
         const updatePage = (route) => {
             const path = route.path;
-            
+
             // Determine which page component to show
             if (path === '/') {
                 currentPage.value = 'home-page';
                 pageTitle.value = '首页';
+            } else if (path === '/login') {
+                currentPage.value = 'login-page';
+                pageTitle.value = '登录';
             } else if (path === '/chat') {
                 currentPage.value = 'chat-list-page';
                 pageTitle.value = '即时聊天';
@@ -129,6 +141,7 @@ app.component('empty-state-component', StellarisComponents.EmptyStateComponent);
 
 // Register Page Components
 app.component('home-page', StellarisPages.HomePage);
+app.component('login-page', StellarisPages.LoginPage);
 app.component('chat-list-page', StellarisPages.ChatListPage);
 app.component('chat-room-page', StellarisPages.ChatRoomPage);
 app.component('forum-list-page', StellarisPages.ForumListPage);
@@ -145,6 +158,7 @@ StellarisStore.init();
 // Setup Router
 StellarisRouter
     .register('/', 'home-page')
+    .register('/login', 'login-page')
     .register('/chat', 'chat-list-page')
     .register('/chat/:id', 'chat-room-page')
     .register('/forum', 'forum-list-page')
@@ -160,17 +174,17 @@ StellarisRouter.beforeEach = (to, from) => {
     const protectedRoutes = ['/settings', '/admin'];
     if (protectedRoutes.some(r => to.path.startsWith(r))) {
         if (!StellarisStore.state.user.isAuthenticated) {
-            window.location.href = '/login';
+            StellarisRouter.navigate('/login');
             return false;
         }
     }
-    
+
     // Admin routes check
     if (to.path.startsWith('/admin') && !StellarisStore.state.user.isAdmin) {
         StellarisStore.showToast('无权访问管理面板', 'error');
         return '/';
     }
-    
+
     return true;
 };
 
