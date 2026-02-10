@@ -46,6 +46,7 @@ from logging.handlers import RotatingFileHandler
 from config import Config
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from logger_utils import init_logger_manager, get_logger_manager, AdminActionLogger, get_recent_system_logs
 
 # 辅助函数：获取当前UTC时间（兼容新旧版本）
 def utcnow():
@@ -71,38 +72,27 @@ def to_utc8_isoformat(dt):
 # 初始化应用
 app = Flask(__name__)
 app.config.from_object(Config)
-# 创建logs目录
-log_dir = Path(app.root_path) / 'logs'
-log_dir.mkdir(exist_ok=True)
-
 # 创建上传目录
 upload_dir = Path(app.root_path) / app.config.get('UPLOAD_FOLDER', 'static/uploads')
 upload_dir.mkdir(parents=True, exist_ok=True)
 
-# 配置日志
+# 初始化新的日志系统 / Initialize new logging system
 try:
-    log_file = log_dir / 'system.log'
+    logger_manager = init_logger_manager(app.root_path)
+    logger = logger_manager.system  # 系统日志
+    admin_logger = AdminActionLogger(logger_manager)
     
-    # 确保新日志使用UTF-8
-    handler = RotatingFileHandler(
-        log_file, 
-        # CanChange
-        maxBytes=10*1024*1024,  # 10 MB
-        backupCount=5,
-        encoding='utf-8'  # 强制使用UTF-8编码
-    )
-    
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    
-    logger = logging.getLogger('stellarsis')
-    logger.setLevel(logging.INFO)
-    logger.addHandler(handler)
+    # 记录系统启动
+    logger.info("=" * 50)
+    logger.info("Stellarsis 系统启动 / System Starting")
+    logger.info("=" * 50)
 except Exception as e:
     print(f"配置日志失败: {str(e)}")
     # 备用方案
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger('stellarsis')
+    logger_manager = None
+    admin_logger = None
 
 # 初始化数据库
 engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
@@ -801,60 +791,26 @@ def get_online_users(room_id):
 
 def get_recent_logs(limit=10):
     """获取最近的系统日志"""
+    log_dir = Path(app.root_path) / 'logs'
+    log_entries = get_recent_system_logs(log_dir, limit=limit)
+    
+    # 转换为旧格式以保持兼容性
     logs = []
-    log_file = Path(app.root_path) / 'logs' / 'system.log'
+    for entry in log_entries:
+        logs.append(type('Log', (), {
+            'timestamp': entry.get('timestamp'),
+            'message': entry.get('message')
+        })())
     
-    if log_file.exists():
-        with open(log_file, 'r', encoding='utf-8') as f:
-            lines = f.readlines()[-limit:]
-            for line in lines:
-                try:
-                    # 简化解析
-                    parts = line.split(' ', 3)
-                    if len(parts) >= 4:
-                        timestamp_str = f"{parts[0]} {parts[1]}"
-                        message = parts[3].strip()
-                        # 移除日志级别和模块名
-                        message = message.split(' - ', 2)[-1] if ' - ' in message else message
-                        timestamp = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S,%f')
-                        logs.append(type('Log', (), {'timestamp': timestamp, 'message': message})())
-                except Exception as e:
-                    continue
-    
-    # 如果没有日志文件，创建一些模拟数据
-    if not logs:
-        for i in range(limit):
-            logs.append(type('Log', (), {
-                'timestamp': datetime.now(),
-                'message': f"系统启动正常 - 模拟日志条目 {i+1}"
-            })())
-    
-    return logs[:limit]
+    return logs
 
 def log_admin_action(action):
     """记录管理员操作"""
-    try:
-        log_dir = Path(app.root_path) / 'logs'
-        log_dir.mkdir(exist_ok=True)
-        log_file = log_dir / 'admin.log'
-        
-        with open(log_file, 'a', encoding='utf-8') as f:
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            # 安全检查：确保用户已认证
-            if current_user and hasattr(current_user, 'is_authenticated') and current_user.is_authenticated:
-                username = current_user.username
-            else:
-                username = 'system'  # 系统操作
-            f.write(f"[{timestamp}] [管理员: {username}] {action}\n")
-        
-        # 同时记录到系统日志
+    if admin_logger:
+        admin_logger.log(action, user=current_user)
+    else:
+        # 备用方案
         logger.info(f"管理员操作: {action}")
-    except Exception as e:
-        # 避免在错误处理中再次出错
-        try:
-            logger.error(f"记录管理员操作失败: {str(e)}")
-        except Exception as e2:
-            print(f"记录管理员操作失败(二次错误): {str(e2)}")
 
 # 路由定义
 @app.route('/')
@@ -1168,7 +1124,7 @@ def send_chat_message():
             db_session.rollback()
         except Exception:
             pass
-        logger.exception('HTTP 保存聊天消息失败')
+        logger_manager.chat.exception('HTTP 保存聊天消息失败') if logger_manager else logger.exception('HTTP 保存聊天消息失败')
         return jsonify(success=False, message='服务器保存消息失败'), 500
 
     # 返回成功响应
@@ -1202,7 +1158,7 @@ def api_delete_chat_message(room_id, message_id):
         # 执行删除
         db_session.delete(msg)
         db_session.commit()
-        logger.info(f"用户 {current_user.id} 删除了聊天室消息 {message_id} 在房间 {room_id}")
+        logger_manager.chat.info(f"用户 {current_user.id} 删除了聊天室消息 {message_id} 在房间 {room_id}") if logger_manager else logger.info(f"用户 {current_user.id} 删除了聊天室消息 {message_id} 在房间 {room_id}")
         try:
                 # 广播删除事件给所有客户端，客户端根据 room_id 决定是否处理
                 payload = {
@@ -1215,11 +1171,11 @@ def api_delete_chat_message(room_id, message_id):
                 socketio.emit('message_deleted', payload)
         except Exception as e:
             # 记录广播失败但不影响原有删除流程
-            logger.exception('广播 message_deleted 失败')
+            logger_manager.chat.exception('广播 message_deleted 失败') if logger_manager else logger.exception('广播 message_deleted 失败')
         return jsonify({'success': True, 'message': '消息已删除'})
     except Exception as e:
         db_session.rollback()
-        logger.exception('删除聊天室消息时发生错误')
+        logger_manager.chat.exception('删除聊天室消息时发生错误') if logger_manager else logger.exception('删除聊天室消息时发生错误')
         return jsonify({'success': False, 'message': '服务器错误'}), 500
 
 
@@ -1305,11 +1261,11 @@ def api_delete_forum_reply(reply_id):
         # 删除回复
         db_session.delete(reply)
         db_session.commit()
-        logger.info(f"用户 {current_user.id} 删除了回复 {reply_id}")
+        logger_manager.forum.info(f"用户 {current_user.id} 删除了回复 {reply_id}") if logger_manager else logger.info(f"用户 {current_user.id} 删除了回复 {reply_id}")
         return jsonify({'success': True, 'message': '回复已删除'})
     except Exception as e:
         db_session.rollback()
-        logger.exception('删除回复时发生错误')
+        logger_manager.forum.exception('删除回复时发生错误') if logger_manager else logger.exception('删除回复时发生错误')
         return jsonify({'success': False, 'message': '服务器错误'}), 500
 
 # API相关路由
@@ -1600,7 +1556,7 @@ def api_upload_image():
         return jsonify(success=True, url=url, markdown=markdown_link, id=ui.id, filename=ui.filename, is_image=True)
     except Exception as e:
         db_session.rollback()
-        logger.exception('保存用户上传图片失败')
+        logger_manager.upload.exception('保存用户上传图片失败') if logger_manager else logger.exception('保存用户上传图片失败')
         return jsonify(success=False, message='保存文件失败'), 500
 
 
@@ -1750,7 +1706,7 @@ def api_upload_file():
         return jsonify(success=True, url=url, markdown=markdown_link, id=ui.id, filename=ui.filename, is_image=is_image)
     except Exception as e:
         db_session.rollback()
-        logger.exception('保存用户上传文件失败')
+        logger_manager.upload.exception('保存用户上传文件失败') if logger_manager else logger.exception('保存用户上传文件失败')
         return jsonify(success=False, message='保存文件失败'), 500
 
 
@@ -1787,7 +1743,7 @@ def api_list_user_images():
             })
         return jsonify(success=True, images=results)
     except Exception as e:
-        logger.exception('列出用户文件失败')
+        logger_manager.upload.exception('列出用户文件失败') if logger_manager else logger.exception('列出用户文件失败')
         return jsonify(success=False, message='服务器错误'), 500
 
 
@@ -1808,7 +1764,7 @@ def api_get_upload_quota():
         
         return jsonify(success=True, quota=quota_info)
     except Exception as e:
-        logger.exception('获取用户上传配额失败')
+        logger_manager.upload.exception('获取用户上传配额失败') if logger_manager else logger.exception('获取用户上传配额失败')
         return jsonify(success=False, message='服务器错误'), 500
 
 
@@ -1840,11 +1796,11 @@ def api_delete_image(image_id):
 
         db_session.delete(ui)
         db_session.commit()
-        logger.info(f"用户 {current_user.username} 删除上传图片 {ui.filename} (ID:{ui.id})")
+        logger_manager.upload.info(f"用户 {current_user.username} 删除上传图片 {ui.filename} (ID:{ui.id})") if logger_manager else logger.info(f"用户 {current_user.username} 删除上传图片 {ui.filename} (ID:{ui.id})")
         return jsonify(success=True, message='图片已删除')
     except Exception as e:
         db_session.rollback()
-        logger.exception('删除上传图片失败')
+        logger_manager.upload.exception('删除上传图片失败') if logger_manager else logger.exception('删除上传图片失败')
         return jsonify(success=False, message='服务器错误'), 500
 
 
@@ -1882,7 +1838,7 @@ def api_admin_recalculate_upload_sizes():
         return jsonify(success=True, totals=totals)
     except Exception as e:
         db_session.rollback()
-        logger.exception('重新统计上传大小失败')
+        logger_manager.upload.exception('重新统计上传大小失败') if logger_manager else logger.exception('重新统计上传大小失败')
         return jsonify(success=False, message='服务器错误'), 500
 
 
@@ -1925,7 +1881,7 @@ def admin_download_images_zip():
                 pass
             raise
     except Exception as e:
-        logger.exception('创建静态图片压缩包失败')
+        logger_manager.upload.exception('创建静态图片压缩包失败') if logger_manager else logger.exception('创建静态图片压缩包失败')
         return jsonify(success=False, message=str(e)), 500
 
 
@@ -2122,7 +2078,7 @@ def api_admin_recount_file_size():
         return jsonify(success=True, totals=totals, updated_users=len(updated_users), total_files=total_files)
     except Exception as e:
         db_session.rollback()
-        logger.exception('按文件重新统计失败')
+        logger_manager.upload.exception('按文件重新统计失败') if logger_manager else logger.exception('按文件重新统计失败')
         return jsonify(success=False, message=str(e)), 500
 
 
@@ -2197,14 +2153,14 @@ def api_delete_thread(thread_id):
 
             message = f"删除了主题帖: {thread.title} (ID:{thread.id})"
             log_admin_action(message)
-            logger.info(f"用户 {current_user.id} 删除了主题帖 {thread.id}")
+            logger_manager.forum.info(f"用户 {current_user.id} 删除了主题帖 {thread.id}") if logger_manager else logger.info(f"用户 {current_user.id} 删除了主题帖 {thread.id}")
             return jsonify(success=True, message='删除成功', redirect=url_for('forum_section', section_id=thread.section_id))
 
         else:
             return jsonify(success=False, message='权限不足'), 403
     except Exception as e:
         db_session.rollback()
-        logger.exception('删除主题帖时发生错误')
+        logger_manager.forum.exception('删除主题帖时发生错误') if logger_manager else logger.exception('删除主题帖时发生错误')
         return jsonify(success=False, message='服务器错误'), 500
 
 
@@ -3606,7 +3562,7 @@ def handle_message(data):
             db_session.rollback()
         except Exception:
             pass
-        logger.exception('保存聊天消息失败')
+        logger_manager.chat.exception('保存聊天消息失败') if logger_manager else logger.exception('保存聊天消息失败')
         emit('error', {'message': '服务器保存消息失败'})
         return
     
@@ -3680,7 +3636,7 @@ def handle_delete_message(data):
     try:
         db_session.delete(msg)
         db_session.commit()
-        logger.info(f"用户 {current_user.id} 通过socket删除了聊天室消息 {message_id} 在房间 {room_id}")
+        logger_manager.chat.info(f"用户 {current_user.id} 通过socket删除了聊天室消息 {message_id} 在房间 {room_id}") if logger_manager else logger.info(f"用户 {current_user.id} 通过socket删除了聊天室消息 {message_id} 在房间 {room_id}")
 
         # 广播删除事件
         room_name = f"room_{room_id}"
