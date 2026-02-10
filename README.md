@@ -516,6 +516,24 @@ ENABLE_SERVER_CONTROL=False
 
 详细语法指南见 [Markdown & LaTeX 快速入门](docs/Markdown_LaTeX_Quickstart.md)
 
+## 📚 完整文档 / Complete Documentation
+
+详细的开发文档请参见 [文档中心](docs/README.md)，包括：
+
+- **[快速开始指南](docs/guides/QUICK_START.md)** - 安装、配置和运行
+- **[后端开发文档](docs/backend/)** - 架构、数据库、API、日志
+- **[前端开发文档](docs/frontend/)** - 架构、组件、主题、命令面板  
+- **[部署指南](docs/guides/DEPLOYMENT.md)** - 生产环境部署
+- **[贡献指南](docs/guides/CONTRIBUTING.md)** - 参与项目开发
+
+For complete development documentation, see [Documentation Center](docs/README.md), including:
+
+- **[Quick Start Guide](docs/guides/QUICK_START.md)** - Installation, configuration, and running
+- **[Backend Documentation](docs/backend/)** - Architecture, database, API, logging
+- **[Frontend Documentation](docs/frontend/)** - Architecture, components, themes, command palette
+- **[Deployment Guide](docs/guides/DEPLOYMENT.md)** - Production deployment
+- **[Contributing Guide](docs/guides/CONTRIBUTING.md)** - Participate in project development
+
 #### Markdown 快速参考
 ```markdown
 # 标题
@@ -609,17 +627,29 @@ Stellarsis/
 │   ├── settings/       # 设置子页面
 │   ├── admin/          # 管理后台
 │   └── errors/         # 错误页面
-└── docs/               # 文档
-    ├── ROUTES_AND_WEBSOCKETS.md    # API 文档
-    ├── Markdown_LaTeX_Quickstart.md # Markdown/LaTeX 指南
-    ├── DATABASE_SCHEMA.md           # 数据库架构
-    ├── PERMISSION_SYSTEM.md         # 权限系统说明
-    └── COMMAND_PALETTE.md           # 命令面板指南
+└── docs/                    # 文档
+    ├── README.md               # 文档中心导航
+    ├── backend/                # 后端开发文档
+    │   ├── ARCHITECTURE.md    # 后端架构
+    │   ├── DATABASE.md        # 数据库架构
+    │   ├── API.md             # API 文档
+    │   └── LOGGING.md         # 日志系统
+    ├── frontend/               # 前端开发文档
+    │   ├── ARCHITECTURE.md    # 前端架构
+    │   ├── COMPONENTS.md      # 组件文档
+    │   ├── THEMING.md         # 主题系统
+    │   └── COMMAND_PALETTE.md # 命令面板
+    ├── guides/                 # 指南文档
+    │   ├── QUICK_START.md     # 快速开始
+    │   ├── DEPLOYMENT.md      # 部署指南
+    │   └── CONTRIBUTING.md    # 贡献指南
+    ├── PERMISSION_SYSTEM.md    # 权限系统说明
+    └── Markdown_LaTeX_Quickstart.md # Markdown/LaTeX 指南
 ```
 
 ## API 文档 / API Documentation
 
-详细的路由和 WebSocket 事件文档见：[ROUTES_AND_WEBSOCKETS.md](docs/ROUTES_AND_WEBSOCKETS.md)
+详细的路由和 WebSocket 事件文档见：[API Documentation](docs/backend/API.md)
 
 ### 主要 API 端点
 
