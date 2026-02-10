@@ -841,6 +841,8 @@ def login():
         login_user(user)
         user.last_seen = utcnow()
         db_session.commit()
+        if logger_manager:
+            logger_manager.auth.info(f"用户登录成功: {user.username}")
         log_admin_action(f"用户登录: {user.username}")
         return redirect(url_for('index'))
 
@@ -849,6 +851,8 @@ def login():
 @app.route('/logout')
 def logout():
     username = current_user.username if current_user.is_authenticated else '未知用户'
+    if logger_manager:
+        logger_manager.auth.info(f"用户登出: {username}")
     logout_user()
     log_admin_action(f"用户登出: {username}")
     flash('您已成功登出', 'success')
@@ -878,6 +882,8 @@ def api_login():
     login_user(user)
     user.last_seen = utcnow()
     db_session.commit()
+    if logger_manager:
+        logger_manager.auth.info(f"用户API登录成功: {user.username}")
     log_admin_action(f"用户登录: {user.username}")
 
     return jsonify({
@@ -921,6 +927,8 @@ def change_password():
             # Update password
             current_user.set_password(new_password)
             db_session.commit()
+            if logger_manager:
+                logger_manager.auth.info(f"用户修改密码: {current_user.username}")
             log_admin_action(f"用户修改密码: {current_user.username}")
             
             return jsonify({'success': True, 'message': '密码已成功修改'})
