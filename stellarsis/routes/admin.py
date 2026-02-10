@@ -32,7 +32,7 @@ from stellarsis.decorators import su_required
 from stellarsis.permissions import (
     normalize_permission_value, PERMISSION_VALUES, grant_su_to_admins,
 )
-from stellarsis.utils import utcnow, log_admin_action, get_recent_logs
+from stellarsis.utils import utcnow, log_admin_action, get_recent_logs, to_utc_isoformat
 
 try:
     _flask_version = importlib.metadata.version("flask")
@@ -84,7 +84,7 @@ def get_system_info():
         return jsonify(
             success=True,
             memory_usage=memory_usage,
-            server_time=datetime.utcnow().isoformat() + 'Z',
+            server_time=to_utc_isoformat(utcnow()),
             python_version=sys.version,
             flask_version=_flask_version,
         )
@@ -155,7 +155,7 @@ def backup_database():
         db_path = Path(current_app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
         backup_dir = Path(current_app.root_path) / 'backups'
         backup_dir.mkdir(exist_ok=True)
-        ts = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+        ts = utcnow().strftime('%Y%m%d_%H%M%S')
         backup_path = backup_dir / f"backup_{ts}.db"
         shutil.copy2(db_path, backup_path)
         log_admin_action(f"数据库备份成功: {backup_path}")
