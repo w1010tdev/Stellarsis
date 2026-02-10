@@ -215,3 +215,9 @@ logs/
 static/uploads/
 
 backups/
+
+# Downloaded vendor libraries (optional, can be regenerated with download_vendor_libs.sh)
+# Uncomment to ignore these files if you prefer to always load from CDN
+# static/js/vendor/*.js
+# static/css/vendor/*.css
+# static/css/vendor/webfonts/*

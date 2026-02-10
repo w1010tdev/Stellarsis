@@ -5,17 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>群星议会</title>
     
-    <!-- Element Plus CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/element-plus@2.9.1/dist/index.css" crossorigin="anonymous">
+    <!-- Element Plus CSS (local with CDN fallback) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/element-plus.css') }}" onerror="this.onerror=null;this.href='https://unpkg.com/element-plus@2.9.1/dist/index.css';">
     <!-- Element Plus Dark Mode CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/element-plus@2.9.1/theme-chalk/dark/css-vars.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/element-plus-dark.css') }}" onerror="this.onerror=null;this.href='https://unpkg.com/element-plus@2.9.1/theme-chalk/dark/css-vars.css';">
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/font-awesome.min.css') }}" onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css';">
     <!-- KaTeX CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/katex.min.css') }}" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css';">
     <!-- Highlight.js CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" id="hljs-light">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" id="hljs-dark" disabled>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/highlight-github.min.css') }}" onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css';" id="hljs-light">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/highlight-github-dark.min.css') }}" onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css';" id="hljs-dark" disabled>
     
     <!-- Custom SPA Styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='spa/app.css') }}">
@@ -48,20 +48,20 @@
     }
     </script>
 
-    <!-- Vue 3 -->
-    <script src="https://unpkg.com/vue@3.4.38/dist/vue.global.prod.js" crossorigin="anonymous"></script>
+    <!-- Vue 3 (local with CDN fallback) -->
+    <script src="{{ url_for('static', filename='js/vendor/vue.global.prod.js') }}" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://unpkg.com/vue@3.4.38/dist/vue.global.prod.js';document.head.appendChild(s);"></script>
     <!-- Element Plus -->
-    <script src="https://unpkg.com/element-plus@2.9.1/dist/index.full.min.js" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='js/vendor/element-plus.min.js') }}" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://unpkg.com/element-plus@2.9.1/dist/index.full.min.js';document.head.appendChild(s);"></script>
     <!-- Element Plus Icons -->
-    <script src="https://unpkg.com/@element-plus/icons-vue@2.3.1/dist/index.iife.min.js" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='js/vendor/element-plus-icons.min.js') }}" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://unpkg.com/@element-plus/icons-vue@2.3.1/dist/index.iife.min.js';document.head.appendChild(s);"></script>
     <!-- Socket.IO -->
     <script src="{{ url_for('static', filename='js/vendor/socket.io.min.js') }}"></script>
     <!-- Marked.js for Markdown -->
-    <script src="https://cdn.jsdelivr.net/npm/marked@4.0.0/marked.min.js" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='js/vendor/marked.min.js') }}" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/marked@4.0.0/marked.min.js';document.head.appendChild(s);"></script>
     <!-- KaTeX -->
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='js/vendor/katex.min.js') }}" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js';document.head.appendChild(s);"></script>
     <!-- Highlight.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="{{ url_for('static', filename='js/vendor/highlight.min.js') }}" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js';document.head.appendChild(s);"></script>
     
     <!-- SPA Application -->
     <script src="{{ url_for('static', filename='spa/router.js') }}"></script>
