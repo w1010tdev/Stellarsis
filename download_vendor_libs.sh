@@ -82,14 +82,29 @@ download_file "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles
 
 echo ""
 echo "🔤 Web Fonts:"
+# Font Awesome Solid
 download_file "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/webfonts/fa-solid-900.woff2" \
-    "static/css/vendor/webfonts/fa-solid-900.woff2" "Font Awesome Solid"
+    "static/css/vendor/webfonts/fa-solid-900.woff2" "Font Awesome Solid WOFF2"
+download_file "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/webfonts/fa-solid-900.ttf" \
+    "static/css/vendor/webfonts/fa-solid-900.ttf" "Font Awesome Solid TTF"
     
+# Font Awesome Regular
 download_file "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/webfonts/fa-regular-400.woff2" \
-    "static/css/vendor/webfonts/fa-regular-400.woff2" "Font Awesome Regular"
+    "static/css/vendor/webfonts/fa-regular-400.woff2" "Font Awesome Regular WOFF2"
+download_file "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/webfonts/fa-regular-400.ttf" \
+    "static/css/vendor/webfonts/fa-regular-400.ttf" "Font Awesome Regular TTF"
     
+# Font Awesome Brands
 download_file "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/webfonts/fa-brands-400.woff2" \
-    "static/css/vendor/webfonts/fa-brands-400.woff2" "Font Awesome Brands"
+    "static/css/vendor/webfonts/fa-brands-400.woff2" "Font Awesome Brands WOFF2"
+download_file "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/webfonts/fa-brands-400.ttf" \
+    "static/css/vendor/webfonts/fa-brands-400.ttf" "Font Awesome Brands TTF"
+    
+# Font Awesome V4 Compatibility
+download_file "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/webfonts/fa-v4compatibility.woff2" \
+    "static/css/vendor/webfonts/fa-v4compatibility.woff2" "Font Awesome V4 Compatibility WOFF2"
+download_file "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/webfonts/fa-v4compatibility.ttf" \
+    "static/css/vendor/webfonts/fa-v4compatibility.ttf" "Font Awesome V4 Compatibility TTF"
 
 echo ""
 echo "✅ All frontend libraries downloaded successfully!"
