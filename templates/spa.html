@@ -9,8 +9,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/element-plus.css') }}" onerror="this.onerror=null;this.href='https://unpkg.com/element-plus@2.9.1/dist/index.css';">
     <!-- Element Plus Dark Mode CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/element-plus-dark.css') }}" onerror="this.onerror=null;this.href='https://unpkg.com/element-plus@2.9.1/theme-chalk/dark/css-vars.css';">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/font-awesome.min.css') }}" onerror="this.onerror=null;this.href='https://unpkg.com/@fortawesome/fontawesome-free@6.5.1/css/all.min.css';">
+    <!-- Font Awesome (from CDN with multiple fallbacks) -->
+    <link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css';this.onerror=function(){this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css';this.onerror=function(){this.onerror=null;this.href='https://unpkg.com/@fortawesome/fontawesome-free@6.5.1/css/all.min.css';}};" crossorigin="anonymous">
     <!-- KaTeX CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/katex.min.css') }}" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css';">
     <!-- Highlight.js CSS -->
