@@ -1,20 +1,246 @@
-{% extends "base.html" %}
-
-{% block head %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>500 服务器错误 - 群星议会</title>
-{% endblock %}
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/font-awesome.min.css') }}" onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css';">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-{% block additional_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/errors.css') }}">
-{% endblock %}
+        :root {
+            --warning: #f59e0b;
+            --warning-light: #fbbf24;
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        }
 
-{% block content %}
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 
+                         'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: var(--text-primary);
+        }
+
+        .error-container {
+            text-align: center;
+            max-width: 600px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 60px 40px;
+            border-radius: 24px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.03);
+            backdrop-filter: blur(10px);
+            animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .error-icon {
+            font-size: 120px;
+            color: var(--warning);
+            margin-bottom: 20px;
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.05);
+            }
+        }
+
+        .error-code {
+            font-size: 96px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--warning) 0%, var(--warning-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+            margin-bottom: 20px;
+            letter-spacing: -2px;
+        }
+
+        .error-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+
+        .error-description {
+            font-size: 18px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 40px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-home, .btn-refresh {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 32px;
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-home {
+            background: linear-gradient(135deg, var(--warning) 0%, var(--warning-light) 100%);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-refresh {
+            background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-home:hover, .btn-refresh:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-home:hover {
+            box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4);
+        }
+
+        .btn-refresh:hover {
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-home:active, .btn-refresh:active {
+            transform: translateY(0);
+        }
+
+        .suggestions {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .suggestions h3 {
+            font-size: 18px;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        .suggestions ul {
+            list-style: none;
+            text-align: left;
+        }
+
+        .suggestions li {
+            padding: 8px 0;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .suggestions li i {
+            color: var(--warning);
+            width: 20px;
+        }
+
+        @media (max-width: 640px) {
+            .error-container {
+                padding: 40px 24px;
+            }
+
+            .error-code {
+                font-size: 72px;
+            }
+
+            .error-title {
+                font-size: 24px;
+            }
+
+            .error-description {
+                font-size: 16px;
+            }
+
+            .error-icon {
+                font-size: 80px;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .btn-home, .btn-refresh {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
     <div class="error-container">
+        <div class="error-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
         <div class="error-code">500</div>
-        <h1 class="error-message">服务器错误</h1>
+        <h1 class="error-title">服务器错误</h1>
         <p class="error-description">
-            服务器遇到了一个内部错误，无法完成您的请求。请稍后再试，或联系WTX。
+            抱歉，服务器遇到了内部错误，无法完成您的请求。我们的技术团队已收到通知，正在处理此问题。
         </p>
-        <a href="/" class="btn-home">返回首页</a>
+        <div class="btn-group">
+            <a href="/" class="btn-home">
+                <i class="fas fa-home"></i>
+                返回首页
+            </a>
+            <button onclick="location.reload()" class="btn-refresh">
+                <i class="fas fa-sync-alt"></i>
+                刷新页面
+            </button>
+        </div>
+        
+        <div class="suggestions">
+            <h3>您可以尝试：</h3>
+            <ul>
+                <li><i class="fas fa-redo"></i> 稍后再试，问题可能是暂时的</li>
+                <li><i class="fas fa-bug"></i> 如果问题持续，请联系管理员</li>
+                <li><i class="fas fa-info-circle"></i> 返回首页重新开始操作</li>
+            </ul>
+        </div>
     </div>
-{% endblock %}
+</body>
+</html>
