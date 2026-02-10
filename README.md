@@ -48,7 +48,6 @@ Stellarsis is a feature-rich real-time chat and forum system that combines chat 
    - 代码块语法高亮（三个反引号）
    - 表格、列表、引用块、链接等全部支持
    - 实时渲染预览，支持复杂数学公式（微积分、矩阵等）
-   - 详细语法指南见 [Markdown & LaTeX 快速入门](docs/Markdown_LaTeX_Quickstart.md)
 
 #### 5. **多房间聊天系统 (Multi-Room Chat System)**
    - 支持多个独立的聊天室，每个房间有独立的：
@@ -512,27 +511,6 @@ ENABLE_SERVER_CONTROL=False
 3. 点击删除按钮移除图片
 4. 查看当前使用配额
 
-### Markdown 和 LaTeX
-
-详细语法指南见 [Markdown & LaTeX 快速入门](docs/Markdown_LaTeX_Quickstart.md)
-
-## 📚 完整文档 / Complete Documentation
-
-详细的开发文档请参见 [文档中心](docs/README.md)，包括：
-
-- **[快速开始指南](docs/guides/QUICK_START.md)** - 安装、配置和运行
-- **[后端开发文档](docs/backend/)** - 架构、数据库、API、日志
-- **[前端开发文档](docs/frontend/)** - 架构、组件、主题、命令面板  
-- **[部署指南](docs/guides/DEPLOYMENT.md)** - 生产环境部署
-- **[贡献指南](docs/guides/CONTRIBUTING.md)** - 参与项目开发
-
-For complete development documentation, see [Documentation Center](docs/README.md), including:
-
-- **[Quick Start Guide](docs/guides/QUICK_START.md)** - Installation, configuration, and running
-- **[Backend Documentation](docs/backend/)** - Architecture, database, API, logging
-- **[Frontend Documentation](docs/frontend/)** - Architecture, components, themes, command palette
-- **[Deployment Guide](docs/guides/DEPLOYMENT.md)** - Production deployment
-- **[Contributing Guide](docs/guides/CONTRIBUTING.md)** - Participate in project development
 
 #### Markdown 快速参考
 ```markdown
