@@ -241,6 +241,15 @@ const StellarisStore = {
     
     setHeartRainEnabled(enabled) {
         localStorage.setItem('heartRainEnabled', enabled);
+    },
+    
+    // Cake rain settings (birthday)
+    isCakeRainEnabled() {
+        return localStorage.getItem('cakeRainEnabled') !== 'false';
+    },
+    
+    setCakeRainEnabled(enabled) {
+        localStorage.setItem('cakeRainEnabled', enabled);
     }
 };
 

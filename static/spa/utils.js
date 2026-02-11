@@ -299,12 +299,63 @@ const StellarisUtils = {
         }, 5000);
     },
     
+    // Trigger cake rain effect (birthday)
+    triggerCakeRain() {
+        if (!StellarisStore.isCakeRainEnabled()) return;
+        
+        let container = document.querySelector('.cake-rain-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'cake-rain-container';
+            document.body.appendChild(container);
+        }
+        
+        const cakes = ['🎂', '🍰', '🎉', '🎊', '🎁'];
+        
+        for (let i = 0; i < 20; i++) {
+            setTimeout(() => {
+                const cake = document.createElement('div');
+                cake.className = 'cake-rain';
+                cake.textContent = cakes[Math.floor(Math.random() * cakes.length)];
+                
+                const startPos = Math.random() * window.innerWidth;
+                cake.style.left = startPos + 'px';
+                
+                const size = 20 + Math.random() * 24;
+                cake.style.fontSize = size + 'px';
+                
+                const duration = 2 + Math.random() * 3;
+                cake.style.animationDuration = duration + 's';
+                
+                container.appendChild(cake);
+                
+                setTimeout(() => {
+                    if (cake.parentNode) {
+                        cake.parentNode.removeChild(cake);
+                    }
+                }, duration * 1000);
+            }, i * 100);
+        }
+        
+        setTimeout(() => {
+            if (container && container.children.length === 0) {
+                container.remove();
+            }
+        }, 5000);
+    },
+    
     // Check if message should trigger heart effect
     // Matches specific pattern to avoid false positives
     hasHeartEffect(content) {
         if (!content) return false;
         // Match "2026" as a standalone pattern (not part of dates like 2026-01-01)
         return /(?<!\d)2026(?!\d)/.test(content);
+    },
+    
+    // Check if message should trigger birthday cake effect
+    hasBirthdayEffect(content) {
+        if (!content) return false;
+        return /生日快乐/.test(content);
     },
     
     // Debounce function

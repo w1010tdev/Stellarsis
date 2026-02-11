@@ -463,6 +463,11 @@ const ChatRoomPage = {
                 StellarisUtils.triggerHeartRain();
             }
             
+            // Check for birthday cake effect
+            if (StellarisUtils.hasBirthdayEffect(content)) {
+                StellarisUtils.triggerCakeRain();
+            }
+            
             // Send via socket
             socket.emit('send_message', {
                 room_id: roomId.value,
@@ -1316,6 +1321,13 @@ const SettingsPage = {
                             </div>
                             <el-switch v-model="heartRainEnabled" @change="toggleHeartRain"></el-switch>
                         </div>
+                        <div class="settings-item">
+                            <div>
+                                <div class="settings-item-label">生日蛋糕雨效果</div>
+                                <div class="settings-item-description">发送包含"生日快乐"的消息时显示蛋糕雨动画</div>
+                            </div>
+                            <el-switch v-model="cakeRainEnabled" @change="toggleCakeRain"></el-switch>
+                        </div>
                     </div>
                 </el-tab-pane>
                 
@@ -1545,6 +1557,7 @@ const SettingsPage = {
         
         const isDark = Vue.ref(store.state.theme === 'dark');
         const heartRainEnabled = Vue.ref(store.isHeartRainEnabled());
+        const cakeRainEnabled = Vue.ref(store.isCakeRainEnabled());
         const saving = Vue.ref(false);
         
         // Safely initialize profile form with defaults
@@ -1582,6 +1595,10 @@ const SettingsPage = {
         
         const toggleHeartRain = (value) => {
             store.setHeartRainEnabled(value);
+        };
+        
+        const toggleCakeRain = (value) => {
+            store.setCakeRainEnabled(value);
         };
         
         const saveProfile = async () => {
@@ -1913,6 +1930,7 @@ const SettingsPage = {
             activeTab,
             isDark,
             heartRainEnabled,
+            cakeRainEnabled,
             saving,
             profileForm,
             passwordForm,
@@ -1929,6 +1947,7 @@ const SettingsPage = {
             following,
             toggleTheme,
             toggleHeartRain,
+            toggleCakeRain,
             saveProfile,
             changePassword,
             triggerFileUpload,

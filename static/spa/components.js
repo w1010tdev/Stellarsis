@@ -694,7 +694,7 @@ const RoomCardComponent = {
 const MessageComponent = {
     name: 'MessageComponent',
     template: `
-        <div class="message" :class="{ 'heart-border': hasHeartEffect, 'message-self': isSelf, 'message-other': !isSelf }" :data-message-id="message.id">
+        <div class="message" :class="{ 'heart-border': hasHeartEffect, 'cake-border': hasBirthdayEffect, 'message-self': isSelf, 'message-other': !isSelf }" :data-message-id="message.id">
             <div class="message-avatar" :style="{ background: userColor }">
                 {{ userInitial }}
             </div>
@@ -743,6 +743,10 @@ const MessageComponent = {
             return StellarisUtils.hasHeartEffect(props.message.content || props.message.message || '');
         });
         
+        const hasBirthdayEffect = Vue.computed(() => {
+            return StellarisUtils.hasBirthdayEffect(props.message.content || props.message.message || '');
+        });
+        
         const isSelf = Vue.computed(() => {
             return Number(props.message.user_id) === Number(props.currentUserId);
         });
@@ -779,6 +783,7 @@ const MessageComponent = {
             formattedTime,
             renderedContent,
             hasHeartEffect,
+            hasBirthdayEffect,
             canDelete,
             isSelf,
             handleDelete
