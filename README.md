@@ -11,8 +11,8 @@ Stellarsis (群星议会) 是一个功能丰富的实时聊天和论坛系统，
 Stellarsis is a feature-rich real-time chat and forum system that combines chat rooms and forum functions, supporting advanced features such as user following, permission management, and real-time message notifications. Built with Flask + Socket.IO, offering a modern UI and comprehensive administrative features.
 
 **代码规模 / Codebase Scale:**
-- 后端 (Backend): ~4,300 行 Python 代码
-- 前端 (Frontend): ~4,300 行 JavaScript + ~6,000 行 HTML
+- 后端 (Backend): ~3,800 行 Python 代码（模块化架构）
+- 前端 (Frontend): SPA 单页应用（Vue 风格路由 + 组件化）
 - 完整的权限系统、消息队列、文件上传、实时通信
 
 ## 核心特性 / Core Features
@@ -135,7 +135,7 @@ Stellarsis is a feature-rich real-time chat and forum system that combines chat 
 ## 技术栈 / Tech Stack
 
 ### 后端 (Backend)
-- **框架**: Python 3.7+ with Flask 2.0+
+- **框架**: Python 3.7+ with Flask 2.0+（Application Factory + Blueprints 模块化架构）
 - **实时通信**: Flask-SocketIO (支持 WebSocket 和轮询降级)
 - **数据库**: SQLAlchemy ORM + SQLite (可切换到 PostgreSQL/MySQL)
 - **认证**: Flask-Login
@@ -146,12 +146,13 @@ Stellarsis is a feature-rich real-time chat and forum system that combines chat 
 - **日志**: RotatingFileHandler (UTF-8 编码，10MB 轮转)
 
 ### 前端 (Frontend)
+- **架构**: SPA 单页应用（hash 路由 + 组件化）
 - **基础**: HTML5 + CSS3 + Vanilla JavaScript (ES6+)
 - **实时通信**: Socket.IO Client (自动降级到轮询)
 - **Markdown 渲染**: Marked.js
 - **数学公式**: LaTeX 支持（通过 Markdown 扩展）
-- **剪贴板**: Clipboard API + Polyfill
 - **主题系统**: CSS 变量 + localStorage 持久化
+- **图标**: Font Awesome 6
 
 ### 数据库模型 (Database Models)
 - **User**: 用户信息、角色、上传配额
@@ -168,6 +169,8 @@ Stellarsis is a feature-rich real-time chat and forum system that combines chat 
 - **UserImage**: 用户上传图片记录
 
 ### 架构特点 (Architecture Features)
+- **模块化后端**: Application Factory 模式 + Blueprint 路由组织
+- **SPA 前端**: 单页应用，Hash 路由，组件化页面渲染
 - **前后端分离**: REST API + WebSocket
 - **权限系统**: 基于角色和资源的细粒度权限控制
 - **实时通信**: Socket.IO 房间管理 + 心跳检测
@@ -175,12 +178,13 @@ Stellarsis is a feature-rich real-time chat and forum system that combines chat 
 - **文件上传**: 流式写入 + 文件头检测 + 配额管理
 - **消息队列**: 客户端消息队列防止消息丢失
 - **降级策略**: WebSocket → 轮询自动降级
+- **时间标准化**: 所有 API 返回 ISO 8601 UTC 时间（`Z` 后缀）
 
 ## 管理与维护 / Admin & Maintenance
 
 ### 管理面板功能 (Admin Panel Features)
 
-访问管理面板：登录后访问 `/admin/index` 或通过命令面板输入 `:admin`
+访问管理面板：登录后通过命令面板输入 `:admin` 或 `:cd /admin`
 
 #### 用户管理 (User Management)
 - 创建新用户（设置用户名、密码、昵称、角色）
@@ -224,7 +228,7 @@ Stellarsis is a feature-rich real-time chat and forum system that combines chat 
 - 查看系统日志（logs/system.log）
 - 一键下载项目压缩包（`/down`）
 - 下载数据库文件（`/downdb`，仅 SQLite）
-- 重新统计文件上传大小（`/api/admin/recount-file-size`）
+- 重新统计文件上传大小（`/api/admin/recalculate-upload-sizes`）
 - 清除缓存
 - 数据库备份
 - 服务器重启/关闭（需要启用 `ENABLE_SERVER_CONTROL`）
@@ -297,14 +301,13 @@ cp config.py config_backup.py
 
 ### 安全建议 (Security Recommendations)
 
-1. **立即修改默认密码**
-2. **使用安全的密码哈希**（werkzeug.security）
-3. **配置 HTTPS**（生产环境）
-4. **关闭调试模式**（`DEBUG = False`）
-5. **限制文件上传类型**
-6. **禁用不必要的管理功能**（ENABLE_FILE_MANAGER, ENABLE_SERVER_CONTROL）
-7. **定期更新依赖包**
-8. **使用强 SECRET_KEY**
+1. **通过环境变量 `STELLARSIS_ADMIN_PASSWORD` 设置安全的管理员密码**
+2. **配置 HTTPS**（生产环境）
+3. **关闭调试模式**（`DEBUG = False`）
+4. **限制文件上传类型**
+5. **禁用不必要的管理功能**（ENABLE_FILE_MANAGER, ENABLE_SERVER_CONTROL）
+6. **定期更新依赖包**
+7. **使用强 SECRET_KEY**
 
 ## 安装与部署 / Installation and Deployment
 
@@ -365,18 +368,7 @@ class Config:
     ENABLE_SERVER_CONTROL = False  # 服务器控制（重启/关闭）
 ```
 
-**密码加密**: 修改 `app.py` 中的密码加密方式（默认为明文存储，仅供演示）：
-```python
-# app.py 中的 User 类
-def set_password(self, password):
-    # 推荐使用 werkzeug.security
-    from werkzeug.security import generate_password_hash
-    self.password_hash = generate_password_hash(password)
-
-def check_password(self, password):
-    from werkzeug.security import check_password_hash
-    return check_password_hash(self.password_hash, password)
-```
+**密码加密**: 密码使用 `werkzeug.security.generate_password_hash` / `check_password_hash` 安全哈希存储。
 
 #### 3. 运行应用 (Run Application)
 ```bash
@@ -388,13 +380,15 @@ bash start.sh  # Linux/Mac
 ```
 
 #### 4. 访问应用 (Access Application)
-- 本地访问: `http://localhost:5000`
-- 局域网访问: `http://YOUR-IP:5000`
+- 本地访问: `http://localhost:80`（默认端口，可通过 `PORT` 环境变量修改）
+- 局域网访问: `http://YOUR-IP:80`
 - 默认管理员账户:
   - 用户名: `admin`
-  - 密码: `admin123`
+  - 密码: 通过环境变量 `STELLARSIS_ADMIN_PASSWORD` 设置（默认 `admin123`）
 
 **首次登录后请立即修改默认密码！**
+
+> ⚠️ 生产环境请务必设置 `STELLARSIS_ADMIN_PASSWORD` 环境变量，系统会在使用默认密码时输出警告日志。
 
 ### 生产部署 (Production Deployment)
 
@@ -407,7 +401,7 @@ pip install gunicorn eventlet
 
 2. 运行 Gunicorn:
 ```bash
-gunicorn -k eventlet -w 1 -b 0.0.0.0:5000 app:app
+gunicorn -k eventlet -w 1 -b 0.0.0.0:80 "stellarsis:create_app()"
 ```
 
 3. 配置 Nginx 反向代理:
@@ -417,7 +411,7 @@ server {
     server_name your-domain.com;
 
     location / {
-        proxy_pass http://localhost:5000;
+        proxy_pass http://localhost:80;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -437,14 +431,15 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-EXPOSE 5000
+EXPOSE 80
+ENV STELLARSIS_ADMIN_PASSWORD=changeme
 CMD ["python", "app.py"]
 ```
 
 运行:
 ```bash
 docker build -t stellarsis .
-docker run -p 5000:5000 -v $(pwd)/stellarsis.db:/app/stellarsis.db stellarsis
+docker run -p 80:80 -e STELLARSIS_ADMIN_PASSWORD=your_secure_password -v $(pwd)/stellarsis.db:/app/stellarsis.db stellarsis
 ```
 
 ### 环境变量配置 (Environment Variables)
@@ -456,7 +451,29 @@ DATABASE_URL=sqlite:///stellarsis.db
 UPLOAD_FOLDER=static/uploads
 ENABLE_FILE_MANAGER=False
 ENABLE_SERVER_CONTROL=False
+STELLARSIS_ADMIN_PASSWORD=your_secure_password
+PORT=80
 ```
+
+### 从 v1（单文件 app.py）迁移 (Migrating from v1)
+
+如果您从旧版单文件 `app.py` 升级到模块化版本：
+
+```bash
+# 1. 备份数据库
+cp stellarsis.db stellarsis_backup.db
+
+# 2. 运行迁移脚本（确保所有表和列兼容）
+python migrate_to_v2.py
+
+# 3. 设置管理员密码环境变量
+export STELLARSIS_ADMIN_PASSWORD="your_secure_password"
+
+# 4. 启动新版本
+python app.py
+```
+
+> 迁移脚本会自动检测并添加缺失的数据库列和表，同时为管理员授予 `su` 权限。
 
 ## 使用指南 / User Guide
 
@@ -570,64 +587,55 @@ $$
 
 ```
 Stellarsis/
-├── app.py                 # 主应用文件（4,300+ 行）
+├── app.py                 # 应用入口（~20 行，调用 create_app()）
 ├── config.py              # 配置文件
 ├── requirements.txt       # Python 依赖
-├── start.sh              # 启动脚本
-├── test.py               # 测试文件
 ├── quotes.json           # 名言数据
+├── migrate_to_v2.py      # v1→v2 数据库迁移脚本
+├── logger_utils.py       # 日志工具
 ├── stellarsis.db         # SQLite 数据库（运行后生成）
+├── stellarsis/            # 核心应用包（模块化架构）
+│   ├── __init__.py       # Application Factory (create_app)
+│   ├── extensions.py     # 共享扩展 (db_session, socketio, login_manager, limiter)
+│   ├── models.py         # SQLAlchemy 数据模型（12 个表）
+│   ├── permissions.py    # 权限系统（常量、检查函数、grant_su_to_admins）
+│   ├── decorators.py     # 装饰器 (su_required)
+│   ├── forms.py          # WTForms 表单
+│   ├── utils.py          # 工具函数（消息处理、在线状态、文件、日志）
+│   ├── events.py         # Socket.IO 事件处理
+│   └── routes/           # Blueprint 路由模块
+│       ├── __init__.py   # Blueprint 注册
+│       ├── auth.py       # 认证路由 (login/logout/register/profile)
+│       ├── chat.py       # 聊天 API 路由
+│       ├── forum.py      # 论坛路由
+│       ├── admin.py      # 管理后台路由
+│       ├── upload.py     # 文件上传路由
+│       ├── follow.py     # 关注/取消关注路由
+│       └── spa.py        # SPA 页面 + 杂项 API
 ├── logs/                 # 日志目录
 │   └── system.log       # 系统日志
 ├── static/              # 静态资源
-│   ├── css/            # 样式文件
-│   ├── js/             # JavaScript 文件（4,300+ 行）
-│   │   ├── chat.js              # 聊天功能
-│   │   ├── forum.js             # 论坛功能
-│   │   ├── command-palette.js   # 命令面板
-│   │   ├── theme-switcher.js    # 主题切换
-│   │   ├── settings.js          # 设置页面
-│   │   ├── uploads.js           # 文件上传
-│   │   ├── ui.js                # UI 工具
-│   │   ├── test.js              # 前端测试
-│   │   ├── clipboard-polyfill.js
-│   │   └── vendor/              # 第三方库
-│   │       ├── socket.io.min.js
-│   │       └── marked.min.js
+│   ├── spa/             # SPA 前端应用
+│   │   ├── app.js       # SPA 主入口
+│   │   ├── app.css      # 全局样式
+│   │   ├── router.js    # Hash 路由器
+│   │   ├── store.js     # 状态管理
+│   │   ├── pages.js     # 页面组件
+│   │   ├── components.js # UI 组件
+│   │   └── utils.js     # 工具函数
+│   ├── css/             # 样式文件
+│   │   └── vendor/      # 第三方 CSS（Font Awesome 等）
+│   ├── js/              # JavaScript 文件
+│   │   └── vendor/      # 第三方 JS（Socket.IO、Marked.js 等）
 │   └── uploads/         # 用户上传文件
-├── templates/           # HTML 模板（6,000+ 行）
-│   ├── base.html       # 基础模板
-│   ├── index.html      # 首页
-│   ├── login.html      # 登录页
-│   ├── settings.html   # 设置页
-│   ├── chat/           # 聊天相关页面
-│   ├── forum/          # 论坛相关页面
-│   ├── settings/       # 设置子页面
-│   ├── admin/          # 管理后台
-│   └── errors/         # 错误页面
-└── docs/                    # 文档
-    ├── README.md               # 文档中心导航
-    ├── backend/                # 后端开发文档
-    │   ├── ARCHITECTURE.md    # 后端架构
-    │   ├── DATABASE.md        # 数据库架构
-    │   ├── API.md             # API 文档
-    │   └── LOGGING.md         # 日志系统
-    ├── frontend/               # 前端开发文档
-    │   ├── ARCHITECTURE.md    # 前端架构
-    │   ├── COMPONENTS.md      # 组件文档
-    │   ├── THEMING.md         # 主题系统
-    │   └── COMMAND_PALETTE.md # 命令面板
-    ├── guides/                 # 指南文档
-    │   ├── QUICK_START.md     # 快速开始
-    │   ├── DEPLOYMENT.md      # 部署指南
-    │   └── CONTRIBUTING.md    # 贡献指南
-    ├── PERMISSION_SYSTEM.md    # 权限系统说明
-    └── Markdown_LaTeX_Quickstart.md # Markdown/LaTeX 指南
+└── templates/           # HTML 模板
+    ├── spa.html         # SPA 单页应用入口
+    └── errors/          # 错误页面 (403/404/500)
 ```
 
 ## API 文档 / API Documentation
 
-详细的路由和 WebSocket 事件文档见：[API Documentation](docs/backend/API.md)
+> 所有 API 返回的时间戳均为 ISO 8601 UTC 格式（`Z` 后缀），例如 `2026-02-21T04:32:00.123456Z`。客户端负责转换为本地时区显示。
 
 ### 主要 API 端点
 
@@ -677,15 +685,15 @@ Stellarsis/
 ## 常见问题 / FAQ
 
 ### 1. 如何修改默认端口？
-编辑 `app.py` 最后一行：
-```python
-socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+设置环境变量 `PORT`：
+```bash
+PORT=5000 python app.py
 ```
 
 ### 2. 如何启用 HTTPS？
 使用 Nginx 反向代理并配置 SSL 证书，或使用 Gunicorn + SSL：
 ```bash
-gunicorn -k eventlet -w 1 -b 0.0.0.0:5000 --certfile cert.pem --keyfile key.pem app:app
+gunicorn -k eventlet -w 1 -b 0.0.0.0:443 --certfile cert.pem --keyfile key.pem "stellarsis:create_app()"
 ```
 
 ### 3. 如何切换到 PostgreSQL？
@@ -704,23 +712,40 @@ SQLALCHEMY_DATABASE_URI = 'postgresql://user:pass@localhost/stellarsis'
 ### 5. 如何批量导入用户？
 使用管理 API 或直接操作数据库：
 ```python
-from app import db_session, User
-for username, password in users:
-    user = User(username=username)
-    user.set_password(password)
-    db_session.add(user)
-db_session.commit()
+from stellarsis import create_app
+from stellarsis.extensions import db_session
+from stellarsis.models import User
+
+app = create_app()
+with app.app_context():
+    for username, password in users:
+        user = User(username=username)
+        user.set_password(password)
+        db_session.add(user)
+    db_session.commit()
 ```
 
 ### 6. 如何自定义主题？
 编辑 `static/css/main.css` 中的 CSS 变量，或使用 `theme-switcher.js` 注册新主题。
 
 ### 7. 忘记管理员密码怎么办？
-直接修改数据库：
+使用迁移脚本重置，或直接修改数据库：
 ```bash
-sqlite3 stellarsis.db
-UPDATE users SET password_hash='admin123' WHERE username='admin';
-.quit
+# 方法 1：设置环境变量后删除 admin 用户，重启自动重建
+sqlite3 stellarsis.db "DELETE FROM users WHERE username='admin';"
+STELLARSIS_ADMIN_PASSWORD=new_secure_password python app.py
+
+# 方法 2：通过 Python 重置密码
+python -c "
+from stellarsis import create_app
+from stellarsis.extensions import db_session
+from stellarsis.models import User
+app = create_app()
+with app.app_context():
+    admin = db_session.query(User).filter_by(username='admin').first()
+    admin.set_password('new_password')
+    db_session.commit()
+"
 ```
 
 ## 贡献指南 / Contributing
@@ -757,5 +782,5 @@ MIT License - 详见 [LICENSE](LICENSE) 文件
 
 ---
 
-**文档版本**: 2.0  
-**最后更新**: 2026-01-15
+**文档版本**: 3.0  
+**最后更新**: 2026-02-21
