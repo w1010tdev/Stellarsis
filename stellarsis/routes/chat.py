@@ -9,11 +9,11 @@ from flask import Blueprint, request, redirect, jsonify, abort, current_app
 from flask_login import current_user, login_required
 
 from stellarsis.extensions import db_session, socketio
-from stellarsis.models import ChatRoom, ChatMessage, ChatLastView
+from stellarsis.models import ChatRoom, ChatMessage
 from stellarsis.permissions import (
     get_chat_permission_value, user_can_view_chat, user_can_send_chat,
 )
-from stellarsis.utils import utcnow, to_utc_isoformat, sanitize_content, update_room_online_count
+from stellarsis.utils import utcnow, to_utc_isoformat, sanitize_content
 
 bp = Blueprint('chat', __name__)
 

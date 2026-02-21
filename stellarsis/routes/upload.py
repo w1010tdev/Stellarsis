@@ -30,19 +30,21 @@ def _save_upload(file, filename, is_image_file, max_size):
     """Shared upload logic for images and files.
 
     Returns ``(jsonify-response, status_code)`` on error, or
-    ``(UserImage instance, None)`` on success.
+    ``(jsonify-response, None)`` on success.
     """
     base = secure_filename(os.path.splitext(filename)[0]) or ('img' if is_image_file else 'file')
     ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'png'
     unique_name = f"{base}_{int(time.time())}_{uuid4().hex}.{ext}"
 
-    static_root = Path(current_app.root_path) / 'static'
+    static_root = (Path(current_app.root_path) / 'static').resolve()
     upload_folder = (
         Path(current_app.root_path)
         / current_app.config.get('UPLOAD_FOLDER', 'static/uploads')
         / str(current_user.id)
     ).resolve()
-    if not str(upload_folder).startswith(str(static_root.resolve())):
+    try:
+        upload_folder.relative_to(static_root)
+    except ValueError:
         return jsonify(success=False, message='上传目录配置不合法'), 500
     upload_folder.mkdir(parents=True, exist_ok=True)
     filepath = upload_folder / unique_name
@@ -245,7 +247,10 @@ def api_delete_image(image_id):
             if p.exists():
                 p.unlink()
         except Exception:
-            pass
+            # Best-effort file deletion; DB record is still removed below.
+            mgr = current_app.config.get('_logger_manager')
+            if mgr:
+                mgr.upload.exception('删除图片文件失败')
 
         owner = db_session.get(User, ui.user_id)
         if owner and not owner.is_admin():
@@ -321,6 +326,7 @@ def admin_download_images_zip():
                 try:
                     os.remove(p)
                 except Exception:
+                    # Best-effort temp file cleanup; OS will reclaim on reboot.
                     pass
 
             threading.Thread(target=_cleanup, daemon=True).start()
@@ -329,6 +335,7 @@ def admin_download_images_zip():
             try:
                 os.remove(tmp.name)
             except Exception:
+                # Best-effort temp file cleanup before re-raising.
                 pass
             raise
     except Exception as e:

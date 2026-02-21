@@ -8,7 +8,6 @@ import sqlite3
 from pathlib import Path
 
 from flask import Flask, render_template
-from flask_cors import CORS
 from flask_login import current_user
 
 from config import Config
@@ -101,8 +100,7 @@ def load_user(user_id):
 
 
 def _register_context_processors(app):
-    from stellarsis.utils import utcnow, get_global_online_count
-    from datetime import timedelta
+    from stellarsis.utils import get_global_online_count
 
     @app.context_processor
     def inject_app_info():
@@ -228,10 +226,15 @@ def _ensure_admin_user():
                 admin.role = 'admin'
                 db_session.commit()
         else:
+            default_pw = os.environ.get('STELLARSIS_ADMIN_PASSWORD', 'admin123')
             u = User(username='admin', nickname='管理员', role='admin')
-            u.set_password('admin123')
+            u.set_password(default_pw)
             db_session.add(u)
             db_session.commit()
+            if default_pw == 'admin123':
+                lgr.warning(
+                    "默认管理员密码 'admin123'，请通过环境变量 STELLARSIS_ADMIN_PASSWORD 设置安全密码"
+                )
     except Exception as e:
         lgr.error(f"设置管理员用户失败: {e}")
 

@@ -27,15 +27,23 @@ def api_follows():
             for f in follows
         ])
 
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     username = data.get('username')
-    user_id = data.get('user_id')
-    if not username and not user_id:
+    raw_user_id = data.get('user_id')
+    if not username and raw_user_id is None:
         return jsonify(success=False, message='需要指定 username 或 user_id'), 400
+
+    # Validate user_id before DB access
+    user_id_int = None
+    if raw_user_id is not None:
+        try:
+            user_id_int = int(raw_user_id)
+        except (TypeError, ValueError):
+            return jsonify(success=False, message='无效的 user_id'), 400
 
     try:
         target = (
-            db_session.get(User, int(user_id)) if user_id
+            db_session.get(User, user_id_int) if user_id_int is not None
             else db_session.query(User).filter_by(username=username).first()
         )
         if not target:
@@ -94,9 +102,13 @@ def get_following():
 @bp.route('/api/follow/toggle', methods=['POST'])
 @login_required
 def toggle_follow():
-    data = request.get_json()
-    target_id = data.get('user_id')
-    if not target_id or target_id == current_user.id:
+    data = request.get_json(silent=True) or {}
+    raw_target_id = data.get('user_id')
+    try:
+        target_id = int(raw_target_id)
+    except (TypeError, ValueError):
+        return jsonify(success=False, message="无效用户"), 400
+    if target_id == current_user.id:
         return jsonify(success=False, message="无效用户"), 400
     target = db_session.get(User, target_id)
     if not target:

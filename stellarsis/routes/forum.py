@@ -8,12 +8,12 @@ from flask import Blueprint, request, redirect, url_for, jsonify, abort, current
 from flask_login import current_user, login_required
 
 from stellarsis.extensions import db_session
-from stellarsis.models import ForumSection, ForumThread, ForumReply, ForumLastView
+from stellarsis.models import ForumSection, ForumThread, ForumReply
 from stellarsis.permissions import (
-    get_forum_permission_value, user_can_view_forum, user_can_post_forum,
+    get_forum_permission_value, user_can_post_forum,
     FORUM_POST_PERMISSIONS,
 )
-from stellarsis.utils import utcnow, to_utc_isoformat, sanitize_content, log_admin_action
+from stellarsis.utils import to_utc_isoformat, sanitize_content, log_admin_action
 
 bp = Blueprint('forum', __name__)
 
@@ -186,11 +186,6 @@ def api_get_thread_replies(thread_id):
     thread = db_session.get(ForumThread, thread_id)
     if thread is None:
         return jsonify(success=False, message='主题不存在'), 404
-
-    try:
-        total_count = thread.replies.count()
-    except Exception:
-        total_count = db_session.query(ForumReply).filter_by(thread_id=thread.id).count()
 
     replies = thread.replies.order_by(ForumReply.timestamp.asc()).all()
     result = [

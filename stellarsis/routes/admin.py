@@ -214,7 +214,12 @@ def download_root_zip():
             with zipfile.ZipFile(tmp.name, 'w', zipfile.ZIP_DEFLATED) as zf:
                 for base, dirs, files in os.walk(root):
                     rel = os.path.relpath(base, root)
-                    if rel.split(os.sep)[0] in exclude:
+                    if any(
+                        rel == ex
+                        or rel.startswith(ex + os.sep)
+                        or rel.split(os.sep)[0] == ex
+                        for ex in exclude
+                    ):
                         continue
                     for fname in files:
                         if fname.endswith(('.pyc', '.pyo')):
@@ -227,6 +232,7 @@ def download_root_zip():
                 try:
                     os.remove(p)
                 except Exception:
+                    # Best-effort temp file cleanup; OS will reclaim on reboot.
                     pass
 
             threading.Thread(target=_cleanup, daemon=True).start()
@@ -235,6 +241,7 @@ def download_root_zip():
             try:
                 os.remove(tmp.name)
             except Exception:
+                # Best-effort temp file cleanup before re-raising.
                 pass
             raise
     except Exception as e:
@@ -953,12 +960,17 @@ def db_table_delete(table_name):
 # Quotes management
 # ------------------------------------------------------------------
 
+def _quotes_path():
+    """Return the absolute path to quotes.json."""
+    return os.path.join(current_app.root_path, 'quotes.json')
+
+
 @bp.route('/api/admin/quotes', methods=['GET'])
 @login_required
 @su_required
 def api_get_quotes():
     try:
-        with open('quotes.json', 'r', encoding='utf-8') as f:
+        with open(_quotes_path(), 'r', encoding='utf-8') as f:
             return jsonify(success=True, quotes=json.load(f).get('quotes', []))
     except FileNotFoundError:
         return jsonify(success=False, message="quotes.json文件不存在")
@@ -976,10 +988,11 @@ def api_add_quote():
     if not text or not author:
         return jsonify(success=False, message="名言内容和作者不能为空")
     try:
-        with open('quotes.json', 'r', encoding='utf-8') as f:
+        qp = _quotes_path()
+        with open(qp, 'r', encoding='utf-8') as f:
             qd = json.load(f)
         qd['quotes'].append({'text': text, 'author': author})
-        with open('quotes.json', 'w', encoding='utf-8') as f:
+        with open(qp, 'w', encoding='utf-8') as f:
             json.dump(qd, f, ensure_ascii=False, indent=2)
         log_admin_action(f"添加名言: {text} - {author}")
         return jsonify(success=True, message="名言添加成功")
@@ -998,14 +1011,15 @@ def api_update_quote(idx):
     if not text or not author:
         return jsonify(success=False, message="名言内容和作者不能为空")
     try:
-        with open('quotes.json', 'r', encoding='utf-8') as f:
+        qp = _quotes_path()
+        with open(qp, 'r', encoding='utf-8') as f:
             qd = json.load(f)
         quotes = qd.get('quotes', [])
         if idx < 0 or idx >= len(quotes):
             return jsonify(success=False, message="名言索引超出范围")
         old = quotes[idx]
         quotes[idx] = {'text': text, 'author': author}
-        with open('quotes.json', 'w', encoding='utf-8') as f:
+        with open(qp, 'w', encoding='utf-8') as f:
             json.dump(qd, f, ensure_ascii=False, indent=2)
         log_admin_action(f"更新名言: {old['text']} -> {text}")
         return jsonify(success=True, message="名言更新成功")
@@ -1019,13 +1033,14 @@ def api_update_quote(idx):
 @su_required
 def api_delete_quote(idx):
     try:
-        with open('quotes.json', 'r', encoding='utf-8') as f:
+        qp = _quotes_path()
+        with open(qp, 'r', encoding='utf-8') as f:
             qd = json.load(f)
         quotes = qd.get('quotes', [])
         if idx < 0 or idx >= len(quotes):
             return jsonify(success=False, message="名言索引超出范围")
         deleted = quotes.pop(idx)
-        with open('quotes.json', 'w', encoding='utf-8') as f:
+        with open(qp, 'w', encoding='utf-8') as f:
             json.dump(qd, f, ensure_ascii=False, indent=2)
         log_admin_action(f"删除名言: {deleted['text']} - {deleted['author']}")
         return jsonify(success=True, message="名言删除成功")

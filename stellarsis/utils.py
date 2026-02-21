@@ -22,11 +22,15 @@ def to_utc_isoformat(dt):
 
     The database stores naive datetimes that are implicitly UTC.
     This function makes the timezone explicit by appending ``Z``.
+    If a timezone-aware datetime is passed, it is first normalized to UTC.
     """
     if dt is None:
         return None
     if isinstance(dt, str):
         return dt
+    # Normalize timezone-aware datetimes to UTC and drop tzinfo
+    if isinstance(dt, datetime) and dt.tzinfo is not None:
+        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
     return dt.isoformat() + 'Z'
 
 
@@ -54,6 +58,7 @@ def sanitize_content(content, room_id=None):
     try:
         content = html.unescape(content)
     except Exception:
+        # If unescaping fails (e.g., due to malformed entities), keep the original content.
         pass
 
     placeholders: dict[str, str] = {}
@@ -250,6 +255,7 @@ def get_image_type(stream):
         if t:
             return t
     except Exception:
+        # imghdr detection failed; fall through to PIL.
         pass
     try:
         from PIL import Image
@@ -259,6 +265,7 @@ def get_image_type(stream):
         stream.seek(0)
         return fmt
     except Exception:
+        # PIL detection failed; return None to indicate unknown type.
         pass
     return None
 

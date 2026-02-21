@@ -4,6 +4,7 @@ SPA routes and supporting API endpoints.
 
 import html
 import json
+import os
 import random
 
 from flask import Blueprint, request, redirect, render_template, jsonify, url_for, current_app
@@ -103,14 +104,16 @@ def spa_index():
 
     # Random quote
     random_quote = ''
+    quotes_path = os.path.join(current_app.root_path, 'quotes.json')
     try:
-        with open('quotes.json', 'r', encoding='utf-8') as f:
+        with open(quotes_path, 'r', encoding='utf-8') as f:
             qs = json.load(f).get('quotes', [])
             formatted = [f"{q['text']} - {q['author']}" for q in qs if 'text' in q and 'author' in q]
             if formatted:
                 random_quote = random.choice(formatted)
-    except Exception:
-        pass
+    except Exception as exc:
+        # Ignore random quote failures in the UI, but log for diagnostics.
+        current_app.logger.warning("Failed to load random quote from quotes.json: %s", exc)
 
     return render_template('spa.html', spa_data={
         'rooms': visible_rooms, 'chatPermissions': chat_perms,
@@ -262,7 +265,8 @@ def api_online_count():
 @login_required
 def api_random_quote():
     try:
-        with open('quotes.json', 'r', encoding='utf-8') as f:
+        quotes_path = os.path.join(current_app.root_path, 'quotes.json')
+        with open(quotes_path, 'r', encoding='utf-8') as f:
             qs = json.load(f).get('quotes', [])
             formatted = [f"{q['text']} - {q['author']}" for q in qs if 'text' in q and 'author' in q]
             if formatted:
