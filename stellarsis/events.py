@@ -127,9 +127,9 @@ def register_events(sio):
         try:
             db_session.add(msg)
             db_session.commit()
-            mgr_inner = current_app.config.get('_logger_manager')
-            if mgr_inner:
-                mgr_inner.chat.info(
+            mgr = current_app.config.get('_logger_manager')
+            if mgr:
+                mgr.chat.info(
                     f"[WebSocket] 用户 {current_user.username}(ID:{current_user.id}) "
                     f"在聊天室 {room_id} 发送消息(ID:{msg.id}), 长度={len(content)}"
                 )

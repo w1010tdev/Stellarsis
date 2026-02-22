@@ -178,8 +178,7 @@ def api_delete_thread(thread_id):
 
         perm = get_forum_permission_value(current_user, thread.section_id)
         if current_user.is_admin() or perm == 'su' or (perm == '777' and thread.user_id == current_user.id):
-            reply_count = db_session.query(ForumReply).filter_by(thread_id=thread.id).count()
-            db_session.query(ForumReply).filter_by(thread_id=thread.id).delete()
+            reply_count = db_session.query(ForumReply).filter_by(thread_id=thread.id).delete()
             db_session.delete(thread)
             db_session.commit()
             log_user_action(
