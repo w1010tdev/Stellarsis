@@ -725,10 +725,8 @@ with app.app_context():
     db_session.commit()
 ```
 
-### 6. 如何自定义主题？
-编辑 `static/css/main.css` 中的 CSS 变量，或使用 `theme-switcher.js` 注册新主题。
 
-### 7. 忘记管理员密码怎么办？
+### 6. 忘记管理员密码怎么办？
 使用迁移脚本重置，或直接修改数据库：
 ```bash
 # 方法 1：设置环境变量后删除 admin 用户，重启自动重建
