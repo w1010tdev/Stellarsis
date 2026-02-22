@@ -344,7 +344,7 @@ def get_recent_logs(limit=10):
 
 def get_logs_by_type(log_type='system', limit=50):
     """Return recent log entries for a specific log type."""
-    from logger_utils import get_recent_logs_by_type, VALID_LOG_TYPES, LOG_TYPE_LABELS
+    from logger_utils import get_recent_logs_by_type
 
     log_dir = Path(current_app.root_path) / 'logs'
     entries = get_recent_logs_by_type(log_dir, log_type=log_type, limit=limit)

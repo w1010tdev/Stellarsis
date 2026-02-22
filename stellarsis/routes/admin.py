@@ -186,7 +186,7 @@ def get_system_log():
     try:
         logs = get_recent_logs(50)
         return jsonify(success=True, logs=[
-            {'timestamp': l.timestamp.isoformat() + 'Z', 'message': l.message} for l in logs
+            {'timestamp': to_utc_isoformat(l.timestamp), 'message': l.message} for l in logs
         ])
     except Exception as e:
         return jsonify(success=False, message=f"获取系统日志失败: {e}"), 500
@@ -213,7 +213,7 @@ def get_logs(log_type):
         entries = get_logs_by_type(log_type=log_type, limit=limit)
         return jsonify(success=True, log_type=log_type, logs=[
             {
-                'timestamp': e['timestamp'].isoformat() + 'Z',
+                'timestamp': to_utc_isoformat(e['timestamp']),
                 'level': e.get('level', 'INFO'),
                 'message': e.get('message', ''),
             }
