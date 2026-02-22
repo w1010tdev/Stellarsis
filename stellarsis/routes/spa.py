@@ -19,7 +19,7 @@ from stellarsis.permissions import (
     get_chat_permission_value, get_forum_permission_value,
     FORUM_POST_PERMISSIONS,
 )
-from stellarsis.utils import utcnow, to_utc_isoformat, get_global_online_count
+from stellarsis.utils import utcnow, to_utc_isoformat, get_global_online_count, log_user_action
 
 bp = Blueprint('spa', __name__)
 
@@ -223,6 +223,13 @@ def api_spa_forum_thread_create():
         )
         db_session.add(thread)
         db_session.commit()
+        log_user_action(f"SPA创建新帖: '{title}'(ID:{thread.id}) 分区ID={section_id}")
+        mgr = current_app.config.get('_logger_manager')
+        if mgr:
+            mgr.forum.info(
+                f"用户 {current_user.username}(ID:{current_user.id}) "
+                f"通过SPA创建新帖 '{title}'(ID:{thread.id}) 分区={section_id}"
+            )
         return jsonify(success=True, message='发表成功', thread_id=thread.id)
     except Exception as e:
         db_session.rollback()

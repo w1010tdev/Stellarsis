@@ -59,7 +59,18 @@ def admin_su():
         password = request.form.get('password')
         if current_user.check_password(password):
             session['su_expires'] = time.time() + 300
+            log_admin_action("SU验证成功")
+            mgr = current_app.config.get('_logger_manager')
+            if mgr:
+                mgr.security.info(
+                    f"管理员 {current_user.username}(ID:{current_user.id}) SU验证成功"
+                )
             return jsonify({'success': True, 'message': 'SU验证成功'}), 200
+        mgr = current_app.config.get('_logger_manager')
+        if mgr:
+            mgr.security.warning(
+                f"管理员 {current_user.username}(ID:{current_user.id}) SU验证失败（密码错误）"
+            )
         return jsonify({'success': False, 'message': '密码错误'}), 401
 
     next_url = request.args.get('next') or '/spa#/admin'
@@ -526,6 +537,10 @@ def admin_import_users():
         flash(
             f'成功导入 {len(success_list)} 个用户，失败 {len(failed_list)} 个',
             'success' if not failed_list else 'warning',
+        )
+        log_admin_action(
+            f"批量导入用户: 成功={len(success_list)}, 失败={len(failed_list)}, "
+            f"成功列表={success_list}"
         )
         if failed_list:
             session['import_failed'] = failed_list

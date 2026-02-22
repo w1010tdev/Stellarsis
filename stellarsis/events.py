@@ -15,7 +15,7 @@ from stellarsis.permissions import user_can_view_chat, user_can_send_chat, get_c
 from stellarsis.utils import (
     utcnow, sanitize_content, update_room_online_count,
     broadcast_global_online_count, notify_followers_user_online,
-    get_online_users,
+    get_online_users, log_user_action,
 )
 
 
@@ -30,6 +30,9 @@ def register_events(sio):
         db_session.commit()
         join_room(f"user_{current_user.id}")
         session['receive_count'] = session.get('receive_count', 0) + 1
+        mgr = current_app.config.get('_logger_manager')
+        if mgr:
+            mgr.user.info(f"[WebSocket] 用户 {current_user.username}(ID:{current_user.id}) 建立连接")
         emit('my_response', {'count': session['receive_count']})
 
     @sio.on('join')
@@ -47,6 +50,9 @@ def register_events(sio):
         room_name = f"room_{room_id}"
         join_room(room_name)
         current_user.last_seen = utcnow()
+        mgr = current_app.config.get('_logger_manager')
+        if mgr:
+            mgr.chat.info(f"用户 {current_user.username}(ID:{current_user.id}) 加入聊天室 {room_id}")
 
         now = utcnow()
         last = db_session.query(ChatLastView).filter_by(user_id=current_user.id, room_id=room_id).first()
@@ -74,6 +80,9 @@ def register_events(sio):
             return
         room_name = f"room_{room_id}"
         leave_room(room_name)
+        mgr = current_app.config.get('_logger_manager')
+        if mgr:
+            mgr.chat.info(f"用户 {current_user.username}(ID:{current_user.id}) 离开聊天室 {room_id}")
         emit('user_leave', {
             'user_id': current_user.id,
             'username': current_user.username,
@@ -118,6 +127,12 @@ def register_events(sio):
         try:
             db_session.add(msg)
             db_session.commit()
+            mgr_inner = current_app.config.get('_logger_manager')
+            if mgr_inner:
+                mgr_inner.chat.info(
+                    f"[WebSocket] 用户 {current_user.username}(ID:{current_user.id}) "
+                    f"在聊天室 {room_id} 发送消息(ID:{msg.id}), 长度={len(content)}"
+                )
         except Exception:
             db_session.rollback()
             mgr = current_app.config.get('_logger_manager')
@@ -178,7 +193,8 @@ def register_events(sio):
             mgr = current_app.config.get('_logger_manager')
             if mgr:
                 mgr.chat.info(
-                    f"用户 {current_user.id} 通过socket删除了聊天室消息 {message_id} 在房间 {room_id}"
+                    f"[WebSocket] 用户 {current_user.username}(ID:{current_user.id}) "
+                    f"删除聊天消息(ID:{message_id}) 房间={room_id}"
                 )
             emit('message_deleted', {
                 'id': message_id, 'message_id': message_id,

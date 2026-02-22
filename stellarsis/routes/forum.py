@@ -13,7 +13,7 @@ from stellarsis.permissions import (
     get_forum_permission_value, user_can_post_forum,
     FORUM_POST_PERMISSIONS,
 )
-from stellarsis.utils import to_utc_isoformat, sanitize_content, log_admin_action
+from stellarsis.utils import to_utc_isoformat, sanitize_content, log_admin_action, log_user_action
 
 bp = Blueprint('forum', __name__)
 
@@ -77,7 +77,13 @@ def new_post(section_id):
     )
     db_session.add(thread)
     db_session.commit()
-    log_admin_action(f"用户创建新帖: {current_user.username} - {title}")
+    log_user_action(f"创建新帖: '{title}' 分区ID={section_id}")
+    mgr = current_app.config.get('_logger_manager')
+    if mgr:
+        mgr.forum.info(
+            f"用户 {current_user.username}(ID:{current_user.id}) "
+            f"创建新帖 '{title}'(ID:{thread.id}) 分区={section_id}"
+        )
     return redirect(url_for('forum.forum_thread', thread_id=thread.id))
 
 
@@ -102,7 +108,13 @@ def reply_post():
     reply = ForumReply(content=content, user_id=current_user.id, thread_id=thread_id)
     db_session.add(reply)
     db_session.commit()
-    log_admin_action(f"用户回复帖子: {current_user.username} - 帖子ID: {thread_id}")
+    log_user_action(f"回复帖子: 帖子ID={thread_id}, 回复ID={reply.id}")
+    mgr = current_app.config.get('_logger_manager')
+    if mgr:
+        mgr.forum.info(
+            f"用户 {current_user.username}(ID:{current_user.id}) "
+            f"回复帖子(ID:{thread_id}), 回复ID={reply.id}"
+        )
 
     return jsonify(
         success=True,
@@ -142,7 +154,11 @@ def api_delete_forum_reply(reply_id):
         db_session.commit()
         mgr = current_app.config.get('_logger_manager')
         if mgr:
-            mgr.forum.info(f"用户 {current_user.id} 删除了回复 {reply_id}")
+            mgr.forum.info(
+                f"用户 {current_user.username}(ID:{current_user.id}) "
+                f"删除了回复(ID:{reply_id}) 帖子ID={thread.id}"
+            )
+        log_user_action(f"删除论坛回复(ID:{reply_id}) 帖子ID={thread.id}")
         return jsonify({'success': True, 'message': '回复已删除'})
     except Exception:
         db_session.rollback()
@@ -162,13 +178,21 @@ def api_delete_thread(thread_id):
 
         perm = get_forum_permission_value(current_user, thread.section_id)
         if current_user.is_admin() or perm == 'su' or (perm == '777' and thread.user_id == current_user.id):
+            reply_count = db_session.query(ForumReply).filter_by(thread_id=thread.id).count()
             db_session.query(ForumReply).filter_by(thread_id=thread.id).delete()
             db_session.delete(thread)
             db_session.commit()
-            log_admin_action(f"删除了主题帖: {thread.title} (ID:{thread.id})")
+            log_user_action(
+                f"删除主题帖: '{thread.title}'(ID:{thread.id}) 分区={thread.section_id}, "
+                f"连带删除 {reply_count} 条回复"
+            )
             mgr = current_app.config.get('_logger_manager')
             if mgr:
-                mgr.forum.info(f"用户 {current_user.id} 删除了主题帖 {thread.id}")
+                mgr.forum.info(
+                    f"用户 {current_user.username}(ID:{current_user.id}) "
+                    f"删除了主题帖 '{thread.title}'(ID:{thread.id}), "
+                    f"连带删除 {reply_count} 条回复"
+                )
             return jsonify(success=True, message='删除成功',
                            redirect=url_for('forum.forum_section', section_id=thread.section_id))
         return jsonify(success=False, message='权限不足'), 403

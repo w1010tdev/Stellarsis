@@ -7,7 +7,7 @@ from flask_login import current_user, login_required
 
 from stellarsis.extensions import db_session
 from stellarsis.models import User, UserFollow
-from stellarsis.utils import to_utc_isoformat, log_admin_action
+from stellarsis.utils import to_utc_isoformat, log_admin_action, log_user_action
 
 bp = Blueprint('follow', __name__)
 
@@ -57,6 +57,7 @@ def api_follows():
 
         db_session.add(UserFollow(follower_id=current_user.id, followed_id=target.id))
         db_session.commit()
+        log_user_action(f"关注用户: {target.username}(ID:{target.id})")
         return jsonify(success=True, message='关注成功', user={
             'id': target.id, 'username': target.username, 'nickname': target.nickname,
         })
@@ -76,6 +77,7 @@ def api_unfollow(followed_id):
             return jsonify(success=False, message='未找到关注关系'), 404
         db_session.delete(rel)
         db_session.commit()
+        log_user_action(f"取消关注用户(ID:{followed_id})")
         return jsonify(success=True, message='已取消关注')
     except Exception as e:
         db_session.rollback()
@@ -125,7 +127,7 @@ def toggle_follow():
         action = "follow"
 
     db_session.commit()
-    log_admin_action(
-        f"{current_user.username} {'关注' if action == 'follow' else '取消关注'} 用户 {target.username}"
+    log_user_action(
+        f"{'关注' if action == 'follow' else '取消关注'} 用户 {target.username}(ID:{target.id})"
     )
     return jsonify(success=True, action=action)

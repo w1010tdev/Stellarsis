@@ -20,7 +20,7 @@ from stellarsis.models import User, UserImage
 from stellarsis.decorators import su_required
 from stellarsis.utils import (
     to_utc_isoformat, allowed_image_extension, allowed_file_extension,
-    is_image_extension, log_admin_action,
+    is_image_extension, log_admin_action, log_user_action,
 )
 
 bp = Blueprint('upload', __name__)
@@ -90,6 +90,18 @@ def _save_upload(file, filename, is_image_file, max_size):
             current_user.upload_used += actual_size
             db_session.add(current_user)
         db_session.commit()
+
+        mgr = current_app.config.get('_logger_manager')
+        if mgr:
+            mgr.upload.info(
+                f"用户 {current_user.username}(ID:{current_user.id}) "
+                f"上传{'图片' if is_image_file else '文件'}: {unique_name}, "
+                f"大小={actual_size}bytes, 类型={file_type}"
+            )
+        log_user_action(
+            f"上传{'图片' if is_image_file else '文件'}: {unique_name}, "
+            f"大小={actual_size}bytes, 类型={file_type}"
+        )
 
         rel = os.path.relpath(str(filepath), str(Path(current_app.root_path) / 'static'))
         file_url = url_for('static', filename=rel.replace('\\', '/'))
@@ -262,8 +274,10 @@ def api_delete_image(image_id):
         mgr = current_app.config.get('_logger_manager')
         if mgr:
             mgr.upload.info(
-                f"用户 {current_user.username} 删除上传图片 {ui.filename} (ID:{ui.id})"
+                f"用户 {current_user.username}(ID:{current_user.id}) "
+                f"删除文件 {ui.filename}(ID:{ui.id}), 大小={ui.file_size}bytes"
             )
+        log_user_action(f"删除文件: {ui.filename}(ID:{ui.id}), 大小={ui.file_size}bytes")
         return jsonify(success=True, message='图片已删除')
     except Exception:
         db_session.rollback()

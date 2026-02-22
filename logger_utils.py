@@ -30,8 +30,8 @@ class LoggerManager:
         
         # 日志配置 / Log configuration
         self.log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        self.max_bytes = 10 * 1024 * 1024  # 10 MB
-        self.backup_count = 5
+        self.max_bytes = 100 * 1024 * 1024  # 100 MB per file
+        self.backup_count = 10
         
         # 初始化各类日志器 / Initialize loggers
         self._loggers = {}
@@ -85,6 +85,10 @@ class LoggerManager:
         # Admin log - records all admin operations for auditing
         self._loggers['admin'] = self._create_logger('stellarsis.admin', 'admin.log')
         
+        # 用户操作日志 - 记录所有用户操作（发帖、上传、关注等）
+        # User log - records all user operations (posts, uploads, follows, etc.)
+        self._loggers['user'] = self._create_logger('stellarsis.user', 'user.log')
+        
         # 认证日志 - 记录用户登录、登出、密码修改等
         # Auth log - records login, logout, password changes, etc.
         self._loggers['auth'] = self._create_logger('stellarsis.auth', 'auth.log')
@@ -104,6 +108,14 @@ class LoggerManager:
         # 安全日志 - 记录安全相关事件（权限检查失败、可疑操作等）
         # Security log - records security events (permission failures, suspicious operations, etc.)
         self._loggers['security'] = self._create_logger('stellarsis.security', 'security.log')
+        
+        # 让所有子日志器的消息也写入 system.log（系统总日志）
+        # Propagate all sub-loggers to system.log via a shared handler
+        system_handler = self._loggers['system'].handlers[0] if self._loggers['system'].handlers else None
+        if system_handler:
+            for name, lgr in self._loggers.items():
+                if name != 'system' and system_handler not in lgr.handlers:
+                    lgr.addHandler(system_handler)
     
     def get_logger(self, logger_type='system'):
         """
@@ -127,6 +139,11 @@ class LoggerManager:
     def admin(self):
         """管理员日志器 / Admin logger"""
         return self._loggers['admin']
+    
+    @property
+    def user(self):
+        """用户操作日志器 / User operations logger"""
+        return self._loggers['user']
     
     @property
     def auth(self):

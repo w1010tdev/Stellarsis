@@ -10,7 +10,7 @@ from flask_login import current_user, login_user, logout_user, login_required
 from stellarsis.extensions import db_session, limiter
 from stellarsis.models import User
 from stellarsis.forms import LoginForm
-from stellarsis.utils import utcnow, log_admin_action
+from stellarsis.utils import utcnow, log_admin_action, log_user_action, _get_client_ip
 
 bp = Blueprint('auth', __name__)
 
@@ -29,14 +29,20 @@ def login():
         user = db_session.query(User).filter_by(username=form.username.data).first()
         if user is None or not user.check_password(form.password.data):
             flash('无效的用户名或密码', 'danger')
+            mgr = current_app.config.get('_logger_manager')
+            ip = _get_client_ip()
+            if mgr:
+                mgr.auth.warning(f"登录失败: 用户名={form.username.data} IP={ip}")
+                mgr.security.warning(f"登录失败: 用户名={form.username.data} IP={ip}")
             return redirect(url_for('auth.login'))
         login_user(user)
         user.last_seen = utcnow()
         db_session.commit()
         mgr = current_app.config.get('_logger_manager')
+        ip = _get_client_ip()
         if mgr:
-            mgr.auth.info(f"用户登录成功: {user.username}")
-        log_admin_action(f"用户登录: {user.username}")
+            mgr.auth.info(f"用户登录成功: {user.username} IP={ip}")
+        log_user_action(f"表单登录成功")
         return redirect(url_for('spa.spa_index'))
 
     return redirect('/spa#/login')
@@ -60,15 +66,21 @@ def api_login():
 
     user = db_session.query(User).filter_by(username=username).first()
     if user is None or not user.check_password(password):
+        mgr = current_app.config.get('_logger_manager')
+        ip = _get_client_ip()
+        if mgr:
+            mgr.auth.warning(f"API登录失败: 用户名={username} IP={ip}")
+            mgr.security.warning(f"API登录失败: 用户名={username} IP={ip}")
         return jsonify({'success': False, 'error': '无效的用户名或密码'}), 401
 
     login_user(user)
     user.last_seen = utcnow()
     db_session.commit()
     mgr = current_app.config.get('_logger_manager')
+    ip = _get_client_ip()
     if mgr:
-        mgr.auth.info(f"用户API登录成功: {user.username}")
-    log_admin_action(f"用户登录: {user.username}")
+        mgr.auth.info(f"用户API登录成功: {user.username} IP={ip}")
+    log_user_action(f"API登录成功")
 
     return jsonify({
         'success': True,
@@ -84,11 +96,11 @@ def api_login():
 @bp.route('/logout')
 def logout():
     username = current_user.username if current_user.is_authenticated else '未知用户'
+    log_user_action(f"用户登出")
     mgr = current_app.config.get('_logger_manager')
     if mgr:
-        mgr.auth.info(f"用户登出: {username}")
+        mgr.auth.info(f"用户登出: {username} IP={_get_client_ip()}")
     logout_user()
-    log_admin_action(f"用户登出: {username}")
     flash('您已成功登出', 'success')
     return redirect(url_for('auth.login'))
 
@@ -119,8 +131,8 @@ def change_password():
             db_session.commit()
             mgr = current_app.config.get('_logger_manager')
             if mgr:
-                mgr.auth.info(f"用户修改密码: {current_user.username}")
-            log_admin_action(f"用户修改密码: {current_user.username}")
+                mgr.auth.info(f"用户修改密码: {current_user.username} IP={_get_client_ip()}")
+            log_user_action(f"修改密码成功")
             return jsonify({'success': True, 'message': '密码已成功修改'})
         except Exception as e:
             db_session.rollback()
@@ -148,7 +160,9 @@ def profile():
                 current_user.badge = data['badge'][:32] if data['badge'] else None
 
             db_session.commit()
-            log_admin_action(f"用户更新个人资料: {current_user.username}")
+            log_user_action(
+                f"更新个人资料: nickname={current_user.nickname}, color={current_user.color}, badge={current_user.badge}"
+            )
 
             return jsonify({
                 'success': True,

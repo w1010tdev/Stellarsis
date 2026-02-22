@@ -278,14 +278,56 @@ def log_admin_action(action):
     """Record an admin action via the logging subsystem."""
     from flask_login import current_user
 
+    ip = _get_client_ip()
     mgr = current_app.config.get('_logger_manager')
     admin_lgr = current_app.config.get('_admin_logger')
     if admin_lgr:
-        admin_lgr.log(action, user=current_user)
+        admin_lgr.log(f"[IP: {ip}] {action}", user=current_user)
     elif mgr:
-        mgr.system.info(f"管理员操作: {action}")
+        mgr.system.info(f"管理员操作: [IP: {ip}] {action}")
     else:
-        current_app.logger.info(f"管理员操作: {action}")
+        current_app.logger.info(f"管理员操作: [IP: {ip}] {action}")
+
+
+def log_user_action(action, level='INFO'):
+    """Record a user action via the logging subsystem.
+
+    Logs to user.log (dedicated user operations log) and also to
+    system.log (via the shared handler on the user logger).
+    """
+    from flask_login import current_user
+
+    try:
+        username = current_user.username if current_user.is_authenticated else 'anonymous'
+    except Exception:
+        username = 'unknown'
+
+    ip = _get_client_ip()
+    message = f"[用户: {username}] [IP: {ip}] {action}"
+
+    mgr = current_app.config.get('_logger_manager')
+    if mgr:
+        lgr = mgr.user
+        if level == 'WARNING':
+            lgr.warning(message)
+        elif level == 'ERROR':
+            lgr.error(message)
+        else:
+            lgr.info(message)
+    else:
+        current_app.logger.info(message)
+
+
+def _get_client_ip():
+    """Return the client IP address from the request, respecting X-Forwarded-For."""
+    try:
+        from flask import request as _req
+        forwarded = _req.headers.get('X-Forwarded-For', '')
+        if forwarded:
+            return forwarded.split(',')[0].strip()
+        return _req.remote_addr or 'unknown'
+    except Exception:
+        return 'unknown'
 
 
 def get_recent_logs(limit=10):

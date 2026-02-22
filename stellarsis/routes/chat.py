@@ -13,7 +13,7 @@ from stellarsis.models import ChatRoom, ChatMessage
 from stellarsis.permissions import (
     get_chat_permission_value, user_can_view_chat, user_can_send_chat,
 )
-from stellarsis.utils import utcnow, to_utc_isoformat, sanitize_content
+from stellarsis.utils import utcnow, to_utc_isoformat, sanitize_content, log_user_action
 
 bp = Blueprint('chat', __name__)
 
@@ -146,6 +146,12 @@ def send_chat_message():
     try:
         db_session.add(msg_obj)
         db_session.commit()
+        mgr = current_app.config.get('_logger_manager')
+        if mgr:
+            mgr.chat.info(
+                f"用户 {current_user.username}(ID:{current_user.id}) "
+                f"在聊天室 {room_id} 发送消息(ID:{msg_obj.id}), 长度={len(message)}"
+            )
     except Exception:
         db_session.rollback()
         mgr = current_app.config.get('_logger_manager')
@@ -177,7 +183,11 @@ def api_delete_chat_message(room_id, message_id):
         db_session.commit()
         mgr = current_app.config.get('_logger_manager')
         if mgr:
-            mgr.chat.info(f"用户 {current_user.id} 删除了聊天室消息 {message_id} 在房间 {room_id}")
+            mgr.chat.info(
+                f"用户 {current_user.username}(ID:{current_user.id}) "
+                f"删除了聊天室消息(ID:{message_id}) 在房间 {room_id}"
+            )
+        log_user_action(f"删除聊天消息(ID:{message_id}) 房间={room_id}")
 
         try:
             socketio.emit('message_deleted', {
