@@ -32,7 +32,10 @@ from stellarsis.decorators import su_required
 from stellarsis.permissions import (
     normalize_permission_value, PERMISSION_VALUES, grant_su_to_admins,
 )
-from stellarsis.utils import utcnow, log_admin_action, get_recent_logs, to_utc_isoformat
+from stellarsis.utils import (
+    utcnow, log_admin_action, get_recent_logs, get_logs_by_type,
+    get_available_log_types, to_utc_isoformat,
+)
 
 try:
     _flask_version = importlib.metadata.version("flask")
@@ -187,6 +190,37 @@ def get_system_log():
         ])
     except Exception as e:
         return jsonify(success=False, message=f"获取系统日志失败: {e}"), 500
+
+
+@bp.route('/api/admin/logs/types')
+@login_required
+@su_required
+def get_log_types():
+    """返回可用的日志类型列表"""
+    types = get_available_log_types()
+    return jsonify(success=True, types=[
+        {'value': k, 'label': v} for k, v in types.items()
+    ])
+
+
+@bp.route('/api/admin/logs/<log_type>')
+@login_required
+@su_required
+def get_logs(log_type):
+    """按类型查看日志"""
+    limit = min(request.args.get('limit', 100, type=int), 500)
+    try:
+        entries = get_logs_by_type(log_type=log_type, limit=limit)
+        return jsonify(success=True, log_type=log_type, logs=[
+            {
+                'timestamp': e['timestamp'].isoformat() + 'Z',
+                'level': e.get('level', 'INFO'),
+                'message': e.get('message', ''),
+            }
+            for e in entries
+        ])
+    except Exception as e:
+        return jsonify(success=False, message=f"获取日志失败: {e}"), 500
 
 
 @bp.route('/api/admin/optimize-database', methods=['POST'])

@@ -297,59 +297,93 @@ def log_function_call(logger_type='system'):
     return decorator
 
 
-def get_recent_system_logs(log_dir, limit=50):
+VALID_LOG_TYPES = ('system', 'admin', 'user', 'auth', 'chat', 'forum', 'upload', 'security')
+
+LOG_TYPE_LABELS = {
+    'system': '系统日志（全部）',
+    'admin': '管理员操作日志',
+    'user': '用户操作日志',
+    'auth': '认证日志',
+    'chat': '聊天日志',
+    'forum': '论坛日志',
+    'upload': '上传日志',
+    'security': '安全日志',
+}
+
+
+def get_recent_logs_by_type(log_dir, log_type='system', limit=50):
     """
-    获取最近的系统日志
-    Get recent system logs
-    
+    按类型获取最近的日志
+    Get recent logs by type
+
     Args:
         log_dir: 日志目录路径
+        log_type: 日志类型 (system/admin/user/auth/chat/forum/upload/security)
         limit: 返回日志条数
-    
+
+    Returns:
+        list: 日志条目列表
+    """
+    if log_type not in VALID_LOG_TYPES:
+        log_type = 'system'
+    log_file = Path(log_dir) / f'{log_type}.log'
+    return _parse_log_file(log_file, limit)
+
+
+def _parse_log_file(log_file, limit=50):
+    """
+    解析日志文件并返回最近的日志条目
+    Parse a log file and return recent entries
+
+    Args:
+        log_file: 日志文件路径 (Path)
+        limit: 返回日志条数
+
     Returns:
         list: 日志条目列表
     """
     logs = []
-    log_file = Path(log_dir) / 'system.log'
-    
     if log_file.exists():
         try:
             with open(log_file, 'r', encoding='utf-8') as f:
                 lines = f.readlines()[-limit:]
                 for line in lines:
                     try:
-                        # 解析日志行: 2024-01-01 12:00:00,000 - name - LEVEL - message
                         parts = line.split(' - ', 3)
                         if len(parts) >= 4:
                             timestamp_str = parts[0].strip()
                             level = parts[2].strip()
                             message = parts[3].strip()
-                            
                             try:
                                 timestamp = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S,%f')
                             except ValueError:
-                                # 如果解析失败，使用当前时间
                                 timestamp = datetime.now()
-                            
                             logs.append({
                                 'timestamp': timestamp,
                                 'level': level,
-                                'message': message
+                                'message': message,
                             })
                     except Exception:
                         continue
         except Exception:
             pass
-    
-    # 如果没有日志，返回模拟数据
+
     if not logs:
         logs.append({
             'timestamp': datetime.now(),
             'level': 'INFO',
-            'message': '系统启动正常 - 暂无日志记录'
+            'message': '暂无日志记录',
         })
-    
+
     return logs
+
+
+def get_recent_system_logs(log_dir, limit=50):
+    """
+    获取最近的系统日志（向后兼容）
+    Get recent system logs (backward compatible wrapper)
+    """
+    return _parse_log_file(Path(log_dir) / 'system.log', limit)
 
 
 # 单例日志管理器

@@ -44,6 +44,12 @@ def register_events(sio):
         except (TypeError, ValueError):
             return
         if not user_can_view_chat(current_user, room_id):
+            mgr = current_app.config.get('_logger_manager')
+            if mgr:
+                mgr.security.warning(
+                    f"[WebSocket] 聊天室权限拒绝: 用户 {current_user.username}(ID:{current_user.id}) "
+                    f"尝试加入聊天室 {room_id}"
+                )
             emit('permission_denied', {'message': '当前权限无法进入该聊天室', 'room_id': room_id})
             return
 
@@ -104,6 +110,12 @@ def register_events(sio):
             emit('error', {'message': '参数错误'})
             return
         if not user_can_send_chat(current_user, room_id):
+            mgr = current_app.config.get('_logger_manager')
+            if mgr:
+                mgr.security.warning(
+                    f"[WebSocket] 聊天发送权限拒绝: 用户 {current_user.username}(ID:{current_user.id}) "
+                    f"尝试在聊天室 {room_id} 发送消息"
+                )
             emit('error', {'message': '当前权限无法发送消息'})
             return
         if len(content) > 2000:
@@ -184,6 +196,12 @@ def register_events(sio):
             allowed = perm == 'su' or (perm == '777' and msg.user_id == current_user.id)
 
         if not allowed:
+            mgr = current_app.config.get('_logger_manager')
+            if mgr:
+                mgr.security.warning(
+                    f"[WebSocket] 聊天删除权限拒绝: 用户 {current_user.username}(ID:{current_user.id}) "
+                    f"尝试删除消息(ID:{message_id}) 房间={room_id}"
+                )
             emit('error', {'message': '权限不足'})
             return
 

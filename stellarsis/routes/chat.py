@@ -13,7 +13,7 @@ from stellarsis.models import ChatRoom, ChatMessage
 from stellarsis.permissions import (
     get_chat_permission_value, user_can_view_chat, user_can_send_chat,
 )
-from stellarsis.utils import utcnow, to_utc_isoformat, sanitize_content, log_user_action
+from stellarsis.utils import utcnow, to_utc_isoformat, sanitize_content, log_user_action, _get_client_ip
 
 bp = Blueprint('chat', __name__)
 
@@ -31,6 +31,12 @@ def chat_room(room_id):
     if room is None:
         abort(404)
     if get_chat_permission_value(current_user, room_id) == 'Null':
+        mgr = current_app.config.get('_logger_manager')
+        if mgr:
+            mgr.security.warning(
+                f"聊天室权限拒绝: 用户 {current_user.username}(ID:{current_user.id}) "
+                f"尝试访问聊天室 {room_id} IP={_get_client_ip()}"
+            )
         abort(403)
     return redirect(f'/spa#/chat/{room_id}')
 
@@ -39,6 +45,12 @@ def chat_room(room_id):
 @login_required
 def chat_history(room_id):
     if not user_can_view_chat(current_user, room_id):
+        mgr = current_app.config.get('_logger_manager')
+        if mgr:
+            mgr.security.warning(
+                f"聊天历史权限拒绝: 用户 {current_user.username}(ID:{current_user.id}) "
+                f"尝试获取聊天室 {room_id} 历史 IP={_get_client_ip()}"
+            )
         return jsonify(success=False, message="权限不足"), 403
 
     limit = min(request.args.get('limit', 50, type=int), 100)
@@ -126,6 +138,12 @@ def send_chat_message():
     if not room_id or not message:
         return jsonify(success=False, message="参数错误"), 400
     if not user_can_send_chat(current_user, room_id):
+        mgr = current_app.config.get('_logger_manager')
+        if mgr:
+            mgr.security.warning(
+                f"聊天发送权限拒绝: 用户 {current_user.username}(ID:{current_user.id}) "
+                f"尝试在聊天室 {room_id} 发送消息 IP={_get_client_ip()}"
+            )
         return jsonify(success=False, message="当前权限无法发送消息"), 403
 
     # Validate quote references
@@ -177,6 +195,12 @@ def api_delete_chat_message(room_id, message_id):
             allowed = perm == 'su' or (perm == '777' and msg.user_id == current_user.id)
 
         if not allowed:
+            mgr = current_app.config.get('_logger_manager')
+            if mgr:
+                mgr.security.warning(
+                    f"聊天删除权限拒绝: 用户 {current_user.username}(ID:{current_user.id}) "
+                    f"尝试删除消息(ID:{message_id}) 房间={room_id} IP={_get_client_ip()}"
+                )
             return jsonify({'success': False, 'message': '权限不足'}), 403
 
         db_session.delete(msg)

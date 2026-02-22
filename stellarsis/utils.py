@@ -340,3 +340,18 @@ def get_recent_logs(limit=10):
         type('Log', (), {'timestamp': e.get('timestamp'), 'message': e.get('message')})()
         for e in entries
     ]
+
+
+def get_logs_by_type(log_type='system', limit=50):
+    """Return recent log entries for a specific log type."""
+    from logger_utils import get_recent_logs_by_type, VALID_LOG_TYPES, LOG_TYPE_LABELS
+
+    log_dir = Path(current_app.root_path) / 'logs'
+    entries = get_recent_logs_by_type(log_dir, log_type=log_type, limit=limit)
+    return entries
+
+
+def get_available_log_types():
+    """Return the list of available log types with labels."""
+    from logger_utils import LOG_TYPE_LABELS
+    return LOG_TYPE_LABELS
