@@ -47,6 +47,34 @@ python app.py
 gunicorn -k eventlet -w 1 -b 0.0.0.0:80 "stellarsis:create_app()"
 ```
 
+### systemd service（保留）
+
+仓库提供了 `stellarsis.service` 示例，可按需链接到系统目录：
+
+```bash
+sudo ln -sf "$(pwd)/stellarsis.service" /etc/systemd/system/stellarsis.service
+sudo systemctl daemon-reload
+sudo systemctl enable stellarsis
+sudo systemctl start stellarsis
+```
+
+> 请根据你的部署路径与用户权限修改 service 文件中的配置。
+
+## 从旧版升级（v1 -> v2）
+
+如果你是从旧版单文件结构升级，请先备份数据库并执行迁移脚本：
+
+```bash
+cp stellarsis.db stellarsis_backup.db
+python migrate_to_v2.py
+export STELLARSIS_ADMIN_PASSWORD="your_secure_password"
+python app.py
+```
+
+说明：
+- `migrate_to_v2.py` 会补齐必要字段/权限表，并为 admin 同步 `su` 权限。
+- 若数据库路径不在默认位置，可传参：`python migrate_to_v2.py /path/to/stellarsis.db`。
+
 ## 项目结构
 
 ```text
