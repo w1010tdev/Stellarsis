@@ -1,0 +1,20 @@
+[Unit]
+Description=Stellarsis Community Platform Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/work/Stellarsis
+ExecStart=/work/Stellarsis/venv/bin/python /work/Stellarsis/app.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+# 日志输出
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=stellarsis
+
+[Install]
+WantedBy=multi-user.target
