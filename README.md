@@ -75,6 +75,90 @@ python app.py
 - `migrate_to_v2.py` 会补齐必要字段/权限表，并为 admin 同步 `su` 权限。
 - 若数据库路径不在默认位置，可传参：`python migrate_to_v2.py /path/to/stellarsis.db`。
 
+## 安卓客户端（native）构建与打包
+
+项目已提供 Android 原生客户端骨架（Kotlin + Jetpack Compose）目录：
+
+```text
+android-client/
+```
+
+### 1) 环境准备
+
+- Android Studio（最新稳定版）
+- JDK 17
+- Android SDK 34
+
+### 2) 配置后端地址
+
+在构建时指定 `BASE_URL`（默认 `http://10.0.2.2:5000`）：
+
+```bash
+cd android-client
+./gradlew assembleDebug -PBASE_URL=http://10.0.2.2:5000
+```
+
+### 3) 构建 Debug APK
+
+```bash
+cd android-client
+./gradlew assembleDebug
+```
+
+输出：
+
+```text
+android-client/app/build/outputs/apk/debug/app-debug.apk
+```
+
+### 4) 生成签名 keystore
+
+```bash
+keytool -genkeypair -v \
+  -keystore stellarsis-release.jks \
+  -alias stellarsis \
+  -keyalg RSA \
+  -keysize 2048 \
+  -validity 10000
+```
+
+### 5) 配置 release 签名（不要提交密码）
+
+在 `android-client/local.properties` 写入：
+
+```properties
+RELEASE_STORE_FILE=/absolute/path/to/stellarsis-release.jks
+RELEASE_STORE_PASSWORD=你的store密码
+RELEASE_KEY_ALIAS=stellarsis
+RELEASE_KEY_PASSWORD=你的key密码
+```
+
+### 6) 构建 Release APK
+
+```bash
+cd android-client
+./gradlew assembleRelease
+```
+
+输出：
+
+```text
+android-client/app/build/outputs/apk/release/app-release.apk
+```
+
+### 7) 构建 Release AAB（应用市场推荐）
+
+```bash
+cd android-client
+./gradlew bundleRelease
+```
+
+输出：
+
+```text
+android-client/app/build/outputs/bundle/release/app-release.aab
+```
+
 ## 项目结构
 
 ```text

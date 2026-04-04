@@ -8,7 +8,11 @@ from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_required
 
 from stellarsis.extensions import db_session
-from stellarsis.models import MobilePushToken, UserNotification
+from stellarsis.models import (
+    MobilePushToken, UserNotification,
+    ChatRoom, ForumSection, UserFollow, UserImage,
+)
+from stellarsis.permissions import get_chat_permission_value, get_forum_permission_value
 from stellarsis.utils import utcnow, to_utc_isoformat, log_user_action
 
 bp = Blueprint('mobile', __name__)
@@ -139,3 +143,59 @@ def mark_notifications_read_all():
     except Exception as e:
         db_session.rollback()
         return jsonify(success=False, message=str(e)), 500
+
+
+@bp.route('/api/mobile/bootstrap')
+@login_required
+def mobile_bootstrap():
+    rooms = []
+    sections = []
+    chat_permissions = {}
+    forum_permissions = {}
+
+    for room in db_session.query(ChatRoom).all():
+        perm = get_chat_permission_value(current_user, room.id)
+        if perm != 'Null':
+            rooms.append({'id': room.id, 'name': room.name, 'description': room.description or ''})
+            chat_permissions[str(room.id)] = perm
+
+    for section in db_session.query(ForumSection).all():
+        perm = get_forum_permission_value(current_user, section.id)
+        if perm != 'Null':
+            sections.append({'id': section.id, 'name': section.name, 'description': section.description or ''})
+            forum_permissions[str(section.id)] = perm
+
+    follows = db_session.query(UserFollow).filter_by(follower_id=current_user.id).all()
+    following = [
+        {
+            'id': row.followed.id,
+            'username': row.followed.username,
+            'nickname': row.followed.nickname or row.followed.username,
+            'color': row.followed.color,
+            'badge': row.followed.badge,
+        }
+        for row in follows
+        if row.followed is not None
+    ]
+
+    upload_count = db_session.query(UserImage).filter_by(user_id=current_user.id).count()
+
+    return jsonify(success=True, data={
+        'user': {
+            'id': current_user.id,
+            'username': current_user.username,
+            'nickname': current_user.nickname,
+            'color': current_user.color,
+            'badge': current_user.badge,
+            'is_admin': current_user.is_admin(),
+        },
+        'rooms': rooms,
+        'sections': sections,
+        'chatPermissions': chat_permissions,
+        'forumPermissions': forum_permissions,
+        'following': following,
+        'uploadStats': {
+            'used': 0 if current_user.is_admin() else current_user.upload_used,
+            'count': upload_count,
+        },
+    })
