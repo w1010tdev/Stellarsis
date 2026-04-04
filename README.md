@@ -24,12 +24,11 @@ cd Stellarsis
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-python app.py
+PORT=5000 python app.py
 ```
 
-默认访问：`http://localhost:80`  
-可通过 `PORT` 环境变量修改端口。
-> 提示：`80` 端口在多数系统需要 root/管理员权限，开发环境建议使用 `PORT=5000`（或 8080）。
+推荐开发访问：`http://localhost:5000`  
+生产或特定环境可通过 `PORT` 环境变量调整端口（如 80）。
 
 ## 常用环境变量
 
