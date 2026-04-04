@@ -19,6 +19,7 @@ from stellarsis.utils import (
 )
 
 bp = Blueprint('forum', __name__)
+NOTIFICATION_PREVIEW_LEN = 80
 
 
 @bp.route('/forum')
@@ -117,7 +118,7 @@ def reply_post():
                 user_id=thread.user_id,
                 notification_type='forum_reply',
                 title='你的帖子有新回复',
-                body=(content[:80] if content else ''),
+                body=(content[:NOTIFICATION_PREVIEW_LEN] if content else ''),
                 payload={'thread_id': thread.id, 'reply_id': reply.id},
             )
             db_session.commit()

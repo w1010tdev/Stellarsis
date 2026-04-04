@@ -52,9 +52,9 @@ def register_push_token():
         db_session.commit()
         log_user_action("注册移动端推送 token")
         return jsonify(success=True)
-    except Exception as e:
+    except Exception:
         db_session.rollback()
-        return jsonify(success=False, message=str(e)), 500
+        return jsonify(success=False, message='服务器错误'), 500
 
 
 @bp.route('/api/mobile/push/token', methods=['DELETE'])
@@ -75,9 +75,9 @@ def unregister_push_token():
         db_session.commit()
         log_user_action("注销移动端推送 token")
         return jsonify(success=True)
-    except Exception as e:
+    except Exception:
         db_session.rollback()
-        return jsonify(success=False, message=str(e)), 500
+        return jsonify(success=False, message='服务器错误'), 500
 
 
 @bp.route('/api/mobile/notifications')
@@ -121,9 +121,9 @@ def mark_notification_read(notification_id):
         row.read_at = utcnow()
         db_session.commit()
         return jsonify(success=True)
-    except Exception as e:
+    except Exception:
         db_session.rollback()
-        return jsonify(success=False, message=str(e)), 500
+        return jsonify(success=False, message='服务器错误'), 500
 
 
 @bp.route('/api/mobile/notifications/read_all', methods=['POST'])
@@ -140,9 +140,9 @@ def mark_notifications_read_all():
             row.read_at = now
         db_session.commit()
         return jsonify(success=True, updated=len(rows))
-    except Exception as e:
+    except Exception:
         db_session.rollback()
-        return jsonify(success=False, message=str(e)), 500
+        return jsonify(success=False, message='服务器错误'), 500
 
 
 @bp.route('/api/mobile/bootstrap')

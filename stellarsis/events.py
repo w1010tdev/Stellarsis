@@ -21,6 +21,7 @@ from stellarsis.utils import (
 
 def register_events(sio):
     """Register all Socket.IO event handlers on *sio*."""
+    notification_preview_len = 80
 
     @sio.on('connect')
     def handle_connect():
@@ -175,7 +176,7 @@ def register_events(sio):
         try:
             recipients = get_room_notification_recipient_ids(room_id, current_user.id)
             sender_name = current_user.nickname or current_user.username
-            preview = content[:80]
+            preview = content[:notification_preview_len]
             for uid in recipients:
                 create_user_notification(
                     user_id=uid,

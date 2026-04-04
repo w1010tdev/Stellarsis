@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -42,7 +42,7 @@ fun ChatScreen(
                         style = MaterialTheme.typography.labelMedium,
                     )
                     Text(msg.content, style = MaterialTheme.typography.bodyLarge)
-                    Divider(modifier = Modifier.padding(top = 6.dp))
+                    HorizontalDivider(modifier = Modifier.padding(top = 6.dp))
                 }
             }
         }

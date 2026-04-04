@@ -19,6 +19,7 @@ from stellarsis.utils import (
 )
 
 bp = Blueprint('chat', __name__)
+NOTIFICATION_PREVIEW_LEN = 80
 
 
 @bp.route('/chat')
@@ -183,7 +184,7 @@ def send_chat_message():
     try:
         recipients = get_room_notification_recipient_ids(room_id, current_user.id)
         sender_name = current_user.nickname or current_user.username
-        preview = message[:80]
+        preview = message[:NOTIFICATION_PREVIEW_LEN]
         for uid in recipients:
             create_user_notification(
                 user_id=uid,

@@ -39,7 +39,7 @@ fun SettingsScreen(
                 Text(
                     if (uploadQuota == null) "-"
                     else if (uploadQuota.is_admin) "管理员无限制"
-                    else "${uploadQuota.used}/${uploadQuota.total} (${uploadQuota.percent.toInt()}%)"
+                    else "${uploadQuota.used}/${uploadQuota.total} (${String.format("%.1f", uploadQuota.percent)}%)"
                 )
             }
         }

@@ -241,6 +241,8 @@ def create_user_notification(user_id, notification_type, title, body, payload=No
     )
     db_session.add(notification)
     db_session.flush()
+    # mobile_notification payload is consumed by mobile clients (and optional web clients)
+    # to render real-time in-app notification cards and deep-link targets.
     socketio.emit('mobile_notification', {
         'id': notification.id,
         'type': notification.type,
