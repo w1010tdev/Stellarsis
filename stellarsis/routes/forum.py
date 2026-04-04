@@ -15,7 +15,7 @@ from stellarsis.permissions import (
 )
 from stellarsis.utils import (
     to_utc_isoformat, sanitize_content, log_admin_action, log_user_action,
-    create_user_notification,
+    create_user_notification, safe_utf8_preview,
 )
 
 bp = Blueprint('forum', __name__)
@@ -118,7 +118,7 @@ def reply_post():
                 user_id=thread.user_id,
                 notification_type='forum_reply',
                 title='你的帖子有新回复',
-                body=(content[:NOTIFICATION_PREVIEW_LEN] if content else ''),
+                body=safe_utf8_preview(content, NOTIFICATION_PREVIEW_LEN),
                 payload={'thread_id': thread.id, 'reply_id': reply.id},
             )
             db_session.commit()

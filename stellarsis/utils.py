@@ -254,6 +254,18 @@ def create_user_notification(user_id, notification_type, title, body, payload=No
     return notification
 
 
+def safe_utf8_preview(text, max_bytes=80):
+    """Return a UTF-8 safe preview string limited by byte length."""
+    if not text:
+        return ''
+    if max_bytes <= 0:
+        return ''
+    raw = str(text).encode('utf-8')
+    if len(raw) <= max_bytes:
+        return str(text)
+    return raw[:max_bytes].decode('utf-8', errors='ignore')
+
+
 def get_room_notification_recipient_ids(room_id, sender_user_id):
     """Return recipient IDs for room notifications (excluding sender)."""
     from stellarsis.models import ChatPermission, User

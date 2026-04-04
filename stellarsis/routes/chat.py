@@ -15,7 +15,7 @@ from stellarsis.permissions import (
 )
 from stellarsis.utils import (
     utcnow, to_utc_isoformat, sanitize_content, log_user_action, _get_client_ip,
-    create_user_notification, get_room_notification_recipient_ids,
+    create_user_notification, get_room_notification_recipient_ids, safe_utf8_preview,
 )
 
 bp = Blueprint('chat', __name__)
@@ -184,7 +184,7 @@ def send_chat_message():
     try:
         recipients = get_room_notification_recipient_ids(room_id, current_user.id)
         sender_name = current_user.nickname or current_user.username
-        preview = message[:NOTIFICATION_PREVIEW_LEN]
+        preview = safe_utf8_preview(message, NOTIFICATION_PREVIEW_LEN)
         for uid in recipients:
             create_user_notification(
                 user_id=uid,
