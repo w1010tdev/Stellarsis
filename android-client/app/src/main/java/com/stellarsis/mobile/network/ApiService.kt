@@ -4,6 +4,8 @@ import com.stellarsis.mobile.data.*
 import okhttp3.MultipartBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
+import retrofit2.http.Field
+import retrofit2.http.FormUrlEncoded
 import retrofit2.http.GET
 import retrofit2.http.HTTP
 import retrofit2.http.Multipart
@@ -56,11 +58,20 @@ interface ApiService {
     @GET("/api/spa/forum/thread/{threadId}")
     suspend fun forumThread(@Path("threadId") threadId: Int): ForumThreadDetailResponse
 
+    @FormUrlEncoded
     @POST("/api/spa/forum/thread")
-    suspend fun createForumThread(@Body body: Map<String, String>): ApiEnvelope<Unit>
+    suspend fun createForumThread(
+        @Field("section_id") sectionId: Int,
+        @Field("title") title: String,
+        @Field("content") content: String,
+    ): ApiEnvelope<Unit>
 
+    @FormUrlEncoded
     @POST("/api/forum/reply")
-    suspend fun createForumReply(@Body body: Map<String, String>): ApiEnvelope<Unit>
+    suspend fun createForumReply(
+        @Field("thread_id") threadId: Int,
+        @Field("content") content: String,
+    ): ApiEnvelope<Unit>
 
     @DELETE("/api/forum/reply/{replyId}")
     suspend fun deleteForumReply(@Path("replyId") replyId: Int): ApiEnvelope<Unit>

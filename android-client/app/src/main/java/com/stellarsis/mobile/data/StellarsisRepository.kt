@@ -130,16 +130,12 @@ class StellarsisRepository(context: Context) {
     }
 
     suspend fun createForumThread(sectionId: Int, title: String, content: String): Result<Unit> = runCatching {
-        val resp = api.createForumThread(
-            mapOf("section_id" to sectionId.toString(), "title" to title, "content" to content)
-        )
+        val resp = api.createForumThread(sectionId = sectionId, title = title, content = content)
         if (!resp.success) error(resp.message ?: "发帖失败")
     }
 
     suspend fun createForumReply(threadId: Int, content: String): Result<Unit> = runCatching {
-        val resp = api.createForumReply(
-            mapOf("thread_id" to threadId.toString(), "content" to content)
-        )
+        val resp = api.createForumReply(threadId = threadId, content = content)
         if (!resp.success) error(resp.message ?: "回帖失败")
     }
 
