@@ -1984,9 +1984,14 @@ const AdminPage = {
                             <el-button @click="getSystemInfo" :loading="loading.systemInfo">
                                 <i class="fas fa-info-circle"></i> 系统信息
                             </el-button>
-                            <el-button @click="viewLogs" :loading="loading.logs">
-                                <i class="fas fa-file-alt"></i> 查看日志
-                            </el-button>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <el-select v-model="selectedLogType" size="default" style="width: 180px;">
+                                    <el-option v-for="t in logTypes" :key="t.value" :label="t.label" :value="t.value"></el-option>
+                                </el-select>
+                                <el-button @click="viewLogs" :loading="loading.logs">
+                                    <i class="fas fa-file-alt"></i> 查看日志
+                                </el-button>
+                            </div>
                             <el-button @click="clearCache" :loading="loading.clearCache">
                                 <i class="fas fa-broom"></i> 清除缓存
                             </el-button>
@@ -2568,6 +2573,19 @@ const AdminPage = {
         const outputError = Vue.ref(false);
         const serverControlEnabled = Vue.ref(store.state.config?.enableServerControl || false);
         
+        // Log type selector
+        const selectedLogType = Vue.ref('system');
+        const logTypes = Vue.ref([
+            { value: 'system', label: '系统日志（全部）' },
+            { value: 'admin', label: '管理员操作日志' },
+            { value: 'user', label: '用户操作日志' },
+            { value: 'auth', label: '认证日志' },
+            { value: 'chat', label: '聊天日志' },
+            { value: 'forum', label: '论坛日志' },
+            { value: 'upload', label: '上传日志' },
+            { value: 'security', label: '安全日志' },
+        ]);
+        
         // Users
         const users = Vue.ref([]);
         const userDialogVisible = Vue.ref(false);
@@ -2644,11 +2662,14 @@ const AdminPage = {
         const viewLogs = async () => {
             loading.logs = true;
             try {
-                const response = await fetchWithSU('/api/admin/system-log');
+                const logType = selectedLogType.value || 'system';
+                const typeLabel = logTypes.value.find(t => t.value === logType)?.label || logType;
+                const response = await fetchWithSU(`/api/admin/logs/${logType}?limit=100`);
                 const data = await response.json();
                 if (data.success) {
-                    const logs = (data.logs || []).map(l => `[${l.timestamp}] ${l.message}`).join('\n\n');
-                    showOutput(logs || '无日志', false);
+                    const header = `===== ${typeLabel} (最近 ${data.logs.length} 条) =====\n\n`;
+                    const logs = (data.logs || []).map(l => `[${l.timestamp}] [${l.level}] ${l.message}`).join('\n\n');
+                    showOutput(header + (logs || '无日志'), false);
                 } else {
                     showOutput('获取日志失败: ' + (data.message || JSON.stringify(data)), true);
                 }
@@ -3529,6 +3550,8 @@ const AdminPage = {
             goToUrl,
             getSystemInfo,
             viewLogs,
+            selectedLogType,
+            logTypes,
             clearCache,
             backupDatabase,
             optimizeDatabase,

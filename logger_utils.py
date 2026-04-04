@@ -30,8 +30,8 @@ class LoggerManager:
         
         # 日志配置 / Log configuration
         self.log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        self.max_bytes = 10 * 1024 * 1024  # 10 MB
-        self.backup_count = 5
+        self.max_bytes = 100 * 1024 * 1024  # 100 MB per file
+        self.backup_count = 10
         
         # 初始化各类日志器 / Initialize loggers
         self._loggers = {}
@@ -85,6 +85,10 @@ class LoggerManager:
         # Admin log - records all admin operations for auditing
         self._loggers['admin'] = self._create_logger('stellarsis.admin', 'admin.log')
         
+        # 用户操作日志 - 记录所有用户操作（发帖、上传、关注等）
+        # User log - records all user operations (posts, uploads, follows, etc.)
+        self._loggers['user'] = self._create_logger('stellarsis.user', 'user.log')
+        
         # 认证日志 - 记录用户登录、登出、密码修改等
         # Auth log - records login, logout, password changes, etc.
         self._loggers['auth'] = self._create_logger('stellarsis.auth', 'auth.log')
@@ -104,6 +108,14 @@ class LoggerManager:
         # 安全日志 - 记录安全相关事件（权限检查失败、可疑操作等）
         # Security log - records security events (permission failures, suspicious operations, etc.)
         self._loggers['security'] = self._create_logger('stellarsis.security', 'security.log')
+        
+        # 让所有子日志器的消息也写入 system.log（系统总日志）
+        # Propagate all sub-loggers to system.log via a shared handler
+        system_handler = self._loggers['system'].handlers[0] if self._loggers['system'].handlers else None
+        if system_handler:
+            for name, lgr in self._loggers.items():
+                if name != 'system' and system_handler not in lgr.handlers:
+                    lgr.addHandler(system_handler)
     
     def get_logger(self, logger_type='system'):
         """
@@ -127,6 +139,11 @@ class LoggerManager:
     def admin(self):
         """管理员日志器 / Admin logger"""
         return self._loggers['admin']
+    
+    @property
+    def user(self):
+        """用户操作日志器 / User operations logger"""
+        return self._loggers['user']
     
     @property
     def auth(self):
@@ -280,59 +297,93 @@ def log_function_call(logger_type='system'):
     return decorator
 
 
-def get_recent_system_logs(log_dir, limit=50):
+VALID_LOG_TYPES = ('system', 'admin', 'user', 'auth', 'chat', 'forum', 'upload', 'security')
+
+LOG_TYPE_LABELS = {
+    'system': '系统日志（全部）',
+    'admin': '管理员操作日志',
+    'user': '用户操作日志',
+    'auth': '认证日志',
+    'chat': '聊天日志',
+    'forum': '论坛日志',
+    'upload': '上传日志',
+    'security': '安全日志',
+}
+
+
+def get_recent_logs_by_type(log_dir, log_type='system', limit=50):
     """
-    获取最近的系统日志
-    Get recent system logs
-    
+    按类型获取最近的日志
+    Get recent logs by type
+
     Args:
         log_dir: 日志目录路径
+        log_type: 日志类型 (system/admin/user/auth/chat/forum/upload/security)
         limit: 返回日志条数
-    
+
+    Returns:
+        list: 日志条目列表
+    """
+    if log_type not in VALID_LOG_TYPES:
+        log_type = 'system'
+    log_file = Path(log_dir) / f'{log_type}.log'
+    return _parse_log_file(log_file, limit)
+
+
+def _parse_log_file(log_file, limit=50):
+    """
+    解析日志文件并返回最近的日志条目
+    Parse a log file and return recent entries
+
+    Args:
+        log_file: 日志文件路径 (Path)
+        limit: 返回日志条数
+
     Returns:
         list: 日志条目列表
     """
     logs = []
-    log_file = Path(log_dir) / 'system.log'
-    
     if log_file.exists():
         try:
             with open(log_file, 'r', encoding='utf-8') as f:
                 lines = f.readlines()[-limit:]
                 for line in lines:
                     try:
-                        # 解析日志行: 2024-01-01 12:00:00,000 - name - LEVEL - message
                         parts = line.split(' - ', 3)
                         if len(parts) >= 4:
                             timestamp_str = parts[0].strip()
                             level = parts[2].strip()
                             message = parts[3].strip()
-                            
                             try:
                                 timestamp = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S,%f')
                             except ValueError:
-                                # 如果解析失败，使用当前时间
                                 timestamp = datetime.now()
-                            
                             logs.append({
                                 'timestamp': timestamp,
                                 'level': level,
-                                'message': message
+                                'message': message,
                             })
                     except Exception:
                         continue
         except Exception:
             pass
-    
-    # 如果没有日志，返回模拟数据
+
     if not logs:
         logs.append({
             'timestamp': datetime.now(),
             'level': 'INFO',
-            'message': '系统启动正常 - 暂无日志记录'
+            'message': '暂无日志记录',
         })
-    
+
     return logs
+
+
+def get_recent_system_logs(log_dir, limit=50):
+    """
+    获取最近的系统日志（向后兼容）
+    Get recent system logs (backward compatible wrapper)
+    """
+    return _parse_log_file(Path(log_dir) / 'system.log', limit)
 
 
 # 单例日志管理器
