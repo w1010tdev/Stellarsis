@@ -2,7 +2,7 @@
 Blueprint registration.
 """
 
-from stellarsis.routes import auth, chat, forum, admin, upload, follow, spa
+from stellarsis.routes import auth, chat, forum, admin, upload, follow, spa, mobile
 
 
 def register_blueprints(app):
@@ -13,3 +13,4 @@ def register_blueprints(app):
     app.register_blueprint(admin.bp)     # /admin/*, /api/admin/*, /down, /downdb, /api/search_users
     app.register_blueprint(upload.bp)    # /api/upload/*
     app.register_blueprint(follow.bp)    # /api/follows/*, /api/follow/*
+    app.register_blueprint(mobile.bp)    # /api/mobile/*

@@ -13,7 +13,10 @@ from stellarsis.models import ChatRoom, ChatMessage
 from stellarsis.permissions import (
     get_chat_permission_value, user_can_view_chat, user_can_send_chat,
 )
-from stellarsis.utils import utcnow, to_utc_isoformat, sanitize_content, log_user_action, _get_client_ip
+from stellarsis.utils import (
+    utcnow, to_utc_isoformat, sanitize_content, log_user_action, _get_client_ip,
+    create_user_notification, get_room_notification_recipient_ids,
+)
 
 bp = Blueprint('chat', __name__)
 
@@ -176,6 +179,22 @@ def send_chat_message():
         if mgr:
             mgr.chat.exception('HTTP 保存聊天消息失败')
         return jsonify(success=False, message='服务器保存消息失败'), 500
+
+    try:
+        recipients = get_room_notification_recipient_ids(room_id, current_user.id)
+        sender_name = current_user.nickname or current_user.username
+        preview = message[:80]
+        for uid in recipients:
+            create_user_notification(
+                user_id=uid,
+                notification_type='chat_message',
+                title=f"{sender_name} 的新消息",
+                body=preview,
+                payload={'room_id': room_id, 'message_id': msg_obj.id},
+            )
+        db_session.commit()
+    except Exception:
+        db_session.rollback()
 
     return jsonify(success=True)
 

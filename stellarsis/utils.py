@@ -3,6 +3,7 @@ Utility functions for Stellarsis.
 """
 
 import html
+import json
 import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -198,18 +199,75 @@ def notify_followers_user_online(user):
     from stellarsis.models import UserFollow
 
     followers = db_session.query(UserFollow).filter_by(followed_id=user.id).all()
-    for follow in followers:
-        socketio.emit(
-            'followed_user_online',
-            {
-                'user_id': user.id,
-                'username': user.username,
-                'nickname': user.nickname or user.username,
-                'color': user.color,
-                'badge': user.badge,
-            },
-            room=f"user_{follow.follower_id}",
-        )
+    try:
+        for follow in followers:
+            create_user_notification(
+                user_id=follow.follower_id,
+                notification_type='follow_online',
+                title='关注用户上线',
+                body=f"{user.nickname or user.username} 已上线",
+                payload={'user_id': user.id},
+            )
+            socketio.emit(
+                'followed_user_online',
+                {
+                    'user_id': user.id,
+                    'username': user.username,
+                    'nickname': user.nickname or user.username,
+                    'color': user.color,
+                    'badge': user.badge,
+                },
+                room=f"user_{follow.follower_id}",
+            )
+        db_session.commit()
+    except Exception:
+        db_session.rollback()
+
+
+def create_user_notification(user_id, notification_type, title, body, payload=None):
+    """Create a user notification row and emit real-time event to user room."""
+    from stellarsis.extensions import socketio
+    from stellarsis.models import UserNotification
+
+    payload = payload or {}
+    notification = UserNotification(
+        user_id=user_id,
+        type=(notification_type or 'system')[:32],
+        title=(title or '系统通知')[:128],
+        body=(body or '')[:2000],
+        payload_json=json.dumps(payload, ensure_ascii=False),
+        is_read=0,
+        created_at=utcnow(),
+    )
+    db_session.add(notification)
+    db_session.flush()
+    socketio.emit('mobile_notification', {
+        'id': notification.id,
+        'type': notification.type,
+        'title': notification.title,
+        'body': notification.body,
+        'payload': payload,
+        'created_at': to_utc_isoformat(notification.created_at),
+    }, room=f"user_{user_id}")
+    return notification
+
+
+def get_room_notification_recipient_ids(room_id, sender_user_id):
+    """Return recipient IDs for room notifications (excluding sender)."""
+    from stellarsis.models import ChatPermission, User
+    from stellarsis.permissions import CHAT_VIEW_PERMISSIONS
+
+    ids = set()
+    perms = db_session.query(ChatPermission.user_id, ChatPermission.perm).filter_by(room_id=room_id).all()
+    for user_id, perm in perms:
+        if user_id != sender_user_id and perm in CHAT_VIEW_PERMISSIONS:
+            ids.add(user_id)
+
+    admins = db_session.query(User.id).filter_by(role='admin').all()
+    for (admin_id,) in admins:
+        if admin_id != sender_user_id:
+            ids.add(admin_id)
+    return list(ids)
 
 
 # ------------------------------------------------------------------

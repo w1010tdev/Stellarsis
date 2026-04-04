@@ -15,7 +15,7 @@ from stellarsis.permissions import user_can_view_chat, user_can_send_chat, get_c
 from stellarsis.utils import (
     utcnow, sanitize_content, update_room_online_count,
     broadcast_global_online_count, notify_followers_user_online,
-    get_online_users, log_user_action,
+    get_online_users, log_user_action, create_user_notification, get_room_notification_recipient_ids,
 )
 
 
@@ -172,6 +172,21 @@ def register_events(sio):
             from flask_socketio import emit as _emit
             from flask import request as flask_request
             _emit('message_id_response', {'client_id': client_id, 'server_id': msg.id}, to=flask_request.sid)
+        try:
+            recipients = get_room_notification_recipient_ids(room_id, current_user.id)
+            sender_name = current_user.nickname or current_user.username
+            preview = content[:80]
+            for uid in recipients:
+                create_user_notification(
+                    user_id=uid,
+                    notification_type='chat_message',
+                    title=f"{sender_name} 的新消息",
+                    body=preview,
+                    payload={'room_id': room_id, 'message_id': msg.id},
+                )
+            db_session.commit()
+        except Exception:
+            db_session.rollback()
 
     @sio.on('delete_message')
     def handle_delete_message(data):

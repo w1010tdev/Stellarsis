@@ -13,7 +13,10 @@ from stellarsis.permissions import (
     get_forum_permission_value, user_can_post_forum,
     FORUM_POST_PERMISSIONS,
 )
-from stellarsis.utils import to_utc_isoformat, sanitize_content, log_admin_action, log_user_action
+from stellarsis.utils import (
+    to_utc_isoformat, sanitize_content, log_admin_action, log_user_action,
+    create_user_notification,
+)
 
 bp = Blueprint('forum', __name__)
 
@@ -108,6 +111,18 @@ def reply_post():
     reply = ForumReply(content=content, user_id=current_user.id, thread_id=thread_id)
     db_session.add(reply)
     db_session.commit()
+    try:
+        if thread.user_id != current_user.id:
+            create_user_notification(
+                user_id=thread.user_id,
+                notification_type='forum_reply',
+                title='你的帖子有新回复',
+                body=(content[:80] if content else ''),
+                payload={'thread_id': thread.id, 'reply_id': reply.id},
+            )
+            db_session.commit()
+    except Exception:
+        db_session.rollback()
     log_user_action(f"回复帖子: 帖子ID={thread_id}, 回复ID={reply.id}")
     mgr = current_app.config.get('_logger_manager')
     if mgr:

@@ -168,3 +168,34 @@ class UserImage(Base):
     file_type = Column(String(50), nullable=False)
 
     user = relationship('User', backref='images')
+
+
+class MobilePushToken(Base):
+    __tablename__ = 'mobile_push_tokens'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    token = Column(String(512), nullable=False, index=True)
+    platform = Column(String(32), nullable=False, default='android')
+    device_id = Column(String(128), nullable=False, default='')
+    enabled = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow)
+
+    user = relationship('User', backref='mobile_push_tokens')
+
+
+class UserNotification(Base):
+    __tablename__ = 'user_notifications'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    type = Column(String(32), nullable=False, default='system')
+    title = Column(String(128), nullable=False, default='系统通知')
+    body = Column(Text, nullable=False, default='')
+    payload_json = Column(Text, nullable=False, default='{}')
+    is_read = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=utcnow, index=True)
+    read_at = Column(DateTime)
+
+    user = relationship('User', backref='notifications')

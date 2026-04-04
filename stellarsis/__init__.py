@@ -139,6 +139,7 @@ def _bootstrap_db(app):
     """Run migrations, create seed data and set up admin permissions."""
     _migrate_database(app)
     _ensure_permission_tables(app)
+    _ensure_mobile_tables(app)
     _update_database_schema(app)
     _ensure_admin_user()
     grant_su_to_admins()
@@ -194,6 +195,48 @@ def _ensure_permission_tables(app):
         conn.close()
     except Exception as e:
         lgr.error(f"确保权限表失败: {e}")
+
+
+def _ensure_mobile_tables(app):
+    lgr = app.config.get('_logger') or logging.getLogger('stellarsis')
+    try:
+        db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='mobile_push_tokens';")
+        if not cur.fetchone():
+            cur.execute('''CREATE TABLE mobile_push_tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                token VARCHAR(512) NOT NULL,
+                platform VARCHAR(32) NOT NULL DEFAULT 'android',
+                device_id VARCHAR(128) NOT NULL DEFAULT '',
+                enabled INTEGER NOT NULL DEFAULT 1,
+                created_at DATETIME,
+                updated_at DATETIME
+            )''')
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_mobile_push_tokens_user_id ON mobile_push_tokens(user_id)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_mobile_push_tokens_token ON mobile_push_tokens(token)")
+
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='user_notifications';")
+        if not cur.fetchone():
+            cur.execute('''CREATE TABLE user_notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                type VARCHAR(32) NOT NULL DEFAULT 'system',
+                title VARCHAR(128) NOT NULL DEFAULT '系统通知',
+                body TEXT NOT NULL DEFAULT '',
+                payload_json TEXT NOT NULL DEFAULT '{}',
+                is_read INTEGER NOT NULL DEFAULT 0,
+                created_at DATETIME,
+                read_at DATETIME
+            )''')
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_user_notifications_user_id ON user_notifications(user_id)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_user_notifications_created_at ON user_notifications(created_at)")
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        lgr.error(f"确保移动端通知表失败: {e}")
 
 
 def _update_database_schema(app):
