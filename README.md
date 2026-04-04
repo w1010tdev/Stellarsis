@@ -57,32 +57,18 @@ Stellarsis is a feature-rich real-time chat and forum system that combines chat 
      - 未读消息计数
    - 用户可以自由切换聊天室
    - 支持消息引用（@quote）和消息合并
-   - 防重复消息机制（内容哈希 + 时间窗口）
 
 #### 6. **多主题支持 (Multi-themes Support)**
-   - 提供多种精美主题：light, mint, ocean, purple, solarized, sunset 等
    - 可以通过命令面板（`:theme <name>`）或设置页面切换
    - 主题持久化存储到 localStorage
    - 全站主题一致性，支持深色和浅色模式
 
 #### 7. **命令面板 (Command Palette) - Bash 风格**
    - 按 `:` 键快速打开命令面板
-   - **Bash 风格特性**：
-     - 命令参数解析（如 `theme ocean`）
-     - 命令别名支持（如 `q` → `quit`, `fl` → `forumlist`）
-     - Tab 自动补全
-     - 智能命令建议
-     - 支持子命令和参数提示
-   - 内置命令：
-     - `help` - 显示所有可用命令
-     - `theme <name>` - 切换主题
-     - `focus <target>` - 聚焦到指定元素
-     - `home` / `chatlist` / `forumlist` / `settings` / `admin` - 快速导航
-     - `close` / `exit` / `quit` - 关闭命令面板
    - 可扩展的命令注册 API
 
 #### 8. **图片上传与管理 (Image Upload & Management)**
-   - 支持拖拽上传和粘贴上传
+   - 支持拖粘贴上传
    - 支持格式：PNG, JPG, JPEG, GIF, WebP
    - 单张图片最大 5MB，用户配额 50MB（可配置）
    - 自动生成 Markdown 代码便于插入消息
@@ -93,8 +79,6 @@ Stellarsis is a feature-rich real-time chat and forum system that combines chat 
 #### 9. **消息引用与合并 (Message Quoting & Merging)**
    - 支持引用历史消息（`@quote[id]` 语法）
    - 引用验证：确保引用的消息在同一房间
-   - 自动合并连续的重复消息（5秒内容相同的消息）
-   - 消息去重机制（基于内容哈希）
 
 ### 📋 基础功能 / Basic Features
 
@@ -240,75 +224,6 @@ Stellarsis is a feature-rich real-time chat and forum system that combines chat 
 - 适用于：文件管理、数据库操作、服务器控制等高危操作
 - 访问 `/admin/su` 进行验证
 
-### 开发者调试 (Developer Debugging)
-
-#### WebSocket 降级测试
-在浏览器控制台调用以下函数模拟 WebSocket 不可用：
-```javascript
-// 强制使用轮询模式
-io.disconnect();
-chatSocket = io({transports: ['polling']});
-```
-
-#### 日志查看
-查看系统日志：
-```bash
-tail -f logs/system.log
-```
-
-日志配置：
-- 文件：`logs/system.log`
-- 大小：10MB 轮转
-- 备份：5 个文件
-- 编码：UTF-8
-
-### 数据备份建议 (Backup Recommendations)
-
-1. **定期备份数据库**:
-```bash
-# SQLite
-cp stellarsis.db stellarsis_backup_$(date +%Y%m%d).db
-
-# 或使用管理面板的备份功能
-```
-
-2. **备份上传文件**:
-```bash
-tar -czf uploads_backup_$(date +%Y%m%d).tar.gz static/uploads/
-```
-
-3. **备份配置文件**:
-```bash
-cp config.py config_backup.py
-```
-
-### 性能优化建议 (Performance Optimization)
-
-1. **数据库优化**:
-   - 定期执行 VACUUM（管理面板 → 数据库优化）
-   - 考虑迁移到 PostgreSQL（大规模部署）
-   - 添加索引（timestamp, user_id, room_id）
-
-2. **文件上传优化**:
-   - 启用 CDN 托管上传文件
-   - 配置 Nginx 直接服务静态文件
-   - 定期清理过期图片
-
-3. **实时通信优化**:
-   - 使用 Redis 作为 Socket.IO 消息队列（多进程部署）
-   - 调整心跳间隔（`ONLINE_TIMEOUT`）
-   - 限制消息历史加载数量
-
-### 安全建议 (Security Recommendations)
-
-1. **通过环境变量 `STELLARSIS_ADMIN_PASSWORD` 设置安全的管理员密码**
-2. **配置 HTTPS**（生产环境）
-3. **关闭调试模式**（`DEBUG = False`）
-4. **限制文件上传类型**
-5. **禁用不必要的管理功能**（ENABLE_FILE_MANAGER, ENABLE_SERVER_CONTROL）
-6. **定期更新依赖包**
-7. **使用强 SECRET_KEY**
-
 ## 安装与部署 / Installation and Deployment
 
 ### 快速开始 (Quick Start)
@@ -368,7 +283,7 @@ class Config:
     ENABLE_SERVER_CONTROL = False  # 服务器控制（重启/关闭）
 ```
 
-**密码加密**: 密码使用 `werkzeug.security.generate_password_hash` / `check_password_hash` 安全哈希存储。
+
 
 #### 3. 运行应用 (Run Application)
 ```bash
@@ -441,6 +356,17 @@ CMD ["python", "app.py"]
 docker build -t stellarsis .
 docker run -p 80:80 -e STELLARSIS_ADMIN_PASSWORD=your_secure_password -v $(pwd)/stellarsis.db:/app/stellarsis.db stellarsis
 ```
+
+### 使用service
+
+```bash
+sudo ln -sf "$(pwd)/stellarsis.service" /etc/systemd/system/stellarsis.service
+sudo systemctl daemon-reload
+sudo systemctl enable stellarsis
+sudo systemctl start stellarsis
+# (请自行修改相关配置)
+```
+
 
 ### 环境变量配置 (Environment Variables)
 
