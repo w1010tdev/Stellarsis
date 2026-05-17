@@ -11,7 +11,7 @@ ExecStart=/work/Stellarsis/venv/bin/python /work/Stellarsis/app.py
 Restart=always
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
-
+AmbientCapabilities=CAP_NET_BIND_SERVICE
 # 日志输出
 StandardOutput=journal
 StandardError=journal
