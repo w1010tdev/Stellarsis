@@ -4,7 +4,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=root
+User=web
+Group=web
 WorkingDirectory=/work/Stellarsis
 ExecStart=/work/Stellarsis/venv/bin/python /work/Stellarsis/app.py
 Restart=always
