@@ -8,7 +8,7 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///stellarsis.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    DEBUG = True  # 用于热重载
+    DEBUG = False
     SOCKETIO_ASYNC_MODE = 'eventlet'
     ONLINE_TIMEOUT = 30  # 30秒无活动视为离线
     # 图片上传相关配置
