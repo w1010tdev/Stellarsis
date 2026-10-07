@@ -3,6 +3,41 @@
  * Helper functions for the SPA
  */
 
+// Attach the CSRF token to same-origin state-changing fetch() calls.
+(function installCsrfFetch() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    const token = meta ? meta.getAttribute('content') : '';
+    if (!token || typeof window.fetch !== 'function') return;
+
+    const originalFetch = window.fetch.bind(window);
+    const mutating = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+    window.fetch = function (input, init) {
+        init = init || {};
+        const rawUrl = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+        const method = String(init.method || (input && input.method) || 'GET').toUpperCase();
+
+        let sameOrigin = true;
+        if (rawUrl && !rawUrl.startsWith('/')) {
+            try {
+                sameOrigin = new URL(rawUrl, window.location.href).origin === window.location.origin;
+            } catch (e) {
+                sameOrigin = false;
+            }
+        }
+
+        if (sameOrigin && mutating.has(method)) {
+            const headers = new Headers(init.headers || (input && input.headers) || undefined);
+            if (!headers.has('X-CSRF-Token')) {
+                headers.set('X-CSRF-Token', token);
+            }
+            init = Object.assign({}, init, { headers: headers });
+        }
+
+        return originalFetch(input, init);
+    };
+})();
+
 const StellarisUtils = {
     // HTML escape
     escapeHtml(unsafe) {

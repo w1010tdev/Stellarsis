@@ -11,6 +11,7 @@ from flask import Flask, render_template
 from flask_login import current_user
 
 from config import Config
+from stellarsis.csrf import init_csrf
 from stellarsis.extensions import (
     Base, init_db as init_db_engine, db_session,
     login_manager, socketio, limiter,
@@ -31,6 +32,9 @@ def create_app(config_class=Config):
         static_folder=os.path.join(project_root, 'static'),
     )
     app.config.from_object(config_class)
+
+    # CSRF protection for cookie-authenticated state-changing requests
+    init_csrf(app)
 
     # Use the project root as root_path so all helpers resolve paths correctly
     app.root_path = project_root
