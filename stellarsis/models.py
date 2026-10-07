@@ -7,8 +7,15 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from flask_login import UserMixin
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from stellarsis.extensions import Base
+
+
+# Prefixes produced by werkzeug.password hashing helpers.
+# Anything else in ``password_hash`` is treated as a legacy plaintext value
+# so that existing rows keep working until the migration script rewrites them.
+PASSWORD_HASH_PREFIXES = ('pbkdf2:', 'scrypt:', 'argon2')
 
 
 def utcnow():
@@ -21,7 +28,7 @@ class User(UserMixin, Base):
 
     id = Column(Integer, primary_key=True)
     username = Column(String(64), unique=True, index=True)
-    password_hash = Column(String(128))
+    password_hash = Column(String(256))
     nickname = Column(String(64), default='')
     color = Column(String(7), default='#000000')
     badge = Column(String(32), default='')
@@ -34,10 +41,18 @@ class User(UserMixin, Base):
         return self.role == 'admin'
 
     def set_password(self, password):
-        self.password_hash = password
+        """Store a salted password hash (never the plaintext password)."""
+        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
 
     def check_password(self, password):
-        return self.password_hash == password
+        stored = self.password_hash or ''
+        if not stored:
+            return False
+        if stored.startswith(PASSWORD_HASH_PREFIXES):
+            return check_password_hash(stored, password)
+        # Legacy plaintext row: compare directly. The migration script rewrites
+        # these rows to hashes, after which this branch is never taken.
+        return stored == password
 
 
 class ChatRoom(Base):

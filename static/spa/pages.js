@@ -2812,26 +2812,75 @@ const AdminPage = {
             }
         };
         
-        const downloadProject = async () => {
+        // Sensitive downloads require re-entering the login password (second verification).
+        const downloadWithPassword = async (url, filename, confirmMessage, confirmTitle) => {
             const confirmed = await ElMessageBox.confirm(
-                '将创建项目根目录压缩包（会排除 uploads/logs 等大文件夹），是否继续？',
-                '下载项目根目录',
+                confirmMessage,
+                confirmTitle,
                 { type: 'info' }
             ).catch(() => false);
-            
+
             if (!confirmed) return;
-            window.location.href = '/down';
+
+            const promptResult = await ElMessageBox.prompt(
+                '请输入你的登录密码以完成二次验证',
+                '二次验证',
+                {
+                    confirmButtonText: '下载',
+                    cancelButtonText: '取消',
+                    inputType: 'password'
+                }
+            ).catch(() => null);
+
+            const password = promptResult && promptResult.value;
+            if (!password) return;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: password })
+                });
+                if (!response.ok) {
+                    let message = '下载失败';
+                    try {
+                        const data = await response.json();
+                        message = data.message || message;
+                    } catch (e) {
+                        // Non-JSON error response; keep the default message.
+                    }
+                    ElMessage.error(message);
+                    return;
+                }
+                const blob = await response.blob();
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(link.href);
+            } catch (error) {
+                ElMessage.error('下载失败: ' + error.message);
+            }
         };
-        
+
+        const downloadProject = async () => {
+            await downloadWithPassword(
+                '/down',
+                'project-root.zip',
+                '将创建项目根目录压缩包（会排除 uploads/logs 等大文件夹），需要输入登录密码二次验证，是否继续？',
+                '下载项目根目录'
+            );
+        };
+
         const downloadDatabase = async () => {
-            const confirmed = await ElMessageBox.confirm(
-                '下载数据库文件，仅支持 SQLite，确认吗？',
-                '下载数据库',
-                { type: 'info' }
-            ).catch(() => false);
-            
-            if (!confirmed) return;
-            window.location.href = '/downdb';
+            await downloadWithPassword(
+                '/downdb',
+                'stellarsis.db',
+                '下载数据库文件（仅支持 SQLite），需要输入登录密码二次验证，确认吗？',
+                '下载数据库'
+            );
         };
         
         const downloadImages = async () => {

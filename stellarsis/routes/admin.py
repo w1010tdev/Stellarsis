@@ -45,6 +45,23 @@ except importlib.metadata.PackageNotFoundError:
 bp = Blueprint('admin', __name__)
 
 
+def _verify_admin_password():
+    """Confirm the current admin's login password for sensitive downloads.
+
+    Used as a second verification step in front of backup/download endpoints
+    so that a stolen session cookie alone is not enough to exfiltrate the
+    database or the project source code.
+    """
+    data = request.get_json(silent=True)
+    if isinstance(data, dict):
+        password = data.get('password')
+    else:
+        password = request.form.get('password')
+    if not password:
+        return False
+    return bool(current_user.check_password(password))
+
+
 # ------------------------------------------------------------------
 # SU verification
 # ------------------------------------------------------------------
@@ -244,10 +261,13 @@ def optimize_database():
 # Download
 # ------------------------------------------------------------------
 
-@bp.route('/down')
+@bp.route('/down', methods=['POST'])
 @login_required
 @su_required
 def download_root_zip():
+    if not _verify_admin_password():
+        log_admin_action("下载项目根目录失败：二次密码验证未通过")
+        return jsonify(success=False, message="密码验证失败"), 401
     try:
         root = Path(current_app.root_path)
         exclude = {'venv', '.venv', 'node_modules', '.git', 'logs',
@@ -294,10 +314,13 @@ def download_root_zip():
         return jsonify(success=False, message=str(e)), 500
 
 
-@bp.route('/downdb')
+@bp.route('/downdb', methods=['POST'])
 @login_required
 @su_required
 def download_db_file():
+    if not _verify_admin_password():
+        log_admin_action("下载数据库失败：二次密码验证未通过")
+        return jsonify(success=False, message="密码验证失败"), 401
     try:
         uri = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
         if not uri.startswith('sqlite:///'):
@@ -954,12 +977,20 @@ def db_table_edit(table_name):
         conn.close()
         return jsonify(success=False, message="记录ID不能为空"), 400
     cur.execute(f"PRAGMA table_info({table_name});")
-    pk = next((c[1] for c in cur.fetchall() if c[5] == 1), 'id')
+    col_info = cur.fetchall()
+    valid_cols = {c[1] for c in col_info}
+    pk = next((c[1] for c in col_info if c[5] == 1), 'id')
     updates, values = [], []
     for k, v in data.items():
-        if k != 'id':
-            updates.append(f"{k} = ?")
-            values.append(v)
+        if k == 'id':
+            continue
+        # Column names are interpolated into the SQL string, so they must be
+        # validated against the real schema to prevent SQL injection.
+        if k not in valid_cols:
+            conn.close()
+            return jsonify(success=False, message=f"无效的字段: {k}"), 400
+        updates.append(f"{k} = ?")
+        values.append(v)
     if not updates:
         conn.close()
         return jsonify(success=False, message="没有要更新的字段"), 400
