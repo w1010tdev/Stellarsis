@@ -21,6 +21,7 @@
 ```bash
 git clone https://github.com/w1010tdev/Stellarsis.git
 cd Stellarsis
+cp config.example.py config.py
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -32,6 +33,7 @@ PORT=5000 python app.py
 
 ## 常用环境变量
 
+- `SECRET_KEY`：会话签名密钥（生产环境必须设置为随机值，例如 `openssl rand -hex 32`）
 - `STELLARSIS_ADMIN_PASSWORD`：初始化/重置默认管理员密码
 - `PORT`：监听端口（默认 80）
 - `DATABASE_URL`：数据库连接串

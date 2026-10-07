@@ -137,6 +137,8 @@ celerybeat.pid
 # Environments
 .env
 .envrc
+# Local deployment config (template: config.example.py)
+config.py
 .venv
 env/
 venv/

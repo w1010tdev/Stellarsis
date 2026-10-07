@@ -1,9 +1,24 @@
+"""
+Stellarsis 配置模板。
+
+使用方法：
+
+    cp config.example.py config.py
+
+config.py 不会被提交到 git（见 .gitignore），因此每台部署机器可以
+保留自己的配置，`git pull` 也不会覆盖它。
+
+注意：生产环境中 SECRET_KEY 必须通过环境变量（推荐写在 .env 里）
+设置为随机值，否则会使用公开的默认值，攻击者可以伪造登录会话。
+"""
+
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
 class Config:
+    # 生产环境必须通过环境变量/`.env` 提供随机密钥（例如 openssl rand -hex 32）
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'you-will-never-guess'
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///stellarsis.db'
@@ -20,9 +35,8 @@ class Config:
     # 文件上传扩展配置
     # ENABLE_FILE_UPLOAD: 开启后允许上传任意文件或特定后缀文件
     ENABLE_FILE_UPLOAD = os.environ.get('ENABLE_FILE_UPLOAD', 'False').lower() in ('1', 'true', 'yes')
-    # ALLOWED_FILE_EXTENSIONS: 允许上传的文件扩展名，设为空集合则允许所有类型
-    # 如果设置为 set() 或 None，则允许上传任意类型文件
-    # 如果设置为具体扩展名集合，则只允许这些类型
+    # ALLOWED_FILE_EXTENSIONS: 允许上传的文件扩展名，留空则使用默认列表
+    # 如需要放行所有类型，必须另行设置 ALLOW_ALL_FILE_EXTENSIONS=true（高风险）
     _DEFAULT_FILE_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'zip', 'rar', '7z', 'md']
     _env_file_ext = os.environ.get('ALLOWED_FILE_EXTENSIONS')
     ALLOWED_FILE_EXTENSIONS = set(_env_file_ext.split(',')) if _env_file_ext else set(_DEFAULT_FILE_EXTENSIONS)
@@ -36,6 +50,6 @@ class Config:
     # 管理面板开关：用于在生产环境中禁用高风险功能
     ENABLE_FILE_MANAGER = os.environ.get('ENABLE_FILE_MANAGER', 'False').lower() in ('1','true','yes')
     ENABLE_SERVER_CONTROL = os.environ.get('ENABLE_SERVER_CONTROL', 'False').lower() in ('1','true','yes')
-    
+
     # 密码验证配置
     MIN_PASSWORD_LENGTH = 6  # 最小密码长度
